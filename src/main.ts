@@ -1,6 +1,42 @@
-const { invoke } = window.__TAURI__.core;
-const { open } = window.__TAURI__.dialog;
-const { listen } = window.__TAURI__.event;
+// Use window.__TAURI__ directly (works without bundler)
+// Type imports are fine - they're removed during compilation
+import type { Event } from "@tauri-apps/api/event";
+
+// Type definitions
+interface ImagePath {
+  path: string;
+}
+
+interface DragDropEvent {
+  payload?: {
+    paths?: string[];
+    position?: { x: number; y: number };
+  };
+  paths?: string[];
+}
+
+// Type augmentation for window.__TAURI__
+declare global {
+  interface Window {
+    __TAURI__?: {
+      core: {
+        invoke: <T = unknown>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+      };
+      dialog?: {
+        open: (options?: { directory?: boolean; multiple?: boolean; title?: string }) => Promise<string | string[] | null>;
+      };
+      event: {
+        listen: <T = unknown>(event: string, handler: (event: Event<T>) => void) => Promise<() => void>;
+      };
+    };
+  }
+}
+
+// Dialog is provided via plugin, accessed through window.__TAURI__
+const open: (options?: { directory?: boolean; multiple?: boolean; title?: string }) => Promise<string | string[] | null> = 
+  window.__TAURI__?.dialog?.open || (() => {
+    throw new Error("Dialog API not available");
+  });
 
 // Constants
 const BATCH_SIZE = 30;
@@ -9,61 +45,61 @@ const DRAG_EVENTS = {
   ENTER: "tauri://drag-enter",
   LEAVE: "tauri://drag-leave",
   OVER: "tauri://drag-over"
-};
+} as const;
 
 // State
 const state = {
-  allImagePaths: [],
+  allImagePaths: [] as ImagePath[],
   currentIndex: 0,
   isLoadingBatch: false,
-  intersectionObserver: null,
-  loadedImages: new Map(),
+  intersectionObserver: null as IntersectionObserver | null,
+  loadedImages: new Map<string, string>(),
   currentModalIndex: -1
 };
 
 // DOM Elements
 const elements = {
-  dropZone: null,
-  currentPath: null,
-  errorMsg: null,
-  imageGrid: null,
-  loadingSpinner: null,
-  modal: null,
-  modalImage: null,
-  modalCaption: null,
-  closeBtn: null,
-  shortcutsOverlay: null,
-  modalPrevBtn: null,
-  modalNextBtn: null
+  dropZone: null as HTMLElement | null,
+  currentPath: null as HTMLElement | null,
+  errorMsg: null as HTMLElement | null,
+  imageGrid: null as HTMLElement | null,
+  loadingSpinner: null as HTMLElement | null,
+  modal: null as HTMLElement | null,
+  modalImage: null as HTMLImageElement | null,
+  modalCaption: null as HTMLElement | null,
+  closeBtn: null as HTMLElement | null,
+  shortcutsOverlay: null as HTMLElement | null,
+  modalPrevBtn: null as HTMLElement | null,
+  modalNextBtn: null as HTMLElement | null
 };
 
 // Utility Functions
-function querySelector(selector) {
-  return document.querySelector(selector);
+function querySelector<T extends HTMLElement = HTMLElement>(selector: string): T | null {
+  return document.querySelector<T>(selector);
 }
 
-function createElement(tag, className, textContent) {
+function createElement(tag: string, className?: string, textContent?: string): HTMLElement {
   const el = document.createElement(tag);
   if (className) el.className = className;
   if (textContent) el.textContent = textContent;
   return el;
 }
 
-function showSpinner() {
+function showSpinner(): void {
   if (!elements.loadingSpinner) return;
   elements.loadingSpinner.style.display = "flex";
   void elements.loadingSpinner.offsetHeight; // Force reflow
 }
 
-function hideSpinner() {
+function hideSpinner(): void {
   if (elements.loadingSpinner) {
     elements.loadingSpinner.style.display = "none";
   }
 }
 
-function collapseDropZone() {
-  const container = querySelector(".path-input-container");
-  const dropZone = querySelector("#drop-zone");
+function collapseDropZone(): void {
+  const container = querySelector<HTMLElement>(".path-input-container");
+  const dropZone = querySelector<HTMLElement>("#drop-zone");
   if (container && dropZone) {
     container.classList.add("collapsed");
     dropZone.classList.add("collapsed");
@@ -71,37 +107,40 @@ function collapseDropZone() {
   }
 }
 
-function expandDropZone() {
-  const container = querySelector(".path-input-container");
-  const dropZone = querySelector("#drop-zone");
+function expandDropZone(): void {
+  const container = querySelector<HTMLElement>(".path-input-container");
+  const dropZone = querySelector<HTMLElement>("#drop-zone");
   if (container && dropZone) {
     container.classList.remove("collapsed");
     dropZone.classList.remove("collapsed");
   }
 }
 
-function showError(message) {
+function showError(message: string): void {
   if (elements.errorMsg) {
     elements.errorMsg.textContent = message;
   }
 }
 
-function clearError() {
+function clearError(): void {
   if (elements.errorMsg) {
     elements.errorMsg.textContent = "";
   }
 }
 
-function clearImageGrid() {
+function clearImageGrid(): void {
   if (elements.imageGrid) {
     elements.imageGrid.innerHTML = "";
   }
 }
 
 // Image Loading Functions
-async function loadImageData(imagePath) {
+async function loadImageData(imagePath: string): Promise<string> {
   try {
-    const dataUrl = await invoke("load_image", { imagePath });
+    if (!window.__TAURI__?.core?.invoke) {
+      throw new Error("Tauri invoke API not available");
+    }
+    const dataUrl = await window.__TAURI__.core.invoke<string>("load_image", { imagePath });
     if (!dataUrl || typeof dataUrl !== 'string') {
       throw new Error(`Invalid data URL returned for ${imagePath}`);
     }
@@ -112,8 +151,8 @@ async function loadImageData(imagePath) {
   }
 }
 
-function createImageElement(imagePath, dataUrl) {
-  const img = createElement("img");
+function createImageElement(imagePath: string, dataUrl: string): HTMLImageElement {
+  const img = createElement("img") as HTMLImageElement;
   img.src = dataUrl;
   img.alt = imagePath.split("/").pop() || imagePath;
   img.loading = "lazy";
@@ -130,15 +169,15 @@ function createImageElement(imagePath, dataUrl) {
   return img;
 }
 
-function createPlaceholder() {
+function createPlaceholder(): HTMLElement {
   const placeholder = createElement("div", "image-placeholder", "Loading...");
   placeholder.style.color = "#999";
   placeholder.style.fontSize = "0.9em";
   return placeholder;
 }
 
-function createErrorPlaceholder() {
-  const errorDiv = createElement("div", null, "Failed to load");
+function createErrorPlaceholder(): HTMLElement {
+  const errorDiv = createElement("div", undefined, "Failed to load");
   errorDiv.style.backgroundColor = "#fee";
   errorDiv.style.color = "#c33";
   errorDiv.style.fontSize = "0.9em";
@@ -147,7 +186,7 @@ function createErrorPlaceholder() {
   return errorDiv;
 }
 
-async function loadImageBatch(startIndex, endIndex) {
+async function loadImageBatch(startIndex: number, endIndex: number): Promise<void> {
   if (state.isLoadingBatch || startIndex >= state.allImagePaths.length || !elements.imageGrid) {
     return;
   }
@@ -165,7 +204,7 @@ async function loadImageBatch(startIndex, endIndex) {
     imageItem.style.justifyContent = "center";
     
     imageItem.appendChild(createPlaceholder());
-    elements.imageGrid.appendChild(imageItem);
+    elements.imageGrid!.appendChild(imageItem);
     
     try {
       const dataUrl = await loadImageData(imagePath);
@@ -189,12 +228,12 @@ async function loadImageBatch(startIndex, endIndex) {
   }
 }
 
-function removeSentinel() {
+function removeSentinel(): void {
   const sentinel = document.getElementById("load-more-sentinel");
   if (sentinel) sentinel.remove();
 }
 
-function cleanupObserver() {
+function cleanupObserver(): void {
   removeSentinel();
   if (state.intersectionObserver) {
     state.intersectionObserver.disconnect();
@@ -202,7 +241,7 @@ function cleanupObserver() {
   }
 }
 
-function setupIntersectionObserver() {
+function setupIntersectionObserver(): void {
   if (!elements.imageGrid) return;
   
   if (state.intersectionObserver) {
@@ -234,7 +273,7 @@ function setupIntersectionObserver() {
   state.intersectionObserver.observe(sentinel);
 }
 
-async function browseImages(path) {
+async function browseImages(path: string): Promise<void> {
   if (!elements.errorMsg || !elements.imageGrid || !elements.loadingSpinner) return;
   
   clearError();
@@ -250,7 +289,10 @@ async function browseImages(path) {
   state.currentModalIndex = -1;
   
   try {
-    const imagePaths = await invoke("list_images", { path });
+    if (!window.__TAURI__?.core?.invoke) {
+      throw new Error("Tauri invoke API not available");
+    }
+    const imagePaths = await window.__TAURI__.core.invoke<ImagePath[]>("list_images", { path });
     hideSpinner();
     
     if (imagePaths.length === 0) {
@@ -274,7 +316,7 @@ async function browseImages(path) {
 }
 
 // Modal Functions
-async function openModal(imageIndex) {
+async function openModal(imageIndex: number): Promise<void> {
   if (imageIndex < 0 || imageIndex >= state.allImagePaths.length || 
       !elements.modalImage || !elements.modalCaption || !elements.modal) {
     return;
@@ -305,7 +347,7 @@ async function openModal(imageIndex) {
   updateModalButtons();
 }
 
-function updateModalButtons() {
+function updateModalButtons(): void {
   if (!elements.modalPrevBtn || !elements.modalNextBtn) return;
   
   elements.modalPrevBtn.style.display = state.currentModalIndex > 0 ? "block" : "none";
@@ -313,19 +355,19 @@ function updateModalButtons() {
     state.currentModalIndex < state.allImagePaths.length - 1 ? "block" : "none";
 }
 
-function showNextImage() {
+function showNextImage(): void {
   if (state.currentModalIndex < state.allImagePaths.length - 1) {
     openModal(state.currentModalIndex + 1);
   }
 }
 
-function showPreviousImage() {
+function showPreviousImage(): void {
   if (state.currentModalIndex > 0) {
     openModal(state.currentModalIndex - 1);
   }
 }
 
-function closeModal() {
+function closeModal(): void {
   if (elements.modal) {
     elements.modal.style.display = "none";
   }
@@ -334,14 +376,14 @@ function closeModal() {
   }
 }
 
-function toggleShortcutsOverlay() {
+function toggleShortcutsOverlay(): void {
   if (!elements.shortcutsOverlay) return;
   const isVisible = elements.shortcutsOverlay.style.display === "flex";
   elements.shortcutsOverlay.style.display = isVisible ? "none" : "flex";
 }
 
 // Folder Handling
-function handleFolder(folderPath) {
+function handleFolder(folderPath: string): void {
   if (!elements.currentPath) return;
   
   elements.currentPath.textContent = `Browsing: ${folderPath}`;
@@ -350,7 +392,7 @@ function handleFolder(folderPath) {
   browseImages(folderPath);
 }
 
-async function selectFolder() {
+async function selectFolder(): Promise<void> {
   try {
     const selected = await open({
       directory: true,
@@ -374,29 +416,32 @@ async function selectFolder() {
 }
 
 // File Drop Handling
-function extractPathsFromEvent(event) {
+function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEvent | string[]): string[] | null {
   if (Array.isArray(event)) {
     return event;
   }
-  if (event.payload?.paths && Array.isArray(event.payload.paths)) {
-    return event.payload.paths;
+  if (typeof event === 'object' && 'payload' in event && event.payload) {
+    if (Array.isArray(event.payload.paths)) {
+      return event.payload.paths;
+    }
+    if (Array.isArray(event.payload)) {
+      return event.payload as string[];
+    }
   }
-  if (Array.isArray(event.payload)) {
-    return event.payload;
-  }
-  if (event.paths && Array.isArray(event.paths)) {
+  if (typeof event === 'object' && 'paths' in event && Array.isArray(event.paths)) {
     return event.paths;
   }
   return null;
 }
 
-async function handleFileDrop(event) {
+async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent | string[]): Promise<void> {
   if (!elements.errorMsg || !elements.imageGrid || !elements.loadingSpinner) return;
   
   clearError();
   clearImageGrid();
   
   const paths = extractPathsFromEvent(event);
+  
   if (!paths || paths.length === 0) {
     hideSpinner();
     showError("No file paths detected in drop event.");
@@ -405,12 +450,18 @@ async function handleFileDrop(event) {
   
   const firstPath = paths[0];
   
+  if (!window.__TAURI__?.core?.invoke) {
+    hideSpinner();
+    showError("Tauri invoke API not available");
+    return;
+  }
+  
   try {
-    await invoke("list_images", { path: firstPath });
+    await window.__TAURI__.core.invoke("list_images", { path: firstPath });
     handleFolder(firstPath);
   } catch (error) {
     try {
-      const parentPath = await invoke("get_parent_directory", { file_path: firstPath });
+      const parentPath = await window.__TAURI__.core.invoke<string>("get_parent_directory", { file_path: firstPath });
       handleFolder(parentPath);
     } catch (err) {
       hideSpinner();
@@ -420,7 +471,7 @@ async function handleFileDrop(event) {
 }
 
 // Event Handlers
-function setupDragDropHandlers() {
+function setupDragDropHandlers(): void {
   if (!elements.dropZone) return;
   
   let isDragging = false;
@@ -444,12 +495,20 @@ function setupDragDropHandlers() {
   });
 }
 
-function setupTauriDragEvents() {
+async function setupTauriDragEvents(): Promise<void> {
   const eventNames = Object.values(DRAG_EVENTS);
   
-  eventNames.forEach(async (eventName) => {
+  // Use window.__TAURI__.event.listen directly (works without bundler)
+  if (!window.__TAURI__?.event?.listen) {
+    return;
+  }
+  
+  const eventListen = window.__TAURI__.event.listen;
+  
+  // Use for...of loop to properly await async operations
+  for (const eventName of eventNames) {
     try {
-      await listen(eventName, (event) => {
+      await eventListen(eventName, (event: Event<DragDropEvent>) => {
         if (eventName === DRAG_EVENTS.DROP) {
           showSpinner();
           collapseDropZone();
@@ -479,16 +538,16 @@ function setupTauriDragEvents() {
     } catch (error) {
       // Silently fail for events that don't exist
     }
-  });
+  }
 }
 
-function setupHTML5DragDrop() {
+function setupHTML5DragDrop(): void {
   if (!elements.dropZone) return;
   
   elements.dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    elements.dropZone.classList.add("drag-over");
+    elements.dropZone!.classList.add("drag-over");
   });
   
   elements.dropZone.addEventListener("dragenter", (e) => {
@@ -499,25 +558,25 @@ function setupHTML5DragDrop() {
   elements.dropZone.addEventListener("dragleave", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    elements.dropZone.classList.remove("drag-over");
+    elements.dropZone!.classList.remove("drag-over");
   });
 }
 
-function setupDocumentDragHandlers() {
+function setupDocumentDragHandlers(): void {
   document.addEventListener("dragover", (e) => {
-    if (!elements.dropZone?.contains(e.target)) {
+    if (!elements.dropZone?.contains(e.target as Node)) {
       e.preventDefault();
     }
   });
   
   document.addEventListener("drop", (e) => {
-    if (!elements.dropZone?.contains(e.target)) {
+    if (!elements.dropZone?.contains(e.target as Node)) {
       e.preventDefault();
     }
   });
 }
 
-function setupModalHandlers() {
+function setupModalHandlers(): void {
   if (elements.closeBtn) {
     elements.closeBtn.onclick = closeModal;
   }
@@ -537,7 +596,7 @@ function setupModalHandlers() {
   }
 }
 
-function setupKeyboardHandlers() {
+function setupKeyboardHandlers(): void {
   document.addEventListener("keydown", (e) => {
     if (!elements.modal || 
         (elements.modal.style.display !== "flex" && elements.modal.style.display !== "block")) {
@@ -563,7 +622,7 @@ function setupKeyboardHandlers() {
     }
   });
   
-  window.onclick = (event) => {
+  window.onclick = (event: MouseEvent) => {
     if (event.target === elements.modal) {
       closeModal();
     }
@@ -574,9 +633,12 @@ function setupKeyboardHandlers() {
   };
 }
 
-async function checkMacOSPermissions() {
+async function checkMacOSPermissions(): Promise<void> {
   try {
-    const fullDiskAccess = await invoke("plugin:macos-permissions|check_full_disk_access_permission");
+    if (!window.__TAURI__?.core?.invoke) {
+      return;
+    }
+    const fullDiskAccess = await window.__TAURI__.core.invoke<boolean>("plugin:macos-permissions|check_full_disk_access_permission");
     if (!fullDiskAccess && elements.errorMsg) {
       elements.errorMsg.textContent = 
         "Note: Full Disk Access permission may be required for file drops. " +
@@ -588,14 +650,14 @@ async function checkMacOSPermissions() {
 }
 
 // Initialization
-function initializeElements() {
+function initializeElements(): void {
   elements.dropZone = querySelector("#drop-zone");
   elements.currentPath = querySelector("#current-path");
   elements.errorMsg = querySelector("#error-msg");
   elements.imageGrid = querySelector("#image-grid");
   elements.loadingSpinner = querySelector("#loading-spinner");
   elements.modal = querySelector("#image-modal");
-  elements.modalImage = querySelector("#modal-image");
+  elements.modalImage = querySelector<HTMLImageElement>("#modal-image");
   elements.modalCaption = querySelector("#modal-caption");
   elements.closeBtn = querySelector(".close");
   elements.modalPrevBtn = querySelector("#modal-prev");
@@ -607,7 +669,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   initializeElements();
   
   if (!elements.dropZone) {
-    console.error("Drop zone element not found!");
     return;
   }
   
@@ -616,7 +677,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupHTML5DragDrop();
   setupModalHandlers();
   setupKeyboardHandlers();
-  setupTauriDragEvents();
+  await setupTauriDragEvents();
   await checkMacOSPermissions();
 });
 

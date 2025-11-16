@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build": "tsc",
+    "dev": "tsc --watch"
   },
   "devDependencies": {
     "@tauri-apps/api": "^2.9.0",
