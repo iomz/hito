@@ -172,10 +172,36 @@ fn load_image(image_path: String) -> Result<String, String> {
     }
 }
 
+/// Deletes an image file by sending it to the system trash/recycle bin.
+///
+/// Uses the `trash` crate to send the file to the system trash, which works cross-platform
+/// (Windows Recycle Bin, macOS Trash, Linux trash).
+///
+/// # Returns
+///
+/// `Ok(())` on success, `Err(String)` with an error message if the file cannot be deleted.
+#[tauri::command]
+fn delete_image(image_path: String) -> Result<(), String> {
+    let file_path = Path::new(&image_path);
+    
+    if !file_path.exists() {
+        return Err(format!("Image does not exist: {}", image_path));
+    }
+    
+    if !file_path.is_file() {
+        return Err(format!("Path is not a file: {}", image_path));
+    }
+    
+    match trash::delete(&file_path) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to delete image: {}", e)),
+    }
+}
+
 /// Initializes and runs the Tauri application with configured plugins and invoke handlers.
 ///
 /// This starts the application builder with the opener, dialog, and macOS permissions plugins,
-/// registers the `list_images`, `load_image`, and `get_parent_directory` invoke handlers,
+/// registers the `list_images`, `load_image`, `get_parent_directory`, and `delete_image` invoke handlers,
 /// and runs the application event loop.
 ///
 /// # Examples
@@ -192,7 +218,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_macos_permissions::init())
-        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory])
+        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image])
         .setup(|_app| {
             // File drops in Tauri 2.0 are handled through the event system
             // JavaScript will listen for tauri://drag-drop events

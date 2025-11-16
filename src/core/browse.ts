@@ -40,6 +40,8 @@ export async function loadImageBatch(startIndex: number, endIndex: number): Prom
     imageItem.style.display = "flex";
     imageItem.style.alignItems = "center";
     imageItem.style.justifyContent = "center";
+    // Store the image path as a data attribute for easy lookup
+    imageItem.setAttribute("data-image-path", imagePath);
     
     imageItem.appendChild(createPlaceholder());
     elements.imageGrid!.appendChild(imageItem);
@@ -48,9 +50,13 @@ export async function loadImageBatch(startIndex: number, endIndex: number): Prom
       const dataUrl = await loadImageData(imagePath);
       imageItem.innerHTML = "";
       imageItem.style.backgroundColor = "";
+      // Re-set the data attribute after clearing innerHTML
+      imageItem.setAttribute("data-image-path", imagePath);
       imageItem.appendChild(createImageElement(imagePath, dataUrl));
     } catch (error) {
       imageItem.innerHTML = "";
+      // Re-set the data attribute after clearing innerHTML
+      imageItem.setAttribute("data-image-path", imagePath);
       imageItem.appendChild(createErrorPlaceholder());
     }
   });
