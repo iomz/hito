@@ -15,11 +15,14 @@ import { open } from "../utils/dialog.js";
  * @param event - The drag/drop input which may be an array of path strings, a DragDropEvent object, or a Tauri `Event<DragDropEvent>` wrapper.
  * @returns An array of file paths extracted from the input, or `null` if no paths are present.
  */
-export function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEvent | string[]): string[] | null {
+export function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEvent | string[] | null | undefined): string[] | null {
+  if (event == null) {
+    return null;
+  }
   if (Array.isArray(event)) {
     return event;
   }
-  if (typeof event === 'object' && 'payload' in event && event.payload) {
+  if (typeof event === 'object' && event != null && 'payload' in event && event.payload) {
     if (Array.isArray(event.payload.paths)) {
       return event.payload.paths;
     }
@@ -27,7 +30,7 @@ export function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEven
       return event.payload as string[];
     }
   }
-  if (typeof event === 'object' && 'paths' in event && Array.isArray(event.paths)) {
+  if (typeof event === 'object' && event != null && 'paths' in event && Array.isArray(event.paths)) {
     return event.paths;
   }
   return null;

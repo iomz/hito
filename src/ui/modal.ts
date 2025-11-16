@@ -15,6 +15,7 @@ export async function openModal(imageIndex: number): Promise<void> {
     return;
   }
   
+  const requestedIndex = imageIndex;
   state.currentModalIndex = imageIndex;
   const imagePath = state.allImagePaths[imageIndex].path;
   
@@ -26,6 +27,11 @@ export async function openModal(imageIndex: number): Promise<void> {
       showError(`Error loading image: ${error}`);
       return;
     }
+  }
+  
+  // Check if a newer modal request has been made while we were loading
+  if (state.currentModalIndex !== requestedIndex) {
+    return;
   }
   
   elements.modalImage.src = dataUrl;
@@ -50,6 +56,7 @@ export function closeModal(): void {
   if (elements.shortcutsOverlay) {
     elements.shortcutsOverlay.style.display = "none";
   }
+  state.currentModalIndex = -1;
 }
 
 /**

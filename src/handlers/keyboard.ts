@@ -14,8 +14,11 @@ import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay } 
  */
 export function setupKeyboardHandlers(): void {
   document.addEventListener("keydown", (e) => {
-    if (!elements.modal || 
-        (elements.modal.style.display !== "flex" && elements.modal.style.display !== "block")) {
+    if (!elements.modal) {
+      return;
+    }
+    const computedStyle = window.getComputedStyle(elements.modal);
+    if (computedStyle.display === "none" || computedStyle.visibility === "hidden") {
       return;
     }
     
@@ -38,7 +41,7 @@ export function setupKeyboardHandlers(): void {
     }
   });
   
-  window.onclick = (event: MouseEvent) => {
+  const handleWindowClick = (event: MouseEvent): void => {
     if (event.target === elements.modal) {
       closeModal();
     }
@@ -47,5 +50,7 @@ export function setupKeyboardHandlers(): void {
       elements.shortcutsOverlay.style.display = "none";
     }
   };
+  
+  window.addEventListener("click", handleWindowClick);
 }
 
