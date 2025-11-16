@@ -1,5 +1,6 @@
 import { createElement } from "../utils/dom.js";
-import { browseImages } from "../core/browse.js";
+import { elements } from "../state.js";
+import { handleFolder } from "../handlers/dragDrop.js";
 
 /**
  * Create a breadcrumb list element from a file path.
@@ -32,6 +33,9 @@ export function createBreadcrumb(path: string): HTMLElement {
     currentPath += (currentPath === "" || currentPath === "/" || currentPath.endsWith("/") ? "" : "/") + segment;
     const isLast = index === segments.slice(startIndex).length - 1;
     
+    // Capture the current path value for this iteration
+    const pathForThisSegment = currentPath;
+    
     const item = createElement("span", `breadcrumb-item ${isLast ? "breadcrumb-item-active" : ""}`);
     
     if (isLast) {
@@ -44,7 +48,10 @@ export function createBreadcrumb(path: string): HTMLElement {
       link.href = "#";
       link.onclick = (e) => {
         e.preventDefault();
-        browseImages(currentPath);
+        // Use handleFolder which updates breadcrumb and loads images
+        // Use the captured path value, not the mutable currentPath variable
+        console.log("Breadcrumb clicked, navigating to:", pathForThisSegment);
+        handleFolder(pathForThisSegment);
       };
       item.appendChild(link);
     }

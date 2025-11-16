@@ -82,6 +82,7 @@ export async function loadImageBatch(startIndex: number, endIndex: number): Prom
 export async function browseImages(path: string): Promise<void> {
   if (!elements.errorMsg || !elements.imageGrid || !elements.loadingSpinner) return;
   
+  console.log("browseImages called with path:", path);
   clearError();
   clearImageGrid();
   showSpinner();
@@ -98,7 +99,9 @@ export async function browseImages(path: string): Promise<void> {
     if (!window.__TAURI__?.core?.invoke) {
       throw new Error("Tauri invoke API not available");
     }
+    console.log("Calling list_images with path:", path);
     const imagePaths = await window.__TAURI__.core.invoke<ImagePath[]>("list_images", { path });
+    console.log("Received image paths:", imagePaths.length);
     hideSpinner();
     
     if (imagePaths.length === 0) {
