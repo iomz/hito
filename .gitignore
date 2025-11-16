@@ -23,5 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 
-# compiled from src/main.ts
-src/main.js
+# Compiled TypeScript files
+src/**/*.js
