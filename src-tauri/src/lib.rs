@@ -8,6 +8,17 @@ struct ImagePath {
     path: String,
 }
 
+#[derive(serde::Serialize)]
+struct DirectoryPath {
+    path: String,
+}
+
+#[derive(serde::Serialize)]
+struct DirectoryContents {
+    directories: Vec<DirectoryPath>,
+    images: Vec<ImagePath>,
+}
+
 /// Returns the parent directory path for a given file path.
 ///
 /// The function examines `file_path` and returns the parent directory as a `String`.
@@ -42,33 +53,18 @@ fn get_parent_directory(file_path: String) -> Result<String, String> {
     }
 }
 
-/// Collects image file paths from a directory and returns them as sorted ImagePath entries.
+/// Collects directory and image file paths from a directory and returns them separately.
 ///
-/// Scans the provided directory for files with common image extensions (`jpg`, `jpeg`, `png`,
-/// `gif`, `bmp`, `webp`, `svg`, `ico`), excludes files smaller than 15 KB, and returns the
-/// matching file paths wrapped in `ImagePath` structs. Results are sorted by path in ascending order.
+/// Scans the provided directory for subdirectories and image files. Returns directories first,
+/// then images. Image files must have common image extensions (`jpg`, `jpeg`, `png`, `gif`,
+/// `bmp`, `webp`, `svg`, `ico`) and be at least 15 KB in size. Results are sorted by path.
 ///
 /// # Returns
 ///
-/// `Ok(Vec<ImagePath>)` with matching image paths when successful; `Err(String)` with an explanatory
-/// message if the path does not exist, is not a directory, or the directory cannot be read.
-///
-/// # Examples
-///
-/// ```no_run
-/// // Collect images from a directory (may return an Err if the path is invalid).
-/// let result = list_images("/path/to/images".into());
-/// match result {
-///     Ok(images) => {
-///         for img in images {
-///             println!("{}", img.path);
-///         }
-///     }
-///     Err(err) => eprintln!("error: {}", err),
-/// }
-/// ```
+/// `Ok(DirectoryContents)` with directories and images when successful; `Err(String)` with an
+/// explanatory message if the path does not exist, is not a directory, or cannot be read.
 #[tauri::command]
-fn list_images(path: String) -> Result<Vec<ImagePath>, String> {
+fn list_images(path: String) -> Result<DirectoryContents, String> {
     let dir_path = Path::new(&path);
     
     if !dir_path.exists() {
@@ -80,6 +76,7 @@ fn list_images(path: String) -> Result<Vec<ImagePath>, String> {
     }
     
     let image_extensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico"];
+    let mut directories = Vec::new();
     let mut images = Vec::new();
     
     match fs::read_dir(dir_path) {
@@ -87,19 +84,30 @@ fn list_images(path: String) -> Result<Vec<ImagePath>, String> {
             for entry in entries {
                 if let Ok(entry) = entry {
                     let file_path = entry.path();
-                    if let Some(extension) = file_path.extension() {
-                        let ext_str = extension.to_string_lossy().to_lowercase();
-                        if image_extensions.contains(&ext_str.as_str()) {
-                            // Check file size - skip images smaller than 15KB
-                            if let Ok(metadata) = fs::metadata(&file_path) {
-                                let file_size = metadata.len();
-                                const MIN_SIZE: u64 = 15 * 1024; // 15KB in bytes
-                                
-                                if file_size >= MIN_SIZE {
-                                    if let Some(path_str) = file_path.to_str() {
-                                        images.push(ImagePath {
-                                            path: path_str.to_string(),
-                                        });
+                    
+                    // Check if it's a directory
+                    if file_path.is_dir() {
+                        if let Some(path_str) = file_path.to_str() {
+                            directories.push(DirectoryPath {
+                                path: path_str.to_string(),
+                            });
+                        }
+                    } else if file_path.is_file() {
+                        // Check if it's an image file
+                        if let Some(extension) = file_path.extension() {
+                            let ext_str = extension.to_string_lossy().to_lowercase();
+                            if image_extensions.contains(&ext_str.as_str()) {
+                                // Check file size - skip images smaller than 15KB
+                                if let Ok(metadata) = fs::metadata(&file_path) {
+                                    let file_size = metadata.len();
+                                    const MIN_SIZE: u64 = 15 * 1024; // 15KB in bytes
+                                    
+                                    if file_size >= MIN_SIZE {
+                                        if let Some(path_str) = file_path.to_str() {
+                                            images.push(ImagePath {
+                                                path: path_str.to_string(),
+                                            });
+                                        }
                                     }
                                 }
                             }
@@ -107,8 +115,12 @@ fn list_images(path: String) -> Result<Vec<ImagePath>, String> {
                     }
                 }
             }
+            directories.sort_by(|a, b| a.path.cmp(&b.path));
             images.sort_by(|a, b| a.path.cmp(&b.path));
-            Ok(images)
+            Ok(DirectoryContents {
+                directories,
+                images,
+            })
         }
         Err(e) => Err(format!("Failed to read directory: {}", e)),
     }
