@@ -19,6 +19,27 @@ body {
   padding: 0;
 }
 
+.notification-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #4ade80 0%, #15803d 100%);
+  color: white;
+  padding: 16px 24px;
+  text-align: center;
+  font-weight: 500;
+  z-index: 10000;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+  box-shadow: none;
+}
+
+.notification-bar.show {
+  transform: translateY(0);
+  box-shadow: 0 4px 20px rgba(74, 222, 128, 0.6), 0 0 60px rgba(74, 222, 128, 0.4);
+}
+
 .container {
   margin: 0;
   padding: 20px;
@@ -80,13 +101,13 @@ h1 {
 }
 
 .drop-zone:hover {
-  border-color: #396cd8;
-  background-color: #f0f4ff;
+  border-color: #22c55e;
+  background-color: #f0fff4;
 }
 
 .drop-zone.drag-over {
-  border-color: #396cd8;
-  background-color: #e3ebff;
+  border-color: #22c55e;
+  background-color: #dcfce7;
   border-style: solid;
   transform: scale(1.02);
 }
@@ -106,7 +127,7 @@ h1 {
 .drop-zone:hover .drop-icon,
 .drop-zone.drag-over .drop-icon {
   opacity: 1;
-  color: #396cd8;
+  color: #22c55e;
 }
 
 .drop-text {
@@ -125,9 +146,48 @@ h1 {
 .current-path {
   margin-top: 15px;
   text-align: center;
-  color: #396cd8;
-  font-weight: 500;
   display: none;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 16px;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.breadcrumb-item-active {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.breadcrumb-link {
+  color: #22c55e;
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+  color: #16a34a;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.breadcrumb-separator {
+  color: #999;
+  margin: 0 4px;
+  user-select: none;
 }
 
 .loading-spinner {
@@ -151,7 +211,7 @@ h1 {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #396cd8;
+  border-top: 4px solid #22c55e;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -191,11 +251,11 @@ button {
 }
 
 button:hover {
-  border-color: #396cd8;
+  border-color: #22c55e;
 }
 
 button:active {
-  border-color: #396cd8;
+  border-color: #22c55e;
   background-color: #e8e8e8;
 }
 
@@ -436,13 +496,13 @@ button {
   }
 
   .drop-zone:hover {
-    border-color: #396cd8;
-    background-color: #252535;
+    border-color: #22c55e;
+    background-color: #253525;
   }
 
   .drop-zone.drag-over {
-    border-color: #396cd8;
-    background-color: #2a2a3a;
+    border-color: #22c55e;
+    background-color: #2a3a2a;
   }
 
   .drop-text {
@@ -459,6 +519,6 @@ button {
 
   .spinner {
     border-color: #444;
-    border-top-color: #396cd8;
+    border-top-color: #22c55e;
   }
 }

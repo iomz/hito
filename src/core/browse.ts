@@ -8,6 +8,7 @@ import { showError, clearError } from "../ui/error.js";
 import { clearImageGrid, removeSentinel } from "../ui/grid.js";
 import { collapseDropZone } from "../ui/dropZone.js";
 import { cleanupObserver, setupIntersectionObserver } from "./observer.js";
+import { showNotification } from "../ui/notification.js";
 
 /**
  * Loads a range of images into the grid and ensures subsequent batch loading is scheduled.
@@ -95,11 +96,7 @@ export async function browseImages(path: string): Promise<void> {
     hideSpinner();
     
     if (imagePaths.length === 0) {
-      const message = createElement("p", undefined, "No images found in this directory.");
-      if (elements.imageGrid) {
-        elements.imageGrid.innerHTML = "";
-        elements.imageGrid.appendChild(message);
-      }
+      showNotification("No images found in this directory.");
       return;
     }
     

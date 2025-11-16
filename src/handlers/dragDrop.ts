@@ -8,6 +8,7 @@ import { clearImageGrid } from "../ui/grid.js";
 import { collapseDropZone, expandDropZone } from "../ui/dropZone.js";
 import { browseImages } from "../core/browse.js";
 import { open } from "../utils/dialog.js";
+import { createBreadcrumb } from "../ui/breadcrumb.js";
 
 /**
  * Normalize various drag-and-drop event shapes into a list of file paths.
@@ -44,7 +45,9 @@ export function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEven
 export function handleFolder(folderPath: string): void {
   if (!elements.currentPath) return;
   
-  elements.currentPath.textContent = `Browsing: ${folderPath}`;
+  elements.currentPath.innerHTML = "";
+  const breadcrumb = createBreadcrumb(folderPath);
+  elements.currentPath.appendChild(breadcrumb);
   elements.currentPath.style.display = "block";
   collapseDropZone();
   browseImages(folderPath);
@@ -72,6 +75,7 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
   }
   
   const firstPath = paths[0];
+  const isSingleFile = paths.length === 1;
   
   if (!window.__TAURI__?.core?.invoke) {
     hideSpinner();
@@ -83,12 +87,25 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
     await window.__TAURI__.core.invoke("list_images", { path: firstPath });
     handleFolder(firstPath);
   } catch (error) {
-    try {
-      const parentPath = await window.__TAURI__.core.invoke<string>("get_parent_directory", { file_path: firstPath });
-      handleFolder(parentPath);
-    } catch (err) {
-      hideSpinner();
-      showError(`Error: ${err}. Please drop a folder or use the file picker.`);
+    // If it's a single file or the path is not a directory, open parent directory
+    const errorMessage = String(error);
+    if (isSingleFile || errorMessage.includes("not a directory")) {
+      try {
+        const parentPath = await window.__TAURI__.core.invoke<string>("get_parent_directory", { filePath: firstPath });
+        handleFolder(parentPath);
+      } catch (err) {
+        hideSpinner();
+        showError(`Error: ${err}. Please drop a folder or use the file picker.`);
+      }
+    } else {
+      // For multiple paths, try parent directory as fallback
+      try {
+        const parentPath = await window.__TAURI__.core.invoke<string>("get_parent_directory", { filePath: firstPath });
+        handleFolder(parentPath);
+      } catch (err) {
+        hideSpinner();
+        showError(`Error: ${err}. Please drop a folder or use the file picker.`);
+      }
     }
   }
 }
