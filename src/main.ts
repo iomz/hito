@@ -33,10 +33,12 @@ declare global {
 }
 
 // Dialog is provided via plugin, accessed through window.__TAURI__
-const open: (options?: { directory?: boolean; multiple?: boolean; title?: string }) => Promise<string | string[] | null> = 
-  window.__TAURI__?.dialog?.open || (() => {
+function open(options?: { directory?: boolean; multiple?: boolean; title?: string }): Promise<string | string[] | null> {
+  if (!window.__TAURI__?.dialog?.open) {
     throw new Error("Dialog API not available");
-  });
+  }
+  return window.__TAURI__.dialog.open(options);
+}
 
 // Constants
 const BATCH_SIZE = 30;
@@ -400,7 +402,11 @@ async function browseImages(path: string): Promise<void> {
     hideSpinner();
     
     if (imagePaths.length === 0) {
-      elements.imageGrid.innerHTML = "<p>No images found in this directory.</p>";
+      const message = createElement("p", undefined, "No images found in this directory.");
+      if (elements.imageGrid) {
+        elements.imageGrid.innerHTML = "";
+        elements.imageGrid.appendChild(message);
+      }
       return;
     }
     
