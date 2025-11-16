@@ -7,12 +7,25 @@ settings:
 importers:
 
   .:
+    dependencies:
+      tauri-plugin-macos-permissions-api:
+        specifier: ^2.3.0
+        version: 2.3.0
     devDependencies:
+      '@tauri-apps/api':
+        specifier: ^2.9.0
+        version: 2.9.0
       '@tauri-apps/cli':
         specifier: ^2
         version: 2.9.4
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
+
+  '@tauri-apps/api@2.9.0':
+    resolution: {integrity: sha512-qD5tMjh7utwBk9/5PrTA/aGr3i5QaJ/Mlt7p8NilQ45WgbifUNPyKWsA63iQ8YfQq6R8ajMapU+/Q8nMcPRLNw==}
 
   '@tauri-apps/cli-darwin-arm64@2.9.4':
     resolution: {integrity: sha512-9rHkMVtbMhe0AliVbrGpzMahOBg3rwV46JYRELxR9SN6iu1dvPOaMaiC4cP6M/aD1424ziXnnMdYU06RAH8oIw==}
@@ -85,7 +98,17 @@ packages:
     engines: {node: '>= 10'}
     hasBin: true
 
+  tauri-plugin-macos-permissions-api@2.3.0:
+    resolution: {integrity: sha512-pZp0jmDySysBqrGueknd1a7Rr4XEO9aXpMv9TNrT2PDHP0MSH20njieOagsFYJ5MCVb8A+wcaK0cIkjUC2dOww==}
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
 snapshots:
+
+  '@tauri-apps/api@2.9.0': {}
 
   '@tauri-apps/cli-darwin-arm64@2.9.4':
     optional: true
@@ -133,3 +156,9 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.9.4
       '@tauri-apps/cli-win32-ia32-msvc': 2.9.4
       '@tauri-apps/cli-win32-x64-msvc': 2.9.4
+
+  tauri-plugin-macos-permissions-api@2.3.0:
+    dependencies:
+      '@tauri-apps/api': 2.9.0
+
+  typescript@5.9.3: {}
