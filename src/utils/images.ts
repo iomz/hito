@@ -36,7 +36,9 @@ export async function loadImageData(imagePath: string): Promise<string> {
 export function createImageElement(imagePath: string, dataUrl: string): HTMLImageElement {
   const img = createElement("img") as HTMLImageElement;
   img.src = dataUrl;
-  img.alt = imagePath.split("/").pop() || imagePath;
+  // Normalize path: convert backslashes to forward slashes before extracting filename
+  const normalized = imagePath.replace(/\\/g, "/");
+  img.alt = normalized.split("/").pop() || imagePath;
   img.loading = "lazy";
   
   img.onerror = () => {

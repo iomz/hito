@@ -35,8 +35,10 @@ export async function openModal(imageIndex: number): Promise<void> {
   }
   
   elements.modalImage.src = dataUrl;
+  // Normalize path: convert backslashes to forward slashes before extracting filename
+  const normalized = imagePath.replace(/\\/g, "/");
   elements.modalCaption.textContent = 
-    `${imageIndex + 1} / ${state.allImagePaths.length} - ${imagePath.split("/").pop() || imagePath}`;
+    `${imageIndex + 1} / ${state.allImagePaths.length} - ${normalized.split("/").pop() || imagePath}`;
   elements.modal.style.display = "flex";
   
   if (elements.shortcutsOverlay) {

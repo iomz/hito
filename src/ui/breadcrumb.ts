@@ -10,19 +10,27 @@ import { browseImages } from "../core/browse.js";
 export function createBreadcrumb(path: string): HTMLElement {
   const nav = createElement("nav", "breadcrumb");
   
+  // Normalize path: convert backslashes to forward slashes
+  const normalized = path.replace(/\\/g, "/");
+  
   // Split path into segments
-  const segments = path.split("/").filter(segment => segment.length > 0);
-  const isAbsolute = path.startsWith("/");
+  const segments = normalized.split("/").filter(segment => segment.length > 0);
+  // Check if absolute: Unix-style leading slash OR Windows drive letter (e.g., C:/)
+  const isAbsolute = normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized);
   
   // Build path progressively for each segment
-  let currentPath = isAbsolute ? "/" : "";
-  segments.forEach((segment, index) => {
+  // Handle Windows drive letter paths (e.g., C:/Users/...)
+  const isWindowsDrive = /^[A-Za-z]:\//.test(normalized);
+  let currentPath = isWindowsDrive ? (segments[0] + "/") : (isAbsolute ? "/" : "");
+  const startIndex = isWindowsDrive ? 1 : 0;
+  
+  segments.slice(startIndex).forEach((segment, index) => {
     const separator = createElement("span", "breadcrumb-separator");
     separator.textContent = "/";
     nav.appendChild(separator);
     
-    currentPath += (isAbsolute && currentPath === "/" ? "" : "/") + segment;
-    const isLast = index === segments.length - 1;
+    currentPath += (currentPath === "" || currentPath === "/" || currentPath.endsWith("/") ? "" : "/") + segment;
+    const isLast = index === segments.slice(startIndex).length - 1;
     
     const item = createElement("span", `breadcrumb-item ${isLast ? "breadcrumb-item-active" : ""}`);
     
