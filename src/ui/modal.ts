@@ -117,11 +117,17 @@ export function toggleShortcutsOverlay(): void {
  * the previous image instead. If it was the only image, closes the modal.
  */
 export async function deleteCurrentImage(): Promise<void> {
+  // Re-entrancy guard: ignore if deletion is already in progress
+  if (state.isDeletingImage) {
+    return;
+  }
+  
   if (state.currentModalIndex < 0 || state.currentModalIndex >= state.allImagePaths.length) {
     return;
   }
   
   const imagePath = state.allImagePaths[state.currentModalIndex].path;
+  const deletedIndex = state.currentModalIndex;
   const isLastImage = state.currentModalIndex === state.allImagePaths.length - 1;
   const isOnlyImage = state.allImagePaths.length === 1;
   
@@ -130,6 +136,9 @@ export async function deleteCurrentImage(): Promise<void> {
     return;
   }
   
+  // Set deletion flag to prevent re-entrancy
+  state.isDeletingImage = true;
+  
   try {
     await window.__TAURI__.core.invoke("delete_image", { imagePath });
     
@@ -137,7 +146,12 @@ export async function deleteCurrentImage(): Promise<void> {
     state.loadedImages.delete(imagePath);
     
     // Remove from image list
-    state.allImagePaths.splice(state.currentModalIndex, 1);
+    state.allImagePaths.splice(deletedIndex, 1);
+    
+    // Adjust currentIndex if the deleted image was before the current batch loading position
+    if (deletedIndex < state.currentIndex) {
+      state.currentIndex -= 1;
+    }
     
     // Remove from grid DOM
     removeImageFromGrid(imagePath);
@@ -147,6 +161,8 @@ export async function deleteCurrentImage(): Promise<void> {
       // If it was the only image, close the modal
       closeModal();
       showNotification("Image deleted. No more images in this directory.");
+      state.isDeletingImage = false;
+      return; // Return immediately to avoid generic notification
     } else if (isLastImage) {
       // If it was the last image, go to the previous one
       openModal(state.currentModalIndex - 1);
@@ -158,6 +174,9 @@ export async function deleteCurrentImage(): Promise<void> {
     showNotification("Image deleted");
   } catch (error) {
     showError(`Failed to delete image: ${error}`);
+  } finally {
+    // Always reset the deletion flag
+    state.isDeletingImage = false;
   }
 }
 

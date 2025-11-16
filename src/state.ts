@@ -8,7 +8,8 @@ export const state = {
   isLoadingBatch: false,
   intersectionObserver: null as IntersectionObserver | null,
   loadedImages: new Map<string, string>(),
-  currentModalIndex: -1
+  currentModalIndex: -1,
+  isDeletingImage: false
 };
 
 // DOM Elements
