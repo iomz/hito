@@ -6,7 +6,7 @@
 
 A fast and lightweight image browser built with Tauri 2.0.
 
-`Hito` is named after Human Intelligence Tasks Organizer and a "boundary stone" in Spanish as well as "human" (人) in Japanese.
+`Hito` is named after Human Intelligence Tasks Organizer and "boundary stone" in Spanish as well as "human" (人) in Japanese.
 It provides a clean graphical interface to help users to flag images for selective actions: copy or move to each directories.
 Simply drag and drop a folder to start browsing your images.
 
@@ -41,7 +41,7 @@ Simply drag and drop a folder to start browsing your images.
 
 ## Directory Structure
 
-```
+```text
 src/
 ├── main.ts                    # Entry point
 ├── types.ts                   # Type definitions
