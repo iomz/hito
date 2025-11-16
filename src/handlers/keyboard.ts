@@ -1,5 +1,5 @@
 import { elements } from "../state.js";
-import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay } from "../ui/modal.js";
+import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage } from "../ui/modal.js";
 
 /**
  * Install global keyboard and click handlers to manage modal navigation, closing, and the shortcuts overlay.
@@ -9,6 +9,7 @@ import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay } 
  * - ArrowRight: navigate to the next image.
  * - Escape: hide the shortcuts overlay if visible, otherwise close the modal.
  * - `?` or Shift+/ : toggle the shortcuts overlay.
+ * - Delete/Backspace: delete the current image and move to the next (or previous if last).
  *
  * Also closes the modal when the user clicks the modal backdrop, and hides the shortcuts overlay when the user clicks it.
  */
@@ -38,6 +39,9 @@ export function setupKeyboardHandlers(): void {
     } else if (e.key === "?" || (e.shiftKey && e.key === "/")) {
       e.preventDefault();
       toggleShortcutsOverlay();
+    } else if (e.key === "Delete" || e.key === "Backspace" || e.code === "Delete" || e.code === "Backspace") {
+      e.preventDefault();
+      deleteCurrentImage();
     }
   });
   

@@ -1,6 +1,8 @@
 import { state, elements } from "../state.js";
 import { loadImageData } from "../utils/images.js";
 import { showError } from "./error.js";
+import { showNotification } from "./notification.js";
+import { removeImageFromGrid } from "./grid.js";
 
 /**
  * Opens the image viewer modal for the image at the given index, ensuring the image data is available and updating modal UI.
@@ -105,5 +107,57 @@ export function toggleShortcutsOverlay(): void {
   if (!elements.shortcutsOverlay) return;
   const isVisible = elements.shortcutsOverlay.style.display === "flex";
   elements.shortcutsOverlay.style.display = isVisible ? "none" : "flex";
+}
+
+/**
+ * Delete the current image and navigate to the next one (or previous if it's the last).
+ *
+ * Sends the current image to the system trash, removes it from the image list and cache,
+ * and navigates to the next image. If the deleted image was the last one, navigates to
+ * the previous image instead. If it was the only image, closes the modal.
+ */
+export async function deleteCurrentImage(): Promise<void> {
+  if (state.currentModalIndex < 0 || state.currentModalIndex >= state.allImagePaths.length) {
+    return;
+  }
+  
+  const imagePath = state.allImagePaths[state.currentModalIndex].path;
+  const isLastImage = state.currentModalIndex === state.allImagePaths.length - 1;
+  const isOnlyImage = state.allImagePaths.length === 1;
+  
+  if (!window.__TAURI__?.core?.invoke) {
+    showError("Tauri invoke API not available");
+    return;
+  }
+  
+  try {
+    await window.__TAURI__.core.invoke("delete_image", { imagePath });
+    
+    // Remove from loaded images cache
+    state.loadedImages.delete(imagePath);
+    
+    // Remove from image list
+    state.allImagePaths.splice(state.currentModalIndex, 1);
+    
+    // Remove from grid DOM
+    removeImageFromGrid(imagePath);
+    
+    // Navigate to next or previous image
+    if (isOnlyImage) {
+      // If it was the only image, close the modal
+      closeModal();
+      showNotification("Image deleted. No more images in this directory.");
+    } else if (isLastImage) {
+      // If it was the last image, go to the previous one
+      openModal(state.currentModalIndex - 1);
+    } else {
+      // Otherwise, stay at the same index (which now points to the next image)
+      openModal(state.currentModalIndex);
+    }
+    
+    showNotification("Image deleted");
+  } catch (error) {
+    showError(`Failed to delete image: ${error}`);
+  }
 }
 
