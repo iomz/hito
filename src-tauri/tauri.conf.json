@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "hito",
+  "productName": "Hito",
   "version": "0.1.0",
   "identifier": "com.iomz.hito",
   "build": {
@@ -8,14 +8,14 @@
   },
   "app": {
     "withGlobalTauri": true,
-          "windows": [
-            {
-              "title": "hito",
-              "width": 1600,
-              "height": 1000,
-              "center": true
-            }
-          ],
+    "windows": [
+      {
+        "title": "Hito",
+        "width": 1600,
+        "height": 1000,
+        "center": true
+      }
+    ],
     "security": {
       "csp": null
     }
