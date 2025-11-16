@@ -1,4 +1,4 @@
-![hito-app-icon](https://i.imgur.com/KWpeggI.png)
+![hito-app-icon](https://i.imgur.com/BAqSxE0.png)
 
 # Hito
 
