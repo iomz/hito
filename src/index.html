@@ -4,36 +4,65 @@
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
+    <title>Image Browser</title>
     <script type="module" src="/main.js" defer></script>
   </head>
 
   <body>
     <main class="container">
-      <h1>Welcome to Tauri</h1>
+      <h1>hito</h1>
 
-      <div class="row">
-        <a href="https://tauri.app" target="_blank">
-          <img src="/assets/tauri.svg" class="logo tauri" alt="Tauri logo" />
-        </a>
-        <a
-          href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"
-          target="_blank"
-        >
-          <img
-            src="/assets/javascript.svg"
-            class="logo vanilla"
-            alt="JavaScript logo"
-          />
-        </a>
+      <div class="path-input-container">
+        <div id="drop-zone" class="drop-zone">
+          <div class="drop-zone-content">
+            <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p class="drop-text">Drag and drop a folder here</p>
+            <p class="drop-hint">or click to select a folder</p>
+          </div>
+        </div>
+        <p id="current-path" class="current-path"></p>
+        <p id="error-msg" class="error"></p>
       </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
+      <div id="loading-spinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading images...</p>
+      </div>
+
+      <div id="image-grid" class="image-grid"></div>
+
+      <div id="image-modal" class="modal">
+        <span class="close">&times;</span>
+        <button class="modal-nav modal-nav-prev" id="modal-prev">&#10094;</button>
+        <button class="modal-nav modal-nav-next" id="modal-next">&#10095;</button>
+        <img id="modal-image" class="modal-content" />
+        <div id="modal-caption"></div>
+        <div id="keyboard-shortcuts-overlay" class="keyboard-shortcuts-overlay">
+          <div class="shortcuts-content">
+            <h2>Keyboard Shortcuts</h2>
+            <div class="shortcut-item">
+              <span class="shortcut-key">←</span>
+              <span class="shortcut-desc">Previous image</span>
+            </div>
+            <div class="shortcut-item">
+              <span class="shortcut-key">→</span>
+              <span class="shortcut-desc">Next image</span>
+            </div>
+            <div class="shortcut-item">
+              <span class="shortcut-key">Esc</span>
+              <span class="shortcut-desc">Close modal</span>
+            </div>
+            <div class="shortcut-item">
+              <span class="shortcut-key">?</span>
+              <span class="shortcut-desc">Show/hide this help</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
   </body>
 </html>
