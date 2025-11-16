@@ -6,6 +6,15 @@ export interface ImagePath {
   path: string;
 }
 
+export interface DirectoryPath {
+  path: string;
+}
+
+export interface DirectoryContents {
+  directories: DirectoryPath[];
+  images: ImagePath[];
+}
+
 export interface DragDropEvent {
   payload?: {
     paths?: string[];

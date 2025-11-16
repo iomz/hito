@@ -1,8 +1,9 @@
-import type { ImagePath } from "./types";
+import type { ImagePath, DirectoryPath } from "./types";
 
 // State
 export const state = {
   allImagePaths: [] as ImagePath[],
+  allDirectoryPaths: [] as DirectoryPath[],
   currentIndex: 0,
   isLoadingBatch: false,
   intersectionObserver: null as IntersectionObserver | null,

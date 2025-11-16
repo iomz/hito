@@ -349,6 +349,22 @@ button {
   display: block;
 }
 
+.directory-item {
+  background-color: #f9f9f9 !important;
+  transition: all 0.2s ease;
+}
+
+.directory-item:hover {
+  background-color: #f0fff4 !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.directory-name {
+  font-weight: 500;
+  color: #333;
+}
+
 .modal {
   display: none;
   position: fixed;

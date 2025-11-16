@@ -1,6 +1,6 @@
 import { state, elements } from "../state.js";
 import { BATCH_SIZE } from "../constants.js";
-import type { ImagePath } from "../types.js";
+import type { ImagePath, DirectoryContents } from "../types.js";
 import { createElement } from "../utils/dom.js";
 import { loadImageData, createImageElement, createPlaceholder, createErrorPlaceholder } from "../utils/images.js";
 import { showSpinner, hideSpinner } from "../ui/spinner.js";
@@ -9,6 +9,7 @@ import { clearImageGrid, removeSentinel } from "../ui/grid.js";
 import { collapseDropZone } from "../ui/dropZone.js";
 import { cleanupObserver, setupIntersectionObserver } from "./observer.js";
 import { showNotification } from "../ui/notification.js";
+import { handleFolder } from "../handlers/dragDrop.js";
 
 /**
  * Loads a range of images into the grid and ensures subsequent batch loading is scheduled.
@@ -100,22 +101,76 @@ export async function browseImages(path: string): Promise<void> {
       throw new Error("Tauri invoke API not available");
     }
     console.log("Calling list_images with path:", path);
-    const imagePaths = await window.__TAURI__.core.invoke<ImagePath[]>("list_images", { path });
-    console.log("Received image paths:", imagePaths.length);
+    const contents = await window.__TAURI__.core.invoke<DirectoryContents>("list_images", { path });
+    console.log("Received directories:", contents.directories.length, "images:", contents.images.length);
     hideSpinner();
     
-    if (imagePaths.length === 0) {
-      showNotification("No images found in this directory.");
+    // Store directories and images
+    state.allDirectoryPaths = contents.directories;
+    state.allImagePaths = contents.images;
+    
+    // Display directories first
+    if (!elements.imageGrid) return;
+    
+    contents.directories.forEach((dir) => {
+      const dirItem = createElement("div", "image-item directory-item");
+      dirItem.setAttribute("data-directory-path", dir.path);
+      dirItem.style.cursor = "pointer";
+      dirItem.style.display = "flex";
+      dirItem.style.flexDirection = "column";
+      dirItem.style.alignItems = "center";
+      dirItem.style.justifyContent = "center";
+      dirItem.style.backgroundColor = "#f0f0f0";
+      dirItem.style.borderRadius = "8px";
+      
+      // Extract directory name from path
+      const normalized = dir.path.replace(/\\/g, "/");
+      const dirName = normalized.split("/").pop() || dir.path;
+      
+      // Folder icon (simple SVG)
+      const folderIcon = createElement("div");
+      folderIcon.innerHTML = `
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+      `;
+      folderIcon.style.color = "#22c55e";
+      folderIcon.style.marginBottom = "8px";
+      
+      const dirNameEl = createElement("div", "directory-name");
+      dirNameEl.textContent = dirName;
+      dirNameEl.style.fontSize = "0.9em";
+      dirNameEl.style.color = "#333";
+      dirNameEl.style.textAlign = "center";
+      dirNameEl.style.padding = "0 8px";
+      dirNameEl.style.wordBreak = "break-word";
+      
+      dirItem.appendChild(folderIcon);
+      dirItem.appendChild(dirNameEl);
+      
+      dirItem.onclick = () => {
+        handleFolder(dir.path);
+      };
+      
+      if (elements.imageGrid) {
+        elements.imageGrid.appendChild(dirItem);
+      }
+    });
+    
+    if (contents.images.length === 0 && contents.directories.length === 0) {
+      showNotification("No images or directories found in this directory.");
       return;
     }
     
-    state.allImagePaths = imagePaths;
-    const firstBatchEnd = Math.min(BATCH_SIZE, state.allImagePaths.length);
-    state.currentIndex = firstBatchEnd;
-    await loadImageBatch(0, firstBatchEnd);
-    
-    if (state.allImagePaths.length > BATCH_SIZE) {
-      setupIntersectionObserver();
+    // Load images
+    if (contents.images.length > 0) {
+      const firstBatchEnd = Math.min(BATCH_SIZE, state.allImagePaths.length);
+      state.currentIndex = firstBatchEnd;
+      await loadImageBatch(0, firstBatchEnd);
+      
+      if (state.allImagePaths.length > BATCH_SIZE) {
+        setupIntersectionObserver();
+      }
     }
   } catch (error) {
     hideSpinner();
