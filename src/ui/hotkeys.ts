@@ -441,7 +441,16 @@ export async function executeHotkeyAction(action: string): Promise<void> {
   
   // Handle category toggle actions (migrate old assign actions to toggle)
   if (action.startsWith("assign_category_") || action.startsWith("toggle_category_")) {
-    const categoryId = action.replace(/^(assign_category_|toggle_category_|toggle_category_next_)/, "");
+    // Match longer patterns first to avoid partial matches
+    let categoryId: string;
+    if (action.startsWith("toggle_category_next_")) {
+      categoryId = action.replace("toggle_category_next_", "");
+    } else if (action.startsWith("toggle_category_")) {
+      categoryId = action.replace("toggle_category_", "");
+    } else {
+      categoryId = action.replace("assign_category_", "");
+    }
+    
     const { toggleCategoryForCurrentImage } = await import("./categories.js");
     await toggleCategoryForCurrentImage(categoryId);
     
