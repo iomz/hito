@@ -4,6 +4,31 @@ import type { HotkeyConfig } from "../types.js";
 import { saveHitoConfig } from "./categories.js";
 
 /**
+ * Width of the hotkey sidebar when open.
+ */
+export const SIDEBAR_WIDTH = "350px";
+
+/**
+ * Updates the modal image layout to accommodate the sidebar state.
+ * 
+ * @param isOpen - Whether the sidebar is open. If true, applies sidebar offset;
+ *                 if false, resets modal image styles.
+ */
+function updateModalForSidebar(isOpen: boolean): void {
+  if (!elements.modalImage || state.currentModalIndex < 0) {
+    return;
+  }
+  
+  if (isOpen) {
+    elements.modalImage.style.marginLeft = SIDEBAR_WIDTH;
+    elements.modalImage.style.maxWidth = `calc(90% - ${SIDEBAR_WIDTH})`;
+  } else {
+    elements.modalImage.style.marginLeft = "";
+    elements.modalImage.style.maxWidth = "";
+  }
+}
+
+/**
  * Toggle the hotkey sidebar visibility.
  */
 export async function toggleHotkeySidebar(): Promise<void> {
@@ -13,11 +38,7 @@ export async function toggleHotkeySidebar(): Promise<void> {
   
   if (state.isHotkeySidebarOpen) {
     elements.hotkeySidebar.classList.add("open");
-    // Adjust modal content to make room for sidebar if modal is open
-    if (elements.modalImage && state.currentModalIndex >= 0) {
-      elements.modalImage.style.marginLeft = "350px";
-      elements.modalImage.style.maxWidth = "calc(90% - 350px)";
-    }
+    updateModalForSidebar(true);
     renderHotkeyList();
     // Refresh categories display
     const { renderCurrentImageCategories, renderCategoryList } = await import("./categories.js");
@@ -27,11 +48,7 @@ export async function toggleHotkeySidebar(): Promise<void> {
     }
   } else {
     elements.hotkeySidebar.classList.remove("open");
-    // Reset modal content if modal is open
-    if (elements.modalImage && state.currentModalIndex >= 0) {
-      elements.modalImage.style.marginLeft = "";
-      elements.modalImage.style.maxWidth = "";
-    }
+    updateModalForSidebar(false);
   }
 }
 
@@ -43,12 +60,7 @@ export function closeHotkeySidebar(): void {
   
   state.isHotkeySidebarOpen = false;
   elements.hotkeySidebar.classList.remove("open");
-  
-  // Reset modal content if modal is open
-  if (elements.modalImage && state.currentModalIndex >= 0) {
-    elements.modalImage.style.marginLeft = "";
-    elements.modalImage.style.maxWidth = "";
-  }
+  updateModalForSidebar(false);
 }
 
 /**
@@ -248,6 +260,11 @@ function showHotkeyDialog(existingHotkey?: HotkeyConfig): void {
     errorMsg.style.display = "none"; // Hide error when starting to capture
   };
   
+  const showKeyCaptureError = () => {
+    errorMsg.textContent = "Please capture a key combination before saving.";
+    errorMsg.style.display = "block";
+  };
+  
   const stopCapture = () => {
     isCapturing = false;
     keyDisplay.classList.remove("capturing");
@@ -303,6 +320,7 @@ function showHotkeyDialog(existingHotkey?: HotkeyConfig): void {
     if (!["Control", "Meta", "Alt", "Shift"].includes(e.key)) {
       capturedKey = e.key.length === 1 ? e.key.toUpperCase() : e.key;
       stopCapture();
+      errorMsg.style.display = "none"; // Hide key capture error when key is captured
       checkDuplicate(); // Check for duplicate after capturing
     }
   };
@@ -347,7 +365,7 @@ function showHotkeyDialog(existingHotkey?: HotkeyConfig): void {
   saveBtn.textContent = existingHotkey ? "Update" : "Add";
   saveBtn.onclick = () => {
     if (!capturedKey) {
-      alert("Please capture a key combination");
+      showKeyCaptureError();
       return;
     }
     
@@ -357,6 +375,9 @@ function showHotkeyDialog(existingHotkey?: HotkeyConfig): void {
       // Error message is already shown inline, just prevent saving
       return;
     }
+    
+    // Hide any error messages before saving
+    errorMsg.style.display = "none";
     
     const action = (actionInput as HTMLSelectElement).value || `action_${Date.now()}`;
     
@@ -401,6 +422,9 @@ function showHotkeyDialog(existingHotkey?: HotkeyConfig): void {
   
   // Only auto-start capture for new hotkeys, not when editing
   if (!existingHotkey) {
+    // Delay is necessary to ensure the DOM is fully rendered and the element
+    // is focusable before attempting to focus it. Without this delay, focus()
+    // may fail silently if called before the element is ready.
     setTimeout(() => {
       keyDisplay.focus();
       startCapture();

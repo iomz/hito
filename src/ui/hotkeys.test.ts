@@ -75,11 +75,11 @@ describe("hotkeys", () => {
         elements.modalImage.style.maxWidth = "";
       }
 
-      const { toggleHotkeySidebar } = await import("./hotkeys.js");
+      const { toggleHotkeySidebar, SIDEBAR_WIDTH } = await import("./hotkeys.js");
       await toggleHotkeySidebar();
 
-      expect(elements.modalImage?.style.marginLeft).toBe("350px");
-      expect(elements.modalImage?.style.maxWidth).toBe("calc(90% - 350px)");
+      expect(elements.modalImage?.style.marginLeft).toBe(SIDEBAR_WIDTH);
+      expect(elements.modalImage?.style.maxWidth).toBe(`calc(90% - ${SIDEBAR_WIDTH})`);
     });
 
     it("should reset modal image when closing sidebar with modal open", async () => {
@@ -88,9 +88,10 @@ describe("hotkeys", () => {
       if (elements.hotkeySidebar) {
         elements.hotkeySidebar.classList.add("open");
       }
+      const { SIDEBAR_WIDTH } = await import("./hotkeys.js");
       if (elements.modalImage) {
-        elements.modalImage.style.marginLeft = "350px";
-        elements.modalImage.style.maxWidth = "calc(90% - 350px)";
+        elements.modalImage.style.marginLeft = SIDEBAR_WIDTH;
+        elements.modalImage.style.maxWidth = `calc(90% - ${SIDEBAR_WIDTH})`;
       }
 
       const { toggleHotkeySidebar } = await import("./hotkeys.js");
@@ -140,9 +141,10 @@ describe("hotkeys", () => {
 
     it("should reset modal image when modal is open", async () => {
       state.currentModalIndex = 0;
+      const { SIDEBAR_WIDTH } = await import("./hotkeys.js");
       if (elements.modalImage) {
-        elements.modalImage.style.marginLeft = "350px";
-        elements.modalImage.style.maxWidth = "calc(90% - 350px)";
+        elements.modalImage.style.marginLeft = SIDEBAR_WIDTH;
+        elements.modalImage.style.maxWidth = `calc(90% - ${SIDEBAR_WIDTH})`;
       }
 
       const { closeHotkeySidebar } = await import("./hotkeys.js");

@@ -1346,6 +1346,8 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .category-dialog-header {
@@ -1387,6 +1389,8 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .category-dialog-body label {
@@ -1406,6 +1410,7 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
   color: #f1f1f1;
   font-size: 1em;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .category-input:focus {
@@ -1470,4 +1475,12 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
 
 .category-dialog-save:hover {
   background-color: #16a34a;
+}
+
+.category-error-message {
+  color: #ef4444;
+  font-size: 0.85em;
+  margin-top: -8px;
+  margin-bottom: 8px;
+  display: none;
 }

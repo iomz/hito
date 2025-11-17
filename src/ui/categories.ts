@@ -3,9 +3,9 @@ import { createElement } from "../utils/dom.js";
 import type { Category, HotkeyConfig } from "../types.js";
 
 interface HitoFile {
-  categories: Category[];
-  image_categories: Array<[string, string[]]>;
-  hotkeys: HotkeyConfig[];
+  categories?: Category[];
+  image_categories?: Array<[string, string[]]>;
+  hotkeys?: HotkeyConfig[];
 }
 
 function getConfigFileDirectory(): string {
@@ -392,6 +392,24 @@ export async function toggleCategoryForCurrentImage(
 }
 
 /**
+ * Check if a category name already exists.
+ * @param name - The category name to check
+ * @param excludeId - Optional category ID to exclude from the check (for editing)
+ * @returns true if the name already exists, false otherwise
+ */
+function isCategoryNameDuplicate(name: string, excludeId?: string): boolean {
+  const normalizedName = name.trim().toLowerCase();
+  return state.categories.some((category) => {
+    // Skip the category being edited
+    if (excludeId && category.id === excludeId) {
+      return false;
+    }
+    // Case-insensitive comparison
+    return category.name.toLowerCase() === normalizedName;
+  });
+}
+
+/**
  * Show the add/edit category dialog.
  */
 function showCategoryDialog(existingCategory?: Category): void {
@@ -411,6 +429,14 @@ function showCategoryDialog(existingCategory?: Category): void {
 
   const dialogBody = createElement("div", "category-dialog-body");
 
+  // Error message element for duplicate name warning (created early so it can be referenced)
+  const errorMsg = createElement("div", "category-error-message");
+  errorMsg.style.display = "none";
+  errorMsg.style.color = "#ef4444";
+  errorMsg.style.fontSize = "0.85em";
+  errorMsg.style.marginTop = "-8px";
+  errorMsg.style.marginBottom = "8px";
+
   // Name input
   const nameLabel = createElement("label");
   nameLabel.textContent = "Category Name:";
@@ -424,6 +450,31 @@ function showCategoryDialog(existingCategory?: Category): void {
   nameInput.placeholder = "e.g., Keep, Archive, Delete";
   if (existingCategory) {
     nameInput.value = existingCategory.name;
+  }
+  
+  // Function to check and show/hide duplicate warning
+  const checkDuplicate = () => {
+    const name = nameInput.value.trim();
+    if (!name) {
+      errorMsg.style.display = "none";
+      return;
+    }
+    
+    const excludeId = existingCategory?.id;
+    if (isCategoryNameDuplicate(name, excludeId)) {
+      errorMsg.textContent = `A category with the name "${name}" already exists.`;
+      errorMsg.style.display = "block";
+    } else {
+      errorMsg.style.display = "none";
+    }
+  };
+  
+  // Check for duplicate as user types
+  nameInput.oninput = checkDuplicate;
+  
+  // Check for duplicate when editing (should be none since it's the same category)
+  if (existingCategory) {
+    checkDuplicate();
   }
 
   // Color picker
@@ -447,6 +498,7 @@ function showCategoryDialog(existingCategory?: Category): void {
 
   dialogBody.appendChild(nameLabel);
   dialogBody.appendChild(nameInput);
+  dialogBody.appendChild(errorMsg);
   dialogBody.appendChild(colorLabel);
   const colorContainer = createElement("div", "color-picker-container");
   colorContainer.appendChild(colorInput);
@@ -470,9 +522,20 @@ function showCategoryDialog(existingCategory?: Category): void {
   saveBtn.onclick = async () => {
     const name = nameInput.value.trim();
     if (!name) {
-      alert("Please enter a category name");
+      errorMsg.textContent = "Please enter a category name.";
+      errorMsg.style.display = "block";
       return;
     }
+    
+    // Check for duplicate category name
+    const excludeId = existingCategory?.id;
+    if (isCategoryNameDuplicate(name, excludeId)) {
+      // Error message is already shown inline, just prevent saving
+      return;
+    }
+    
+    // Hide any error messages before saving
+    errorMsg.style.display = "none";
 
     const color = colorInput.value;
 
