@@ -2,6 +2,7 @@
 
 # Hito
 
+[![codecov](https://codecov.io/gh/iomz/hito/graph/badge.svg?token=JUh7WEGnQe)](https://codecov.io/gh/iomz/hito)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A fast and lightweight image browser built with Tauri 2.0.
@@ -21,8 +22,9 @@ Simply drag and drop a folder to start browsing your images.
 
 ## Synopsis
 
-1. Run `pnpm run build` to compile TypeScript (or `pnpm run dev` for watch mode)
-2. Run `pnpm run tauri dev` to start the app
+1. Run `pnpm install` to install the dependencies
+2. Run `pnpm run build` to compile TypeScript (or `pnpm run dev` for watch mode)
+3. Run `pnpm run tauri dev` to start the app
 
 ## Usage
 
@@ -72,6 +74,18 @@ src/
     ├── browse.ts              # Main browse functionality
     └── observer.ts            # Intersection observer setup
 ```
+
+## Testing
+
+The project uses [Vitest](https://vitest.dev/) for testing. Run tests with:
+
+```bash
+pnpm test          # Run tests once
+pnpm test:ui       # Run tests with UI
+pnpm test:coverage # Run tests with coverage report
+```
+
+Tests are located alongside source files with `.test.ts` extension.
 
 ## Recommended IDE Setup
 

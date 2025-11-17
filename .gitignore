@@ -25,3 +25,6 @@ dist-ssr
 
 # Compiled TypeScript files
 src/**/*.js
+coverage/
+*.log
+.vitest/
