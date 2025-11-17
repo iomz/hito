@@ -911,6 +911,194 @@ describe("categories UI and management", () => {
       expect(state.categories[0].name).toBe("Updated Name");
       expect(mockInvoke).toHaveBeenCalled();
     });
+
+    it("should show error message when duplicate category name is entered", async () => {
+      state.categories = [{ id: "cat1", name: "Existing Category", color: "#ff0000" }];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { setupCategories } = await import("./categories.js");
+      await setupCategories();
+
+      elements.addCategoryBtn?.click();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const overlay = document.querySelector(".category-dialog-overlay");
+      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
+      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
+
+      expect(errorMsg).toBeTruthy();
+      expect(errorMsg.style.display).toBe("none");
+
+      // Type duplicate name
+      nameInput.value = "Existing Category";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(errorMsg.style.display).toBe("block");
+      expect(errorMsg.textContent).toContain("already exists");
+    });
+
+    it("should prevent saving when duplicate category name exists", async () => {
+      const initialCount = state.categories.length;
+      state.categories = [{ id: "cat1", name: "Existing Category", color: "#ff0000" }];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { setupCategories } = await import("./categories.js");
+      await setupCategories();
+
+      elements.addCategoryBtn?.click();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const overlay = document.querySelector(".category-dialog-overlay");
+      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
+      const saveBtn = overlay?.querySelector(".category-dialog-save") as HTMLButtonElement;
+
+      nameInput.value = "Existing Category";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      saveBtn?.click();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Category should not be added
+      expect(state.categories.length).toBe(1);
+      expect(mockInvoke).not.toHaveBeenCalled();
+      // Dialog should still be open
+      expect(document.querySelector(".category-dialog-overlay")).toBeTruthy();
+    });
+
+    it("should detect duplicate names case-insensitively", async () => {
+      state.categories = [{ id: "cat1", name: "Existing Category", color: "#ff0000" }];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { setupCategories } = await import("./categories.js");
+      await setupCategories();
+
+      elements.addCategoryBtn?.click();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const overlay = document.querySelector(".category-dialog-overlay");
+      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
+      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
+
+      // Test different case variations
+      nameInput.value = "EXISTING CATEGORY";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(errorMsg.style.display).toBe("block");
+
+      nameInput.value = "existing category";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(errorMsg.style.display).toBe("block");
+    });
+
+    it("should not show error when editing category with its own name", async () => {
+      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { renderCategoryList } = await import("./categories.js");
+      renderCategoryList();
+
+      const editBtn = elements.categoryList?.querySelector(".category-edit-btn") as HTMLButtonElement;
+      editBtn?.click();
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const overlay = document.querySelector(".category-dialog-overlay");
+      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
+
+      // Error should not be shown for the same name
+      expect(errorMsg.style.display).toBe("none");
+    });
+
+    it("should show error when editing category to duplicate name", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { renderCategoryList } = await import("./categories.js");
+      renderCategoryList();
+
+      const editBtns = elements.categoryList?.querySelectorAll(".category-edit-btn");
+      const editBtn = editBtns?.[0] as HTMLButtonElement; // Edit first category
+      editBtn?.click();
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const overlay = document.querySelector(".category-dialog-overlay");
+      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
+      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
+
+      // Change to duplicate name
+      nameInput.value = "Category 2";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(errorMsg.style.display).toBe("block");
+      expect(errorMsg.textContent).toContain("already exists");
+    });
+
+    it("should hide error message when duplicate name is fixed", async () => {
+      state.categories = [{ id: "cat1", name: "Existing Category", color: "#ff0000" }];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { setupCategories } = await import("./categories.js");
+      await setupCategories();
+
+      elements.addCategoryBtn?.click();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const overlay = document.querySelector(".category-dialog-overlay");
+      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
+      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
+
+      // Type duplicate name
+      nameInput.value = "Existing Category";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(errorMsg.style.display).toBe("block");
+
+      // Change to unique name
+      nameInput.value = "New Unique Category";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(errorMsg.style.display).toBe("none");
+    });
+
+    it("should show error for empty name and prevent saving", async () => {
+      const initialCount = state.categories.length;
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { setupCategories } = await import("./categories.js");
+      await setupCategories();
+
+      elements.addCategoryBtn?.click();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const overlay = document.querySelector(".category-dialog-overlay");
+      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
+      const saveBtn = overlay?.querySelector(".category-dialog-save") as HTMLButtonElement;
+      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
+
+      // Leave name empty
+      nameInput.value = "";
+      saveBtn?.click();
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(errorMsg.style.display).toBe("block");
+      expect(errorMsg.textContent).toContain("Please enter a category name");
+      expect(state.categories.length).toBe(initialCount);
+      expect(mockInvoke).not.toHaveBeenCalled();
+    });
   });
 
   describe("deleteCategory", () => {
