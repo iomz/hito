@@ -504,6 +504,189 @@ describe("keyboard handlers", () => {
       // Restore
       window.getComputedStyle = originalGetComputedStyle;
     });
+
+    it("should skip hotkey handling when typing in INPUT element", async () => {
+      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+
+      vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
+      vi.mocked(checkAndExecuteHotkey).mockClear();
+
+      setupKeyboardHandlers();
+
+      const input = document.createElement("input");
+      input.type = "text";
+      document.body.appendChild(input);
+      input.focus();
+
+      // Verify input is in DOM and has correct tagName and instanceof check
+      expect(input.tagName).toBe("INPUT");
+      expect(input instanceof HTMLInputElement).toBe(true);
+
+      // Create event and dispatch on input - the event will bubble to document listener
+      // and e.target should naturally be the input element
+      const event = new KeyboardEvent("keydown", { 
+        key: "K", 
+        ctrlKey: true,
+        bubbles: true 
+      });
+      
+      // Dispatch on input - the event will bubble to document listener
+      // and e.target should be the input element
+      input.dispatchEvent(event);
+
+      // Verify the event target was the input when it reached the document listener
+      // The checkAndExecuteHotkey should NOT be called because target is INPUT
+      expect(checkAndExecuteHotkey).not.toHaveBeenCalled();
+
+      document.body.removeChild(input);
+    });
+
+    it("should skip hotkey handling when typing in TEXTAREA element", async () => {
+      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+
+      vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
+      vi.mocked(checkAndExecuteHotkey).mockClear();
+
+      setupKeyboardHandlers();
+
+      const textarea = document.createElement("textarea");
+      document.body.appendChild(textarea);
+      textarea.focus();
+
+      // Dispatch event on textarea - it will bubble to document listener
+      const event = new KeyboardEvent("keydown", { 
+        key: "K", 
+        ctrlKey: true,
+        bubbles: true 
+      });
+      
+      textarea.dispatchEvent(event);
+
+      expect(checkAndExecuteHotkey).not.toHaveBeenCalled();
+
+      document.body.removeChild(textarea);
+    });
+
+    it("should skip hotkey handling when typing in contenteditable element", async () => {
+      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+
+      vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
+      vi.mocked(checkAndExecuteHotkey).mockClear();
+
+      setupKeyboardHandlers();
+
+      const editable = document.createElement("div");
+      editable.setAttribute("contenteditable", "true");
+      document.body.appendChild(editable);
+      editable.focus();
+
+      // Dispatch event on editable element - it will bubble to document listener
+      const event = new KeyboardEvent("keydown", { 
+        key: "K", 
+        ctrlKey: true,
+        bubbles: true 
+      });
+      
+      editable.dispatchEvent(event);
+
+      expect(checkAndExecuteHotkey).not.toHaveBeenCalled();
+
+      document.body.removeChild(editable);
+    });
+
+    it("should skip hotkey handling when typing in element with isContentEditable", async () => {
+      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+
+      vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
+      vi.mocked(checkAndExecuteHotkey).mockClear();
+
+      setupKeyboardHandlers();
+
+      const editable = document.createElement("div");
+      Object.defineProperty(editable, "isContentEditable", {
+        value: true,
+        enumerable: true,
+      });
+      document.body.appendChild(editable);
+      editable.focus();
+
+      // Dispatch event on editable element - it will bubble to document listener
+      const event = new KeyboardEvent("keydown", { 
+        key: "K", 
+        ctrlKey: true,
+        bubbles: true 
+      });
+      
+      editable.dispatchEvent(event);
+
+      expect(checkAndExecuteHotkey).not.toHaveBeenCalled();
+
+      document.body.removeChild(editable);
+    });
+
+    it("should still check hotkeys when typing in regular elements", async () => {
+      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+
+      vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
+
+      setupKeyboardHandlers();
+
+      const div = document.createElement("div");
+      document.body.appendChild(div);
+      div.focus();
+
+      const event = new KeyboardEvent("keydown", { key: "K", ctrlKey: true });
+      Object.defineProperty(event, "target", {
+        value: div,
+        enumerable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(checkAndExecuteHotkey).toHaveBeenCalled();
+
+      document.body.removeChild(div);
+    });
+
+    it("should still allow modal shortcuts when typing in INPUT", async () => {
+      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { closeModal } = await import("../ui/modal.js");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+
+      vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
+      vi.mocked(checkAndExecuteHotkey).mockClear();
+
+      setupKeyboardHandlers();
+
+      if (elements.modal) {
+        elements.modal.style.display = "flex";
+      }
+
+      const input = document.createElement("input");
+      document.body.appendChild(input);
+      input.focus();
+
+      // Dispatch event on input - it will bubble to document listener
+      const event = new KeyboardEvent("keydown", { 
+        key: "Escape",
+        bubbles: true 
+      });
+      
+      const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+      input.dispatchEvent(event);
+
+      // Hotkey should not be checked
+      expect(checkAndExecuteHotkey).not.toHaveBeenCalled();
+      // But modal shortcut should still work
+      expect(closeModal).toHaveBeenCalled();
+      expect(preventDefaultSpy).toHaveBeenCalled();
+
+      document.body.removeChild(input);
+    });
   });
 });
 
