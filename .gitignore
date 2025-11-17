@@ -25,5 +25,6 @@ dist-ssr
 
 # Compiled TypeScript files
 src/**/*.js
+src/**/*.js.map
 coverage/
 .vitest/
