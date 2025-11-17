@@ -26,6 +26,13 @@ import { handleFolder } from "../handlers/dragDrop.js";
  * @param endIndex - Exclusive end index for this batch (may be beyond available images; it will be clamped)
  */
 export async function loadImageBatch(startIndex: number, endIndex: number): Promise<void> {
+  // Ensure allImagePaths is an array
+  if (!Array.isArray(state.allImagePaths)) {
+    console.error("state.allImagePaths is not an array:", state.allImagePaths);
+    state.allImagePaths = [];
+    return;
+  }
+  
   if (state.isLoadingBatch || startIndex >= state.allImagePaths.length || !elements.imageGrid) {
     return;
   }
@@ -102,17 +109,20 @@ export async function browseImages(path: string): Promise<void> {
     }
     console.log("Calling list_images with path:", path);
     const contents = await window.__TAURI__.core.invoke<DirectoryContents>("list_images", { path });
-    console.log("Received directories:", contents.directories.length, "images:", contents.images.length);
+    console.log("Received directories:", contents.directories?.length ?? 0, "images:", contents.images?.length ?? 0);
     hideSpinner();
     
-    // Store directories and images
-    state.allDirectoryPaths = contents.directories;
-    state.allImagePaths = contents.images;
+    // Store directories and images - ensure they are arrays
+    const directories = Array.isArray(contents.directories) ? contents.directories : [];
+    const images = Array.isArray(contents.images) ? contents.images : [];
+    
+    state.allDirectoryPaths = directories;
+    state.allImagePaths = images;
     
     // Display directories first
     if (!elements.imageGrid) return;
     
-    contents.directories.forEach((dir) => {
+    directories.forEach((dir) => {
       const dirItem = createElement("div", "image-item directory-item");
       dirItem.setAttribute("data-directory-path", dir.path);
       dirItem.style.cursor = "pointer";
@@ -157,13 +167,13 @@ export async function browseImages(path: string): Promise<void> {
       }
     });
     
-    if (contents.images.length === 0 && contents.directories.length === 0) {
+    if (images.length === 0 && directories.length === 0) {
       showNotification("No images or directories found in this directory.");
       return;
     }
     
     // Load images
-    if (contents.images.length > 0) {
+    if (images.length > 0) {
       const firstBatchEnd = Math.min(BATCH_SIZE, state.allImagePaths.length);
       state.currentIndex = firstBatchEnd;
       await loadImageBatch(0, firstBatchEnd);
