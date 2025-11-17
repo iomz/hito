@@ -16,12 +16,41 @@ import { checkAndExecuteHotkey } from "../ui/hotkeys.js";
  */
 export function setupKeyboardHandlers(): void {
   document.addEventListener("keydown", (e) => {
-    // Check for configured hotkeys first (works even when modal is closed)
-    if (checkAndExecuteHotkey(e)) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
+    // Skip hotkey handling when user is typing in editable elements
+    // Check if the event originated from an editable element
+    const target = e.target;
+    let isEditable = false;
+    
+    if (target) {
+      // Check tagName and nodeName (works even if instanceof fails in test environments)
+      // Access properties directly without optional chaining to avoid issues
+      const tagName = (target as any).tagName;
+      const nodeName = (target as any).nodeName;
+      
+      if (tagName && (tagName.toUpperCase() === "INPUT" || tagName.toUpperCase() === "TEXTAREA")) {
+        isEditable = true;
+      } else if (nodeName && (nodeName.toUpperCase() === "INPUT" || nodeName.toUpperCase() === "TEXTAREA")) {
+        isEditable = true;
+      } else {
+        // Check for contenteditable elements
+        // Use type assertion to access properties safely
+        const htmlTarget = target as HTMLElement;
+        if (htmlTarget.isContentEditable === true || 
+            htmlTarget.getAttribute?.("contenteditable") === "true") {
+          isEditable = true;
+        }
+      }
     }
+    
+    if (!isEditable) {
+      // Not typing in an editable element, check hotkeys
+      if (checkAndExecuteHotkey(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+    // If typing in editable element, skip hotkey checks but continue to modal shortcuts
     
     // Only handle modal-specific shortcuts when modal is open
     if (!elements.modal) {

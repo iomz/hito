@@ -18,6 +18,8 @@ jobs:
         with:
           version: 10
           run_install: true
+      - name: Build TypeScript
+        run: pnpm build
       - name: Run coverage
         run: pnpm test:coverage
       - name: Upload coverage reports to Codecov
