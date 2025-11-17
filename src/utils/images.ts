@@ -1,6 +1,8 @@
 import { state } from "../state.js";
 import { createElement } from "./dom.js";
 import { openModal } from "../ui/modal.js";
+import { ensureImagePathsArray, getFilename } from "./state.js";
+import { invokeTauri } from "./tauri.js";
 
 /**
  * Load an image from disk, return its data URL, and cache it in the module's image cache.
@@ -11,10 +13,7 @@ import { openModal } from "../ui/modal.js";
  */
 export async function loadImageData(imagePath: string): Promise<string> {
   try {
-    if (!window.__TAURI__?.core?.invoke) {
-      throw new Error("Tauri invoke API not available");
-    }
-    const dataUrl = await window.__TAURI__.core.invoke<string>("load_image", { imagePath });
+    const dataUrl = await invokeTauri<string>("load_image", { imagePath });
     if (!dataUrl || typeof dataUrl !== 'string') {
       throw new Error(`Invalid data URL returned for ${imagePath}`);
     }
@@ -36,9 +35,7 @@ export async function loadImageData(imagePath: string): Promise<string> {
 export function createImageElement(imagePath: string, dataUrl: string): HTMLImageElement {
   const img = createElement("img") as HTMLImageElement;
   img.src = dataUrl;
-  // Normalize path: convert backslashes to forward slashes before extracting filename
-  const normalized = imagePath.replace(/\\/g, "/");
-  img.alt = normalized.split("/").pop() || imagePath;
+  img.alt = getFilename(imagePath);
   img.loading = "lazy";
   
   img.onerror = () => {
@@ -46,8 +43,7 @@ export function createImageElement(imagePath: string, dataUrl: string): HTMLImag
   };
   
   img.onclick = () => {
-    if (!Array.isArray(state.allImagePaths)) {
-      console.error("state.allImagePaths is not an array in createImageElement:", state.allImagePaths);
+    if (!ensureImagePathsArray("createImageElement")) {
       return;
     }
     const imageIndex = state.allImagePaths.findIndex(img => img.path === imagePath);

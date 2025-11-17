@@ -3,9 +3,10 @@ import { loadImageData } from "../utils/images.js";
 import { showError } from "./error.js";
 import { showNotification } from "./notification.js";
 import { removeImageFromGrid } from "./grid.js";
-import { closeHotkeySidebar } from "./hotkeys.js";
 import { renderCurrentImageCategories, renderModalCategories } from "./categories.js";
 import { createElement } from "../utils/dom.js";
+import { ensureImagePathsArray, normalizePath, getFilename } from "../utils/state.js";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
 
 /**
  * Opens the image viewer modal for the image at the given index, ensuring the image data is available and updating modal UI.
@@ -15,10 +16,7 @@ import { createElement } from "../utils/dom.js";
  * @param imageIndex - Index of the image in the current image list to display in the modal
  */
 export async function openModal(imageIndex: number): Promise<void> {
-  // Ensure allImagePaths is an array
-  if (!Array.isArray(state.allImagePaths)) {
-    console.error("state.allImagePaths is not an array in openModal:", state.allImagePaths);
-    state.allImagePaths = [];
+  if (!ensureImagePathsArray("openModal")) {
     return;
   }
   
@@ -47,11 +45,9 @@ export async function openModal(imageIndex: number): Promise<void> {
   }
   
   elements.modalImage.src = dataUrl;
-  // Normalize path: convert backslashes to forward slashes before extracting filename
-  const normalized = imagePath.replace(/\\/g, "/");
   if (elements.modalCaptionText) {
     elements.modalCaptionText.textContent = 
-      `${imageIndex + 1} / ${state.allImagePaths.length} - ${normalized.split("/").pop() || imagePath}`;
+      `${imageIndex + 1} / ${state.allImagePaths.length} - ${getFilename(imagePath)}`;
   }
   elements.modal.style.display = "flex";
   elements.modal.classList.add("open");
@@ -151,10 +147,7 @@ export async function deleteCurrentImage(): Promise<void> {
     return;
   }
   
-  // Ensure allImagePaths is an array
-  if (!Array.isArray(state.allImagePaths)) {
-    console.error("state.allImagePaths is not an array in deleteCurrentImage:", state.allImagePaths);
-    state.allImagePaths = [];
+  if (!ensureImagePathsArray("deleteCurrentImage")) {
     return;
   }
   
@@ -167,7 +160,7 @@ export async function deleteCurrentImage(): Promise<void> {
   const isLastImage = state.currentModalIndex === state.allImagePaths.length - 1;
   const isOnlyImage = state.allImagePaths.length === 1;
   
-  if (!window.__TAURI__?.core?.invoke) {
+  if (!isTauriInvokeAvailable()) {
     showError("Tauri invoke API not available");
     return;
   }
@@ -176,7 +169,7 @@ export async function deleteCurrentImage(): Promise<void> {
   state.isDeletingImage = true;
   
   try {
-    await window.__TAURI__.core.invoke("delete_image", { imagePath });
+    await invokeTauri("delete_image", { imagePath });
     
     // Remove from loaded images cache
     state.loadedImages.delete(imagePath);

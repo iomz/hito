@@ -9,6 +9,7 @@ import { collapseDropZone, expandDropZone } from "../ui/dropZone.js";
 import { browseImages } from "../core/browse.js";
 import { open } from "../utils/dialog.js";
 import { createBreadcrumb } from "../ui/breadcrumb.js";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
 
 /**
  * Normalize various drag-and-drop event shapes into a list of file paths.
@@ -77,21 +78,21 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
   const firstPath = paths[0];
   const isSingleFile = paths.length === 1;
   
-  if (!window.__TAURI__?.core?.invoke) {
+  if (!isTauriInvokeAvailable()) {
     hideSpinner();
     showError("Tauri invoke API not available");
     return;
   }
   
   try {
-    await window.__TAURI__.core.invoke("list_images", { path: firstPath });
+    await invokeTauri("list_images", { path: firstPath });
     handleFolder(firstPath);
   } catch (error) {
     // If it's a single file or the path is not a directory, open parent directory
     const errorMessage = String(error);
     if (isSingleFile || errorMessage.includes("not a directory")) {
       try {
-        const parentPath = await window.__TAURI__.core.invoke<string>("get_parent_directory", { filePath: firstPath });
+        const parentPath = await invokeTauri<string>("get_parent_directory", { filePath: firstPath });
         handleFolder(parentPath);
       } catch (err) {
         hideSpinner();
@@ -100,7 +101,7 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
     } else {
       // For multiple paths, try parent directory as fallback
       try {
-        const parentPath = await window.__TAURI__.core.invoke<string>("get_parent_directory", { filePath: firstPath });
+        const parentPath = await invokeTauri<string>("get_parent_directory", { filePath: firstPath });
         handleFolder(parentPath);
       } catch (err) {
         hideSpinner();

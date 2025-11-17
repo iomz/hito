@@ -1,6 +1,6 @@
 import { createElement } from "../utils/dom.js";
-import { elements } from "../state.js";
 import { handleFolder } from "../handlers/dragDrop.js";
+import { normalizePath } from "../utils/state.js";
 
 /**
  * Create a breadcrumb list element from a file path.
@@ -11,8 +11,7 @@ import { handleFolder } from "../handlers/dragDrop.js";
 export function createBreadcrumb(path: string): HTMLElement {
   const nav = createElement("nav", "breadcrumb");
   
-  // Normalize path: convert backslashes to forward slashes
-  const normalized = path.replace(/\\/g, "/");
+  const normalized = normalizePath(path);
   
   // Split path into segments
   const segments = normalized.split("/").filter(segment => segment.length > 0);

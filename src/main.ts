@@ -3,42 +3,15 @@ import { querySelector } from "./utils/dom.js";
 import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop.js";
 import { setupModalHandlers } from "./handlers/modal.js";
 import { setupKeyboardHandlers } from "./handlers/keyboard.js";
-import { checkMacOSPermissions } from "./handlers/permissions.js";
 import { setupHotkeySidebar } from "./ui/hotkeys.js";
-import { setupCategories, renderCurrentImageCategories } from "./ui/categories.js";
+import { setupCategories } from "./ui/categories.js";
 import { clearImageGrid } from "./ui/grid.js";
 import { expandDropZone } from "./ui/dropZone.js";
 import { clearError } from "./ui/error.js";
 import { hideSpinner } from "./ui/spinner.js";
 import { closeModal, updateShortcutsOverlay } from "./ui/modal.js";
 import { cleanupObserver } from "./core/observer.js";
-
-function initializeElements(): void {
-  elements.dropZone = querySelector("#drop-zone");
-  elements.currentPath = querySelector("#current-path");
-  elements.errorMsg = querySelector("#error-msg");
-  elements.imageGrid = querySelector("#image-grid");
-  elements.loadingSpinner = querySelector("#loading-spinner");
-  elements.modal = querySelector("#image-modal");
-  elements.modalImage = querySelector<HTMLImageElement>("#modal-image");
-  elements.modalCaption = querySelector("#modal-caption");
-  elements.modalCaptionText = querySelector("#modal-caption-text");
-  elements.closeBtn = querySelector(".close");
-  elements.modalPrevBtn = querySelector("#modal-prev");
-  elements.modalNextBtn = querySelector("#modal-next");
-  elements.shortcutsOverlay = querySelector("#keyboard-shortcuts-overlay");
-  elements.shortcutsList = querySelector("#shortcuts-list");
-  elements.hotkeySidebar = querySelector("#hotkey-sidebar");
-  elements.hotkeySidebarToggle = querySelector("#hotkey-sidebar-toggle");
-  elements.hotkeySidebarClose = querySelector("#hotkey-sidebar-close");
-  elements.hotkeyList = querySelector("#hotkey-list");
-  elements.addHotkeyBtn = querySelector("#add-hotkey-btn");
-  elements.categoryList = querySelector("#category-list");
-  elements.addCategoryBtn = querySelector("#add-category-btn");
-  elements.currentImageCategories = querySelector("#current-image-categories");
-  elements.modalCategories = querySelector("#modal-categories");
-  elements.configFilePathInput = querySelector<HTMLInputElement>("#config-file-path");
-}
+import { initializeElements } from "./utils/elements.js";
 
 async function resetToHome(): Promise<void> {
   clearImageGrid();
@@ -149,5 +122,4 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
   
   await setupTauriDragEvents();
-  await checkMacOSPermissions();
 });
