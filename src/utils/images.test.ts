@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createPlaceholder, createErrorPlaceholder, createImageElement } from './images.js';
+import { createPlaceholder, createErrorPlaceholder, createImageElement, loadImageData } from './images.js';
 import { state } from '../state.js';
 
 // Mock the modal module
@@ -102,6 +102,100 @@ describe('image utilities', () => {
       }
 
       expect(img.src).toContain('data:image/svg+xml');
+    });
+
+    it('should return early if allImagePaths is not an array', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      (state as any).allImagePaths = null;
+      const imagePath = '/path/to/image.jpg';
+      const dataUrl = 'data:image/jpeg;base64,test';
+
+      const img = createImageElement(imagePath, dataUrl);
+      if (img.onclick) {
+        img.onclick({} as any);
+      }
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should not open modal if image not found in allImagePaths', async () => {
+      const { openModal } = await import('../ui/modal.js');
+      state.allImagePaths = [{ path: '/other/image.jpg' }];
+      const imagePath = '/path/to/image.jpg';
+      const dataUrl = 'data:image/jpeg;base64,test';
+
+      const img = createImageElement(imagePath, dataUrl);
+      if (img.onclick) {
+        img.onclick({} as any);
+      }
+
+      expect(openModal).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loadImageData', () => {
+    beforeEach(() => {
+      (window as any).__TAURI__ = {
+        core: {
+          invoke: vi.fn(),
+        },
+      };
+      state.loadedImages.clear();
+    });
+
+    it('should load image data successfully', async () => {
+      const { invoke } = window.__TAURI__!.core;
+      const dataUrl = 'data:image/png;base64,testdata';
+      vi.mocked(invoke).mockResolvedValueOnce(dataUrl);
+
+      const result = await loadImageData('/test/image.png');
+
+      expect(invoke).toHaveBeenCalledWith('load_image', { imagePath: '/test/image.png' });
+      expect(result).toBe(dataUrl);
+      expect(state.loadedImages.get('/test/image.png')).toBe(dataUrl);
+    });
+
+    it('should throw error when Tauri API is unavailable', async () => {
+      (window as any).__TAURI__ = null;
+
+      await expect(loadImageData('/test/image.png')).rejects.toThrow('Tauri invoke API not available');
+    });
+
+    it('should throw error when invalid data URL is returned', async () => {
+      const { invoke } = window.__TAURI__!.core;
+      vi.mocked(invoke).mockResolvedValueOnce(null);
+
+      await expect(loadImageData('/test/image.png')).rejects.toThrow('Invalid data URL');
+    });
+
+    it('should throw error when non-string data URL is returned', async () => {
+      const { invoke } = window.__TAURI__!.core;
+      vi.mocked(invoke).mockResolvedValueOnce(123);
+
+      await expect(loadImageData('/test/image.png')).rejects.toThrow('Invalid data URL');
+    });
+
+    it('should throw error when backend fails', async () => {
+      const { invoke } = window.__TAURI__!.core;
+      vi.mocked(invoke).mockRejectedValueOnce(new Error('Backend error'));
+
+      await expect(loadImageData('/test/image.png')).rejects.toThrow('Failed to load image');
+    });
+
+    it('should cache loaded images', async () => {
+      const { invoke } = window.__TAURI__!.core;
+      const dataUrl = 'data:image/png;base64,testdata';
+      vi.mocked(invoke).mockResolvedValue(dataUrl);
+
+      const result1 = await loadImageData('/test/image.png');
+      const result2 = await loadImageData('/test/image.png');
+
+      // loadImageData always calls invoke, but caches the result
+      expect(invoke).toHaveBeenCalledTimes(2);
+      expect(result1).toBe(dataUrl);
+      expect(result2).toBe(dataUrl);
+      expect(state.loadedImages.get('/test/image.png')).toBe(dataUrl);
     });
   });
 });
