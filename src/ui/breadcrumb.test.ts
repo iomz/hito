@@ -96,7 +96,9 @@ describe("createBreadcrumb", () => {
 
     // Should handle Windows paths correctly
     const items = breadcrumb.querySelectorAll(".breadcrumb-item");
-    expect(items.length).toBeGreaterThan(0);
+    expect(items.length).toBe(2); // Users, iomz (C: drive letter skipped)
+    expect(items[0].textContent).toBe("Users");
+    expect(items[1].textContent).toBe("iomz");
   });
 
   it("should handle single segment path", () => {
