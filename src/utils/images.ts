@@ -46,8 +46,14 @@ export function createImageElement(imagePath: string, dataUrl: string): HTMLImag
   };
   
   img.onclick = () => {
+    if (!Array.isArray(state.allImagePaths)) {
+      console.error("state.allImagePaths is not an array in createImageElement:", state.allImagePaths);
+      return;
+    }
     const imageIndex = state.allImagePaths.findIndex(img => img.path === imagePath);
-    openModal(imageIndex);
+    if (imageIndex >= 0) {
+      openModal(imageIndex);
+    }
   };
   
   return img;

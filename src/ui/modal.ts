@@ -12,6 +12,13 @@ import { removeImageFromGrid } from "./grid.js";
  * @param imageIndex - Index of the image in the current image list to display in the modal
  */
 export async function openModal(imageIndex: number): Promise<void> {
+  // Ensure allImagePaths is an array
+  if (!Array.isArray(state.allImagePaths)) {
+    console.error("state.allImagePaths is not an array in openModal:", state.allImagePaths);
+    state.allImagePaths = [];
+    return;
+  }
+  
   if (imageIndex < 0 || imageIndex >= state.allImagePaths.length || 
       !elements.modalImage || !elements.modalCaption || !elements.modal) {
     return;
@@ -69,6 +76,9 @@ export function closeModal(): void {
  * Does nothing when the currently shown image is the last in the list.
  */
 export function showNextImage(): void {
+  if (!Array.isArray(state.allImagePaths)) {
+    return;
+  }
   if (state.currentModalIndex < state.allImagePaths.length - 1) {
     openModal(state.currentModalIndex + 1);
   }
@@ -92,6 +102,12 @@ export function showPreviousImage(): void {
  */
 export function updateModalButtons(): void {
   if (!elements.modalPrevBtn || !elements.modalNextBtn) return;
+  
+  if (!Array.isArray(state.allImagePaths)) {
+    elements.modalPrevBtn.style.display = "none";
+    elements.modalNextBtn.style.display = "none";
+    return;
+  }
   
   elements.modalPrevBtn.style.display = state.currentModalIndex > 0 ? "block" : "none";
   elements.modalNextBtn.style.display = 
@@ -119,6 +135,13 @@ export function toggleShortcutsOverlay(): void {
 export async function deleteCurrentImage(): Promise<void> {
   // Re-entrancy guard: ignore if deletion is already in progress
   if (state.isDeletingImage) {
+    return;
+  }
+  
+  // Ensure allImagePaths is an array
+  if (!Array.isArray(state.allImagePaths)) {
+    console.error("state.allImagePaths is not an array in deleteCurrentImage:", state.allImagePaths);
+    state.allImagePaths = [];
     return;
   }
   
