@@ -497,7 +497,9 @@ button {
   font-weight: 500;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   pointer-events: auto;
 }
 
@@ -737,7 +739,7 @@ button {
   color: #22c55e;
   font-weight: 600;
   font-size: 0.9em;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -983,7 +985,7 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
   border-radius: 6px;
   color: #f1f1f1;
   font-size: 0.95em;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
@@ -1010,7 +1012,8 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -1056,7 +1059,9 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
 
 /* Adjust modal content when sidebar is open - handled via JavaScript */
 .modal-content {
-  transition: margin-left 0.3s ease-out, max-width 0.3s ease-out;
+  transition:
+    margin-left 0.3s ease-out,
+    max-width 0.3s ease-out;
 }
 
 /* Sidebar Tabs */
@@ -1464,5 +1469,5 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
 }
 
 .category-dialog-save:hover {
-  background-color: #16a34a5
+  background-color: #16a34a;
 }

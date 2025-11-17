@@ -41,33 +41,36 @@ export async function loadHitoConfig(): Promise<void> {
   if (!configDir) {
     return;
   }
-  
+
   try {
     if (!window.__TAURI__?.core?.invoke) {
       return;
     }
-    
+
     const configFileName = getConfigFileName();
-    const data = await window.__TAURI__.core.invoke<HitoFile>("load_hito_config", {
-      directory: configDir,
-      filename: configFileName
-    });
-    
+    const data = await window.__TAURI__.core.invoke<HitoFile>(
+      "load_hito_config",
+      {
+        directory: configDir,
+        filename: configFileName,
+      },
+    );
+
     if (data.categories) {
       state.categories = data.categories;
     }
-    
+
     if (data.image_categories) {
       state.imageCategories = new Map(data.image_categories);
     }
-    
+
     if (data.hotkeys) {
       // Ensure hotkeys have all required fields
-      state.hotkeys = data.hotkeys.map(h => ({
+      state.hotkeys = data.hotkeys.map((h) => ({
         id: h.id || `hotkey_${Date.now()}_${Math.random()}`,
         key: h.key || "",
         modifiers: Array.isArray(h.modifiers) ? h.modifiers : [],
-        action: h.action || ""
+        action: h.action || "",
       }));
       // Render hotkey list if sidebar is available
       const { renderHotkeyList } = await import("./hotkeys.js");
@@ -83,21 +86,21 @@ export async function saveHitoConfig(): Promise<void> {
   if (!configDir) {
     return;
   }
-  
+
   try {
     if (!window.__TAURI__?.core?.invoke) {
       return;
     }
-    
+
     const imageCategoriesArray = Array.from(state.imageCategories.entries());
     const configFileName = getConfigFileName();
-    
+
     await window.__TAURI__.core.invoke("save_hito_config", {
       directory: configDir,
       categories: state.categories,
       imageCategories: imageCategoriesArray,
       hotkeys: state.hotkeys,
-      filename: configFileName
+      filename: configFileName,
     });
   } catch (error) {
     console.error("Failed to save .hito.json:", error);
@@ -109,8 +112,16 @@ export async function saveHitoConfig(): Promise<void> {
  */
 function generateCategoryColor(): string {
   const colors = [
-    "#22c55e", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444",
-    "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#6366f1"
+    "#22c55e",
+    "#3b82f6",
+    "#a855f7",
+    "#f59e0b",
+    "#ef4444",
+    "#06b6d4",
+    "#ec4899",
+    "#84cc16",
+    "#f97316",
+    "#6366f1",
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
@@ -120,40 +131,41 @@ function generateCategoryColor(): string {
  */
 export function renderCategoryList(): void {
   if (!elements.categoryList) return;
-  
+
   elements.categoryList.innerHTML = "";
-  
+
   if (state.categories.length === 0) {
     const emptyState = createElement("div", "category-empty-state");
     emptyState.textContent = "No categories yet. Click 'Add' to create one.";
     elements.categoryList.appendChild(emptyState);
     return;
   }
-  
+
   state.categories.forEach((category) => {
     const categoryItem = createElement("div", "category-item");
-    
+
     const categoryColor = createElement("div", "category-color");
     categoryColor.style.backgroundColor = category.color;
-    
+
     const categoryInfo = createElement("div", "category-info");
     const categoryName = createElement("div", "category-name");
     categoryName.textContent = category.name;
-    
+
     const categoryCount = createElement("div", "category-count");
-    const imageCount = Array.from(state.imageCategories.values())
-      .filter(ids => ids.includes(category.id)).length;
-    categoryCount.textContent = `${imageCount} image${imageCount !== 1 ? 's' : ''}`;
-    
+    const imageCount = Array.from(state.imageCategories.values()).filter(
+      (ids) => ids.includes(category.id),
+    ).length;
+    categoryCount.textContent = `${imageCount} image${imageCount !== 1 ? "s" : ""}`;
+
     categoryInfo.appendChild(categoryName);
     categoryInfo.appendChild(categoryCount);
-    
+
     const categoryActions = createElement("div", "category-actions");
-    
+
     const editBtn = createElement("button", "category-edit-btn");
     editBtn.textContent = "Edit";
     editBtn.onclick = () => showCategoryDialog(category);
-    
+
     const deleteBtn = createElement("button", "category-delete-btn");
     deleteBtn.textContent = "Delete";
     deleteBtn.onclick = () => {
@@ -161,14 +173,14 @@ export function renderCategoryList(): void {
         console.error("Failed to delete category:", error);
       });
     };
-    
+
     categoryActions.appendChild(editBtn);
     categoryActions.appendChild(deleteBtn);
-    
+
     categoryItem.appendChild(categoryColor);
     categoryItem.appendChild(categoryInfo);
     categoryItem.appendChild(categoryActions);
-    
+
     if (elements.categoryList) {
       elements.categoryList.appendChild(categoryItem);
     }
@@ -180,23 +192,28 @@ export function renderCategoryList(): void {
  */
 export function renderModalCategories(): void {
   if (!elements.modalCategories) return;
-  
+
   elements.modalCategories.innerHTML = "";
-  
-  if (state.currentModalIndex < 0 || state.currentModalIndex >= state.allImagePaths.length) {
+
+  if (
+    state.currentModalIndex < 0 ||
+    state.currentModalIndex >= state.allImagePaths.length
+  ) {
     return;
   }
-  
+
   const currentImagePath = state.allImagePaths[state.currentModalIndex].path;
   const categoryIds = state.imageCategories.get(currentImagePath) || [];
-  
+
   if (categoryIds.length === 0) {
     return;
   }
-  
+
   // Get category details for assigned categories
-  const assignedCategories = state.categories.filter(cat => categoryIds.includes(cat.id));
-  
+  const assignedCategories = state.categories.filter((cat) =>
+    categoryIds.includes(cat.id),
+  );
+
   assignedCategories.forEach((category) => {
     const categoryTag = createElement("span", "modal-category-tag");
     categoryTag.style.backgroundColor = category.color;
@@ -214,15 +231,15 @@ export function renderModalCategories(): void {
 function getContrastColor(hexColor: string): string {
   // Remove # if present
   const hex = hexColor.replace("#", "");
-  
+
   // Convert to RGB
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
-  
+
   // Calculate luminance
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  
+
   // Return black for light colors, white for dark colors
   return luminance > 0.5 ? "#000000" : "#ffffff";
 }
@@ -232,32 +249,35 @@ function getContrastColor(hexColor: string): string {
  */
 export function renderCurrentImageCategories(): void {
   if (!elements.currentImageCategories) return;
-  
+
   elements.currentImageCategories.innerHTML = "";
-  
-  if (state.currentModalIndex < 0 || state.currentModalIndex >= state.allImagePaths.length) {
+
+  if (
+    state.currentModalIndex < 0 ||
+    state.currentModalIndex >= state.allImagePaths.length
+  ) {
     return;
   }
-  
+
   const currentImagePath = state.allImagePaths[state.currentModalIndex].path;
   const categoryIds = state.imageCategories.get(currentImagePath) || [];
-  
+
   const header = createElement("div", "current-image-header");
   header.textContent = "Current Image Categories:";
   elements.currentImageCategories.appendChild(header);
-  
+
   if (state.categories.length === 0) {
     const emptyMsg = createElement("div", "current-image-empty");
     emptyMsg.textContent = "Create categories first to assign them.";
     elements.currentImageCategories.appendChild(emptyMsg);
     return;
   }
-  
+
   const categoryCheckboxes = createElement("div", "category-checkboxes");
-  
+
   state.categories.forEach((category) => {
     const checkboxContainer = createElement("div", "category-checkbox-item");
-    
+
     const checkbox = createElement("input") as HTMLInputElement;
     checkbox.type = "checkbox";
     checkbox.id = `category-${category.id}`;
@@ -267,42 +287,48 @@ export function renderCurrentImageCategories(): void {
         console.error("Failed to toggle category:", error);
       });
     };
-    
+
     const label = createElement("label");
     label.setAttribute("for", `category-${category.id}`);
-    
+
     const colorDot = createElement("span", "category-dot");
     colorDot.style.backgroundColor = category.color;
-    
+
     const labelText = createElement("span");
     labelText.textContent = category.name;
-    
+
     label.appendChild(colorDot);
     label.appendChild(labelText);
-    
+
     checkboxContainer.appendChild(checkbox);
     checkboxContainer.appendChild(label);
-    
+
     categoryCheckboxes.appendChild(checkboxContainer);
   });
-  
+
   elements.currentImageCategories.appendChild(categoryCheckboxes);
 }
 
 /**
  * Toggle a category assignment for the current image.
  */
-async function toggleImageCategory(imagePath: string, categoryId: string): Promise<void> {
+async function toggleImageCategory(
+  imagePath: string,
+  categoryId: string,
+): Promise<void> {
   const currentCategories = state.imageCategories.get(imagePath) || [];
-  
+
   if (currentCategories.includes(categoryId)) {
     // Remove category
-    state.imageCategories.set(imagePath, currentCategories.filter(id => id !== categoryId));
+    state.imageCategories.set(
+      imagePath,
+      currentCategories.filter((id) => id !== categoryId),
+    );
   } else {
     // Add category
     state.imageCategories.set(imagePath, [...currentCategories, categoryId]);
   }
-  
+
   await saveHitoConfig();
   renderCategoryList();
   if (state.currentModalIndex >= 0) {
@@ -314,9 +340,12 @@ async function toggleImageCategory(imagePath: string, categoryId: string): Promi
 /**
  * Assign a category to an image (always adds, doesn't toggle).
  */
-export async function assignImageCategory(imagePath: string, categoryId: string): Promise<void> {
+export async function assignImageCategory(
+  imagePath: string,
+  categoryId: string,
+): Promise<void> {
   const currentCategories = state.imageCategories.get(imagePath) || [];
-  
+
   if (!currentCategories.includes(categoryId)) {
     state.imageCategories.set(imagePath, [...currentCategories, categoryId]);
     await saveHitoConfig();
@@ -331,11 +360,16 @@ export async function assignImageCategory(imagePath: string, categoryId: string)
 /**
  * Assign a category to the currently viewing image in the modal.
  */
-export async function assignCategoryToCurrentImage(categoryId: string): Promise<void> {
-  if (state.currentModalIndex < 0 || state.currentModalIndex >= state.allImagePaths.length) {
+export async function assignCategoryToCurrentImage(
+  categoryId: string,
+): Promise<void> {
+  if (
+    state.currentModalIndex < 0 ||
+    state.currentModalIndex >= state.allImagePaths.length
+  ) {
     return;
   }
-  
+
   const currentImagePath = state.allImagePaths[state.currentModalIndex].path;
   await assignImageCategory(currentImagePath, categoryId);
 }
@@ -343,11 +377,16 @@ export async function assignCategoryToCurrentImage(categoryId: string): Promise<
 /**
  * Toggle a category for the currently viewing image in the modal.
  */
-export async function toggleCategoryForCurrentImage(categoryId: string): Promise<void> {
-  if (state.currentModalIndex < 0 || state.currentModalIndex >= state.allImagePaths.length) {
+export async function toggleCategoryForCurrentImage(
+  categoryId: string,
+): Promise<void> {
+  if (
+    state.currentModalIndex < 0 ||
+    state.currentModalIndex >= state.allImagePaths.length
+  ) {
     return;
   }
-  
+
   const currentImagePath = state.allImagePaths[state.currentModalIndex].path;
   await toggleImageCategory(currentImagePath, categoryId);
 }
@@ -357,49 +396,55 @@ export async function toggleCategoryForCurrentImage(categoryId: string): Promise
  */
 function showCategoryDialog(existingCategory?: Category): void {
   const overlay = createElement("div", "category-dialog-overlay");
-  
+
   const dialog = createElement("div", "category-dialog");
-  
+
   const dialogHeader = createElement("div", "category-dialog-header");
   const dialogTitle = createElement("h3");
   dialogTitle.textContent = existingCategory ? "Edit Category" : "Add Category";
   dialogHeader.appendChild(dialogTitle);
-  
+
   const dialogClose = createElement("button", "category-dialog-close");
   dialogClose.textContent = "×";
   dialogClose.onclick = () => overlay.remove();
   dialogHeader.appendChild(dialogClose);
-  
+
   const dialogBody = createElement("div", "category-dialog-body");
-  
+
   // Name input
   const nameLabel = createElement("label");
   nameLabel.textContent = "Category Name:";
   nameLabel.setAttribute("for", "category-name-input");
-  const nameInput = createElement("input", "category-input") as HTMLInputElement;
+  const nameInput = createElement(
+    "input",
+    "category-input",
+  ) as HTMLInputElement;
   nameInput.id = "category-name-input";
   nameInput.type = "text";
   nameInput.placeholder = "e.g., Keep, Archive, Delete";
   if (existingCategory) {
     nameInput.value = existingCategory.name;
   }
-  
+
   // Color picker
   const colorLabel = createElement("label");
   colorLabel.textContent = "Color:";
-  nameLabel.setAttribute("for", "category-color-input");
-  const colorInput = createElement("input", "category-input") as HTMLInputElement;
+  colorLabel.setAttribute("for", "category-color-input");
+  const colorInput = createElement(
+    "input",
+    "category-input",
+  ) as HTMLInputElement;
   colorInput.id = "category-color-input";
   colorInput.type = "color";
   colorInput.value = existingCategory?.color || generateCategoryColor();
-  
+
   const colorPreview = createElement("div", "color-preview");
   colorPreview.style.backgroundColor = colorInput.value;
-  
+
   colorInput.oninput = () => {
     colorPreview.style.backgroundColor = colorInput.value;
   };
-  
+
   dialogBody.appendChild(nameLabel);
   dialogBody.appendChild(nameInput);
   dialogBody.appendChild(colorLabel);
@@ -407,14 +452,20 @@ function showCategoryDialog(existingCategory?: Category): void {
   colorContainer.appendChild(colorInput);
   colorContainer.appendChild(colorPreview);
   dialogBody.appendChild(colorContainer);
-  
+
   const dialogFooter = createElement("div", "category-dialog-footer");
-  
-  const cancelBtn = createElement("button", "category-dialog-btn category-dialog-cancel");
+
+  const cancelBtn = createElement(
+    "button",
+    "category-dialog-btn category-dialog-cancel",
+  );
   cancelBtn.textContent = "Cancel";
   cancelBtn.onclick = () => overlay.remove();
-  
-  const saveBtn = createElement("button", "category-dialog-btn category-dialog-save");
+
+  const saveBtn = createElement(
+    "button",
+    "category-dialog-btn category-dialog-save",
+  );
   saveBtn.textContent = existingCategory ? "Update" : "Add";
   saveBtn.onclick = async () => {
     const name = nameInput.value.trim();
@@ -422,17 +473,19 @@ function showCategoryDialog(existingCategory?: Category): void {
       alert("Please enter a category name");
       return;
     }
-    
+
     const color = colorInput.value;
-    
+
     if (existingCategory) {
       // Update existing category
-      const index = state.categories.findIndex(c => c.id === existingCategory.id);
+      const index = state.categories.findIndex(
+        (c) => c.id === existingCategory.id,
+      );
       if (index >= 0) {
         state.categories[index] = {
           ...existingCategory,
           name,
-          color
+          color,
         };
       }
     } else {
@@ -440,11 +493,11 @@ function showCategoryDialog(existingCategory?: Category): void {
       const newCategory: Category = {
         id: `category_${Date.now()}`,
         name,
-        color
+        color,
       };
       state.categories.push(newCategory);
     }
-    
+
     await saveHitoConfig();
     renderCategoryList();
     if (state.currentModalIndex >= 0) {
@@ -456,17 +509,17 @@ function showCategoryDialog(existingCategory?: Category): void {
     renderHotkeyList();
     overlay.remove();
   };
-  
+
   dialogFooter.appendChild(cancelBtn);
   dialogFooter.appendChild(saveBtn);
-  
+
   dialog.appendChild(dialogHeader);
   dialog.appendChild(dialogBody);
   dialog.appendChild(dialogFooter);
-  
+
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
-  
+
   // Focus the name input
   setTimeout(() => nameInput.focus(), 100);
 }
@@ -475,20 +528,24 @@ function showCategoryDialog(existingCategory?: Category): void {
  * Delete a category.
  */
 async function deleteCategory(categoryId: string): Promise<void> {
-  if (confirm("Are you sure you want to delete this category? This will remove it from all images.")) {
+  if (
+    confirm(
+      "Are you sure you want to delete this category? This will remove it from all images.",
+    )
+  ) {
     // Remove category from all images
     state.imageCategories.forEach((categoryIds, imagePath) => {
-      const updatedIds = categoryIds.filter(id => id !== categoryId);
+      const updatedIds = categoryIds.filter((id) => id !== categoryId);
       if (updatedIds.length === 0) {
         state.imageCategories.delete(imagePath);
       } else {
         state.imageCategories.set(imagePath, updatedIds);
       }
     });
-    
+
     // Remove category
-    state.categories = state.categories.filter(c => c.id !== categoryId);
-    
+    state.categories = state.categories.filter((c) => c.id !== categoryId);
+
     await saveHitoConfig();
     renderCategoryList();
     if (state.currentModalIndex >= 0) {
@@ -508,9 +565,8 @@ export async function setupCategories(): Promise<void> {
   // Categories will be loaded when a directory is browsed
   // Just initialize the UI here
   renderCategoryList();
-  
+
   if (elements.addCategoryBtn) {
     elements.addCategoryBtn.onclick = () => showCategoryDialog();
   }
 }
-
