@@ -13,15 +13,28 @@ vi.mock("../ui/grid.js", () => ({
 }));
 
 // Mock IntersectionObserver
-(globalThis as any).IntersectionObserver = class IntersectionObserver {
+class MockIntersectionObserver {
   callback: (entries: IntersectionObserverEntry[]) => void;
+  observedElement: Element | null = null;
+  
   constructor(callback: (entries: IntersectionObserverEntry[]) => void) {
     this.callback = callback;
   }
-  observe() {}
-  disconnect() {}
-  unobserve() {}
-} as any;
+  
+  observe(element: Element) {
+    this.observedElement = element;
+  }
+  
+  disconnect() {
+    this.observedElement = null;
+  }
+  
+  unobserve() {
+    this.observedElement = null;
+  }
+}
+
+(globalThis as any).IntersectionObserver = MockIntersectionObserver;
 
 describe("observer", () => {
   beforeEach(() => {
@@ -117,17 +130,17 @@ describe("observer", () => {
 
     it("should trigger loadImageBatch when sentinel intersects", async () => {
       const { loadImageBatch } = await import("./browse.js");
-      vi.clearAllMocks();
+      vi.mocked(loadImageBatch).mockClear();
       setupIntersectionObserver();
 
-      const observer = state.intersectionObserver!;
+      const observer = state.intersectionObserver as any;
       const sentinel = document.getElementById("load-more-sentinel")!;
 
       // Simulate intersection
       const mockEntry = {
         isIntersecting: true,
       };
-      (observer as any).callback([mockEntry]);
+      observer.callback([mockEntry]);
 
       expect(loadImageBatch).toHaveBeenCalledWith(0, BATCH_SIZE);
       expect(state.currentIndex).toBe(BATCH_SIZE);
@@ -135,29 +148,29 @@ describe("observer", () => {
 
     it("should not trigger loadImageBatch if already loading", async () => {
       const { loadImageBatch } = await import("./browse.js");
-      vi.clearAllMocks();
+      vi.mocked(loadImageBatch).mockClear();
       state.isLoadingBatch = true;
       setupIntersectionObserver();
 
-      const observer = state.intersectionObserver!;
+      const observer = state.intersectionObserver as any;
       const mockEntry = {
         isIntersecting: true,
       };
-      (observer as any).callback([mockEntry]);
+      observer.callback([mockEntry]);
 
       expect(loadImageBatch).not.toHaveBeenCalled();
     });
 
     it("should not trigger loadImageBatch if not intersecting", async () => {
       const { loadImageBatch } = await import("./browse.js");
-      vi.clearAllMocks();
+      vi.mocked(loadImageBatch).mockClear();
       setupIntersectionObserver();
 
-      const observer = state.intersectionObserver!;
+      const observer = state.intersectionObserver as any;
       const mockEntry = {
         isIntersecting: false,
       };
-      (observer as any).callback([mockEntry]);
+      observer.callback([mockEntry]);
 
       expect(loadImageBatch).not.toHaveBeenCalled();
     });
@@ -165,18 +178,14 @@ describe("observer", () => {
     it("should observe sentinel", () => {
       setupIntersectionObserver();
 
-      const observer = state.intersectionObserver!;
+      const observer = state.intersectionObserver as any;
       const sentinel = document.getElementById("load-more-sentinel")!;
-      const observeSpy = vi.spyOn(observer, "observe");
-
-      // Re-setup to trigger observe
-      setupIntersectionObserver();
 
       // The observer should have been created and should observe the sentinel
       expect(state.intersectionObserver).not.toBeNull();
       expect(sentinel).not.toBeNull();
-      // Note: observe is called during setupIntersectionObserver, so we verify the observer exists
-      expect(observeSpy).toHaveBeenCalled();
+      // Verify the sentinel was observed
+      expect(observer.observedElement).toBe(sentinel);
     });
   });
 });

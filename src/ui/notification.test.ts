@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { showNotification, hideNotification } from "./notification.js";
 
 describe("notification", () => {
   beforeEach(() => {
@@ -9,11 +8,14 @@ describe("notification", () => {
       existing.remove();
     }
 
-    // Create notification bar element
+    // Create notification bar element BEFORE importing the module
+    // This ensures querySelector finds it when the module initializes
     const bar = document.createElement("div");
     bar.id = "notification-bar";
     document.body.appendChild(bar);
 
+    // Reset the module's cached reference by re-importing
+    vi.resetModules();
     vi.useFakeTimers();
   });
 
@@ -26,7 +28,8 @@ describe("notification", () => {
   });
 
   describe("showNotification", () => {
-    it("should show notification with default duration", () => {
+    it("should show notification with default duration", async () => {
+      const { showNotification } = await import("./notification.js");
       showNotification("Test message");
 
       const bar = document.getElementById("notification-bar");
@@ -34,7 +37,8 @@ describe("notification", () => {
       expect(bar!.classList.contains("show")).toBe(true);
     });
 
-    it("should show notification with custom duration", () => {
+    it("should show notification with custom duration", async () => {
+      const { showNotification } = await import("./notification.js");
       showNotification("Test message", 5000);
 
       const bar = document.getElementById("notification-bar");
@@ -42,7 +46,8 @@ describe("notification", () => {
       expect(bar!.classList.contains("show")).toBe(true);
     });
 
-    it("should auto-hide after duration", () => {
+    it("should auto-hide after duration", async () => {
+      const { showNotification } = await import("./notification.js");
       showNotification("Test message", 3000);
 
       const bar = document.getElementById("notification-bar");
@@ -53,7 +58,8 @@ describe("notification", () => {
       expect(bar!.classList.contains("show")).toBe(false);
     });
 
-    it("should clear previous timeout when showing new notification", () => {
+    it("should clear previous timeout when showing new notification", async () => {
+      const { showNotification } = await import("./notification.js");
       showNotification("First message", 5000);
       vi.advanceTimersByTime(2000);
       showNotification("Second message", 5000);
@@ -72,7 +78,8 @@ describe("notification", () => {
       expect(bar.classList.contains("show")).toBe(false);
     });
 
-    it("should not throw when notification bar is missing", () => {
+    it("should not throw when notification bar is missing", async () => {
+      const { showNotification } = await import("./notification.js");
       const bar = document.getElementById("notification-bar");
       bar?.remove();
 
@@ -81,7 +88,8 @@ describe("notification", () => {
   });
 
   describe("hideNotification", () => {
-    it("should hide visible notification", () => {
+    it("should hide visible notification", async () => {
+      const { showNotification, hideNotification } = await import("./notification.js");
       showNotification("Test message");
       const bar = document.getElementById("notification-bar");
       if (!bar) {
@@ -94,7 +102,8 @@ describe("notification", () => {
       expect(bar.classList.contains("show")).toBe(false);
     });
 
-    it("should clear timeout when hiding", () => {
+    it("should clear timeout when hiding", async () => {
+      const { showNotification, hideNotification } = await import("./notification.js");
       showNotification("Test message", 5000);
       hideNotification();
 
@@ -108,14 +117,16 @@ describe("notification", () => {
       expect(bar.classList.contains("show")).toBe(false);
     });
 
-    it("should not throw when notification bar is missing", () => {
+    it("should not throw when notification bar is missing", async () => {
+      const { hideNotification } = await import("./notification.js");
       const bar = document.getElementById("notification-bar");
       bar?.remove();
 
       expect(() => hideNotification()).not.toThrow();
     });
 
-    it("should hide already hidden notification", () => {
+    it("should hide already hidden notification", async () => {
+      const { hideNotification } = await import("./notification.js");
       const bar = document.getElementById("notification-bar");
       if (!bar) {
         throw new Error("Notification bar not found");

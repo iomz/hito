@@ -147,13 +147,13 @@ describe("browse", () => {
     });
 
     it("should clamp endIndex to array length", async () => {
-      const { loadImageData } = await import("../utils/images.js");
-      vi.clearAllMocks();
+      const imagesModule = await import("../utils/images.js");
+      vi.mocked(imagesModule.loadImageData).mockClear();
       state.allImagePaths = [{ path: "/test/image1.png" }];
 
       await loadImageBatch(0, 100);
 
-      expect(loadImageData).toHaveBeenCalledTimes(1);
+      expect(imagesModule.loadImageData).toHaveBeenCalledTimes(1);
     });
   });
 
