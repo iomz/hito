@@ -76,7 +76,7 @@ describe("browse", () => {
       await loadImageBatch(0, 10);
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "state.allImagePaths is not an array:",
+        "state.allImagePaths is not an array in loadImageBatch:",
         null
       );
       expect(state.allImagePaths).toEqual([]);

@@ -2,6 +2,8 @@ import { state, elements } from "../state.js";
 import { createElement } from "../utils/dom.js";
 import type { Category, HotkeyConfig } from "../types.js";
 import { confirm } from "../utils/dialog.js";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
+import { normalizePath } from "../utils/state.js";
 
 interface HitoFile {
   categories?: Category[];
@@ -11,7 +13,7 @@ interface HitoFile {
 
 function getConfigFileDirectory(): string {
   if (state.configFilePath) {
-    const path = state.configFilePath.replace(/\\/g, "/");
+    const path = normalizePath(state.configFilePath);
     const lastSlash = path.lastIndexOf("/");
     if (lastSlash >= 0) {
       return path.substring(0, lastSlash);
@@ -23,7 +25,7 @@ function getConfigFileDirectory(): string {
 
 function getConfigFileName(): string | undefined {
   if (state.configFilePath) {
-    const path = state.configFilePath.replace(/\\/g, "/");
+    const path = normalizePath(state.configFilePath);
     const lastSlash = path.lastIndexOf("/");
     if (lastSlash >= 0) {
       const filename = path.substring(lastSlash + 1);
@@ -44,18 +46,15 @@ export async function loadHitoConfig(): Promise<void> {
   }
 
   try {
-    if (!window.__TAURI__?.core?.invoke) {
+    if (!isTauriInvokeAvailable()) {
       return;
     }
 
     const configFileName = getConfigFileName();
-    const data = await window.__TAURI__.core.invoke<HitoFile>(
-      "load_hito_config",
-      {
-        directory: configDir,
-        filename: configFileName,
-      },
-    );
+    const data = await invokeTauri<HitoFile>("load_hito_config", {
+      directory: configDir,
+      filename: configFileName,
+    });
 
     if (data.categories) {
       state.categories = data.categories;
@@ -89,14 +88,14 @@ export async function saveHitoConfig(): Promise<void> {
   }
 
   try {
-    if (!window.__TAURI__?.core?.invoke) {
+    if (!isTauriInvokeAvailable()) {
       return;
     }
 
     const imageCategoriesArray = Array.from(state.imageCategories.entries());
     const configFileName = getConfigFileName();
 
-    await window.__TAURI__.core.invoke("save_hito_config", {
+    await invokeTauri("save_hito_config", {
       directory: configDir,
       categories: state.categories,
       imageCategories: imageCategoriesArray,

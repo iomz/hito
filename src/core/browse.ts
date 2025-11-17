@@ -11,12 +11,11 @@ import { cleanupObserver, setupIntersectionObserver } from "./observer.js";
 import { showNotification } from "../ui/notification.js";
 import { handleFolder } from "../handlers/dragDrop.js";
 import { loadHitoConfig } from "../ui/categories.js";
+import { ensureImagePathsArray } from "../utils/state.js";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
 
 export async function loadImageBatch(startIndex: number, endIndex: number): Promise<void> {
-  // Ensure allImagePaths is an array
-  if (!Array.isArray(state.allImagePaths)) {
-    console.error("state.allImagePaths is not an array:", state.allImagePaths);
-    state.allImagePaths = [];
+  if (!ensureImagePathsArray("loadImageBatch")) {
     return;
   }
   
@@ -96,10 +95,10 @@ export async function browseImages(path: string): Promise<void> {
   }
   
   try {
-    if (!window.__TAURI__?.core?.invoke) {
+    if (!isTauriInvokeAvailable()) {
       throw new Error("Tauri invoke API not available");
     }
-    const contents = await window.__TAURI__.core.invoke<DirectoryContents>("list_images", { path });
+    const contents = await invokeTauri<DirectoryContents>("list_images", { path });
     hideSpinner();
     
     // Store directories and images - ensure they are arrays

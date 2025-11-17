@@ -295,7 +295,7 @@ fn save_hito_config(
 
 /// Initializes and runs the Tauri application with configured plugins and invoke handlers.
 ///
-/// This starts the application builder with the opener, dialog, and macOS permissions plugins,
+/// This starts the application builder with the opener and dialog plugins,
 /// registers the `list_images`, `load_image`, `get_parent_directory`, and `delete_image` invoke handlers,
 /// and runs the application event loop.
 ///
@@ -312,7 +312,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image, load_hito_config, save_hito_config])
         .setup(|_app| {

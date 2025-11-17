@@ -8,6 +8,7 @@ import {
   updateModalButtons,
   toggleShortcutsOverlay,
   deleteCurrentImage,
+  updateShortcutsOverlay,
 } from "./modal.js";
 
 // Mock dependencies
@@ -27,6 +28,15 @@ vi.mock("./grid.js", () => ({
   removeImageFromGrid: vi.fn(),
 }));
 
+vi.mock("./categories.js", () => ({
+  renderCurrentImageCategories: vi.fn(),
+  renderModalCategories: vi.fn(),
+}));
+
+vi.mock("./hotkeys.js", () => ({
+  closeHotkeySidebar: vi.fn(),
+}));
+
 describe("modal", () => {
   beforeEach(() => {
     // Reset state
@@ -38,14 +48,19 @@ describe("modal", () => {
     state.currentModalIndex = -1;
     state.isDeletingImage = false;
     state.loadedImages.clear();
+    state.hotkeys = [];
+    state.categories = [];
 
     // Setup DOM elements
     elements.modal = document.createElement("div");
     elements.modalImage = document.createElement("img");
     elements.modalCaption = document.createElement("div");
+    elements.modalCaptionText = document.createElement("span");
+    elements.modalCaption.appendChild(elements.modalCaptionText);
     elements.modalPrevBtn = document.createElement("button");
     elements.modalNextBtn = document.createElement("button");
     elements.shortcutsOverlay = document.createElement("div");
+    elements.shortcutsList = document.createElement("div");
     elements.modal.style.display = "none";
     elements.shortcutsOverlay.style.display = "none";
 
@@ -140,6 +155,50 @@ describe("modal", () => {
       await openModal(0);
 
       expect(elements.shortcutsOverlay!.style.display).toBe("none");
+    });
+
+    it("should update modal caption text with image index and filename", async () => {
+      state.loadedImages.set("/test/image1.png", "data-url");
+      state.allImagePaths = [
+        { path: "/test/image1.png" },
+        { path: "/test/image2.png" },
+      ];
+
+      await openModal(0);
+
+      expect(elements.modalCaptionText?.textContent).toBe("1 / 2 - image1.png");
+    });
+
+    it("should handle paths with backslashes in modal caption", async () => {
+      state.loadedImages.set("C:\\test\\image1.png", "data-url");
+      state.allImagePaths = [
+        { path: "C:\\test\\image1.png" },
+      ];
+
+      await openModal(0);
+
+      expect(elements.modalCaptionText?.textContent).toBe("1 / 1 - image1.png");
+    });
+
+    it("should call renderCurrentImageCategories and renderModalCategories", async () => {
+      const { renderCurrentImageCategories, renderModalCategories } = await import("./categories.js");
+      state.loadedImages.set("/test/image1.png", "data-url");
+
+      await openModal(0);
+
+      expect(renderCurrentImageCategories).toHaveBeenCalled();
+      expect(renderModalCategories).toHaveBeenCalled();
+    });
+
+    it("should call updateModalButtons when opening modal", async () => {
+      state.loadedImages.set("/test/image1.png", "data-url");
+
+      await openModal(0);
+
+      // updateModalButtons should have been called, which sets button visibility
+      // Let's verify the buttons are in the expected state
+      expect(elements.modalPrevBtn?.style.display).toBe("none"); // First image, no prev
+      expect(elements.modalNextBtn?.style.display).toBe("block"); // Not last image, show next
     });
   });
 
@@ -378,6 +437,206 @@ describe("modal", () => {
       await deleteCurrentImage();
 
       expect(state.currentIndex).toBe(1);
+    });
+  });
+
+  describe("updateShortcutsOverlay", () => {
+    beforeEach(() => {
+      elements.shortcutsList = document.createElement("div");
+    });
+
+    it("should return early if shortcutsList is missing", () => {
+      elements.shortcutsList = null;
+      updateShortcutsOverlay();
+      // Should not throw
+    });
+
+    it("should create 2-column layout structure", () => {
+      updateShortcutsOverlay();
+
+      const columnsContainer = elements.shortcutsList?.querySelector(".shortcuts-columns");
+      expect(columnsContainer).toBeTruthy();
+
+      const leftColumn = columnsContainer?.querySelector(".shortcuts-column-left");
+      expect(leftColumn).toBeTruthy();
+
+      const rightColumn = columnsContainer?.querySelector(".shortcuts-column-right");
+      expect(rightColumn).toBeTruthy();
+    });
+
+    it("should display default shortcuts in left column", () => {
+      updateShortcutsOverlay();
+
+      const leftColumn = elements.shortcutsList?.querySelector(".shortcuts-column-left");
+      const heading = leftColumn?.querySelector(".shortcuts-heading");
+      expect(heading?.textContent).toBe("Default Shortcuts");
+
+      const defaultShortcuts = [
+        { key: "←", desc: "Previous image" },
+        { key: "→", desc: "Next image" },
+        { key: "Esc", desc: "Close modal" },
+        { key: "?", desc: "Show/hide this help" },
+        { key: "Delete", desc: "Delete image and move to next" },
+      ];
+
+      const shortcutItems = leftColumn?.querySelectorAll(".shortcut-item");
+      expect(shortcutItems?.length).toBe(5);
+
+      defaultShortcuts.forEach(({ key, desc }, index) => {
+        const item = shortcutItems?.[index];
+        const keySpan = item?.querySelector(".shortcut-key");
+        const descSpan = item?.querySelector(".shortcut-desc");
+        expect(keySpan?.textContent).toBe(key);
+        expect(descSpan?.textContent).toBe(desc);
+      });
+    });
+
+    it("should show empty state when no custom hotkeys", () => {
+      state.hotkeys = [];
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const emptyState = rightColumn?.querySelector(".shortcuts-empty");
+      expect(emptyState).toBeTruthy();
+      expect(emptyState?.textContent).toBe("No custom hotkeys");
+    });
+
+    it("should display custom hotkeys in right column", () => {
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "next_image" },
+        { id: "h2", key: "B", modifiers: ["Cmd"], action: "previous_image" },
+      ];
+
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const heading = rightColumn?.querySelector(".shortcuts-heading");
+      expect(heading?.textContent).toBe("Custom Hotkeys");
+
+      const shortcutItems = rightColumn?.querySelectorAll(".shortcut-item");
+      expect(shortcutItems?.length).toBe(2);
+
+      // Check first hotkey
+      const firstKey = shortcutItems?.[0]?.querySelector(".shortcut-key");
+      const firstDesc = shortcutItems?.[0]?.querySelector(".shortcut-desc");
+      expect(firstKey?.textContent).toBe("Ctrl + A");
+      expect(firstDesc?.textContent).toBe("Next Image");
+
+      // Check second hotkey
+      const secondKey = shortcutItems?.[1]?.querySelector(".shortcut-key");
+      const secondDesc = shortcutItems?.[1]?.querySelector(".shortcut-desc");
+      expect(secondKey?.textContent).toBe("Cmd + B");
+      expect(secondDesc?.textContent).toBe("Previous Image");
+    });
+
+    it("should display delete image action correctly", () => {
+      state.hotkeys = [
+        { id: "h1", key: "Delete", modifiers: ["Shift"], action: "delete_image_and_next" },
+      ];
+
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const descSpan = rightColumn?.querySelector(".shortcut-desc");
+      expect(descSpan?.textContent).toBe("Delete Image and move to next");
+    });
+
+    it("should display category toggle actions correctly", () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ];
+      state.hotkeys = [
+        { id: "h1", key: "T", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+        { id: "h2", key: "N", modifiers: ["Ctrl"], action: "toggle_category_next_cat2" },
+      ];
+
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const shortcutItems = rightColumn?.querySelectorAll(".shortcut-item");
+
+      expect(shortcutItems?.[0]?.querySelector(".shortcut-desc")?.textContent).toBe('Toggle "Category 1"');
+      expect(shortcutItems?.[1]?.querySelector(".shortcut-desc")?.textContent).toBe('Toggle "Category 2" and move to next');
+    });
+
+    it("should handle missing categories for category actions", () => {
+      state.categories = [];
+      state.hotkeys = [
+        { id: "h1", key: "T", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+      ];
+
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const descSpan = rightColumn?.querySelector(".shortcut-desc");
+      expect(descSpan?.textContent).toBe("Toggle category");
+    });
+
+    it("should handle assign_category actions (legacy)", () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+      ];
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "assign_category_cat1" },
+      ];
+
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const descSpan = rightColumn?.querySelector(".shortcut-desc");
+      expect(descSpan?.textContent).toBe('Assign "Category 1"');
+    });
+
+    it("should filter out hotkeys without actions", () => {
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "next_image" },
+        { id: "h2", key: "B", modifiers: ["Ctrl"], action: "" },
+        { id: "h3", key: "C", modifiers: ["Ctrl"], action: "previous_image" },
+      ];
+
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const shortcutItems = rightColumn?.querySelectorAll(".shortcut-item");
+      expect(shortcutItems?.length).toBe(2); // Should only show h1 and h3
+    });
+
+    it("should handle unknown action types", () => {
+      state.hotkeys = [
+        { id: "h1", key: "X", modifiers: ["Ctrl"], action: "unknown_action" },
+      ];
+
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const descSpan = rightColumn?.querySelector(".shortcut-desc");
+      expect(descSpan?.textContent).toBe("Unknown action");
+    });
+
+    it("should clear existing content before updating", () => {
+      elements.shortcutsList!.innerHTML = "<div class='old-content'>Old content</div>";
+      updateShortcutsOverlay();
+
+      // Old content should be removed
+      expect(elements.shortcutsList?.querySelector(".old-content")).toBeFalsy();
+      // New content should be present
+      expect(elements.shortcutsList?.querySelector(".shortcuts-columns")).toBeTruthy();
+    });
+
+    it("should handle multiple modifier keys in hotkey display", () => {
+      state.hotkeys = [
+        { id: "h1", key: "K", modifiers: ["Ctrl", "Shift", "Alt"], action: "next_image" },
+      ];
+
+      updateShortcutsOverlay();
+
+      const rightColumn = elements.shortcutsList?.querySelector(".shortcuts-column-right");
+      const keySpan = rightColumn?.querySelector(".shortcut-key");
+      expect(keySpan?.textContent).toContain("Ctrl");
+      expect(keySpan?.textContent).toContain("Shift");
+      expect(keySpan?.textContent).toContain("Alt");
+      expect(keySpan?.textContent).toContain("K");
     });
   });
 });
