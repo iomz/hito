@@ -28,7 +28,6 @@ coverage:
     - "**/main.js"
     - ".github/**"
     - "coverage/**"
-    - "**/*.ts"  # Ignore .ts files since coverage is for compiled .js files
   
   status:
     project:

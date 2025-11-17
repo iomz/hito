@@ -17,6 +17,10 @@ export default defineConfig({
         '**/main.js',
       ],
       include: ['src/**/*.{ts,js}'],
+      // Report only on TypeScript files, excluding compiled JS
+      all: true,
+      reportsDirectory: './coverage',
+      clean: true,
     },
   },
 });
