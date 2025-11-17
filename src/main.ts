@@ -39,7 +39,7 @@ function initializeElements(): void {
   elements.configFilePathInput = querySelector<HTMLInputElement>("#config-file-path");
 }
 
-function resetToHome(): void {
+async function resetToHome(): Promise<void> {
   clearImageGrid();
   expandDropZone();
   clearError();
@@ -63,6 +63,7 @@ function resetToHome(): void {
   state.configFilePath = "";
   state.categories = [];
   state.imageCategories.clear();
+  state.hotkeys = [];
   
   // Reset config file path input
   if (elements.configFilePathInput) {
@@ -70,7 +71,10 @@ function resetToHome(): void {
     elements.configFilePathInput.placeholder = ".hito.json";
   }
   
-  // Hide sidebar toggle button on home screen
+  // Close and hide sidebar on home screen
+  const { closeHotkeySidebar } = await import("./ui/hotkeys.js");
+  closeHotkeySidebar();
+  
   if (elements.hotkeySidebarToggle) {
     elements.hotkeySidebarToggle.style.display = "none";
   }
