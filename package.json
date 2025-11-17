@@ -12,7 +12,6 @@
     "test:coverage": "vitest --coverage"
   },
   "devDependencies": {
-    "@tauri-apps/api": "^2.9.0",
     "@tauri-apps/cli": "^2",
     "@vitest/coverage-v8": "2.1.9",
     "@vitest/ui": "^2.1.8",
@@ -21,6 +20,7 @@
     "vitest": "^2.1.8"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.9.0",
     "tauri-plugin-macos-permissions-api": "^2.3.0"
   }
 }
