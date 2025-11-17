@@ -1,27 +1,26 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    include: ['src/**/*.{test,spec}.{js,ts}'],
+    include: ["src/**/*.{test,spec}.{js,ts}"],
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      provider: "v8",
+      reporter: ["text", "json", "html", "lcov"],
       exclude: [
-        'node_modules/',
-        'src-tauri/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        '**/main.ts',
-        '**/main.js',
+        "node_modules/",
+        "src-tauri/",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "**/main.ts",
+        "**/main.js",
       ],
-      include: ['src/**/*.{ts,js}'],
-      // Report only on TypeScript files, excluding compiled JS
+      include: ["src/**/*.{ts,js}"],
+      // Report on all TypeScript and JavaScript source files
       all: true,
-      reportsDirectory: './coverage',
+      reportsDirectory: "./coverage",
       clean: true,
     },
   },
 });
-
