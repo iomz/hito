@@ -23,6 +23,19 @@ export interface DragDropEvent {
   paths?: string[];
 }
 
+export interface HotkeyConfig {
+  id: string;
+  key: string;
+  modifiers: string[]; // e.g., ['Ctrl', 'Shift']
+  action: string; // Action identifier (to be wired later)
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  color: string; // Hex color for visual distinction
+}
+
 // Type augmentation for window.__TAURI__
 declare global {
   interface Window {

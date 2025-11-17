@@ -10,6 +10,13 @@
 
   <body>
     <div id="notification-bar" class="notification-bar"></div>
+    <button id="hotkey-sidebar-toggle" class="hotkey-sidebar-toggle" aria-label="Toggle configuration sidebar">
+      <span class="hamburger-icon">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+    </button>
     <main class="container">
       <h1>Hito</h1>
 
@@ -36,12 +43,54 @@
 
       <div id="image-grid" class="image-grid"></div>
 
+      <div id="hotkey-sidebar" class="hotkey-sidebar">
+          <div class="hotkey-sidebar-header">
+            <h3>Configuration</h3>
+            <button id="hotkey-sidebar-close" class="hotkey-sidebar-close" aria-label="Close sidebar">&times;</button>
+          </div>
+          <div class="hotkey-sidebar-content">
+            <div class="sidebar-tabs">
+              <button class="sidebar-tab active" data-tab="categories">Categories</button>
+              <button class="sidebar-tab" data-tab="hotkeys">Hotkeys</button>
+              <button class="sidebar-tab" data-tab="file">File</button>
+            </div>
+            
+            <div id="categories-panel" class="sidebar-panel active">
+              <div class="panel-header">
+                <h4>Image Categories</h4>
+                <button id="add-category-btn" class="add-category-btn">+ Add</button>
+              </div>
+              <div id="category-list" class="category-list"></div>
+              <div id="current-image-categories" class="current-image-categories"></div>
+            </div>
+            
+            <div id="hotkeys-panel" class="sidebar-panel">
+              <div id="hotkey-list" class="hotkey-list"></div>
+              <button id="add-hotkey-btn" class="add-hotkey-btn">+ Add Hotkey</button>
+            </div>
+            
+            <div id="file-panel" class="sidebar-panel">
+              <div class="panel-header">
+                <h4>Configuration File</h4>
+              </div>
+              <div class="file-settings">
+                <label for="config-file-path">Config File Path:</label>
+                <input type="text" id="config-file-path" class="config-file-input" placeholder=".hito.json" />
+                <p class="file-hint">Default: Current directory's .hito.json</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
       <div id="image-modal" class="modal">
         <span class="close">&times;</span>
         <button class="modal-nav modal-nav-prev" id="modal-prev">&#10094;</button>
         <button class="modal-nav modal-nav-next" id="modal-next">&#10095;</button>
         <img id="modal-image" class="modal-content" />
-        <div id="modal-caption"></div>
+        <div id="modal-caption" class="modal-caption">
+          <span id="modal-caption-text"></span>
+          <span id="modal-categories" class="modal-categories"></span>
+        </div>
         <div id="keyboard-shortcuts-overlay" class="keyboard-shortcuts-overlay">
           <div class="shortcuts-content">
             <h2>Keyboard Shortcuts</h2>

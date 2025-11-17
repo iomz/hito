@@ -50,7 +50,6 @@ export function createBreadcrumb(path: string): HTMLElement {
         e.preventDefault();
         // Use handleFolder which updates breadcrumb and loads images
         // Use the captured path value, not the mutable currentPath variable
-        console.log("Breadcrumb clicked, navigating to:", pathForThisSegment);
         handleFolder(pathForThisSegment);
       };
       item.appendChild(link);

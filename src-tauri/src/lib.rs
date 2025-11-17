@@ -1,6 +1,7 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use base64::{Engine as _, engine::general_purpose};
+use serde::{Deserialize, Serialize};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[derive(serde::Serialize)]
@@ -210,6 +211,88 @@ fn delete_image(image_path: String) -> Result<(), String> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct CategoryData {
+    id: String,
+    name: String,
+    color: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct HotkeyData {
+    id: String,
+    key: String,
+    modifiers: Vec<String>,
+    action: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct HitoFile {
+    categories: Vec<CategoryData>,
+    image_categories: Vec<(String, Vec<String>)>,
+    hotkeys: Vec<HotkeyData>,
+}
+
+/// Get the path to the .hito.json file in the directory.
+/// If filename is provided, use it; otherwise default to ".hito.json".
+fn get_hito_file_path(directory: &str, filename: Option<&str>) -> PathBuf {
+    let dir_path = Path::new(directory);
+    let file_name = filename.unwrap_or(".hito.json");
+    dir_path.join(file_name)
+}
+
+/// Load categories and hotkeys from .hito.json in the specified directory.
+///
+/// Returns categories, image category assignments, and hotkeys if the file exists, otherwise returns empty data.
+#[tauri::command]
+fn load_hito_config(directory: String, filename: Option<String>) -> Result<HitoFile, String> {
+    let hito_path = get_hito_file_path(&directory, filename.as_deref());
+    
+    if !hito_path.exists() {
+        return Ok(HitoFile {
+            categories: Vec::new(),
+            image_categories: Vec::new(),
+            hotkeys: Vec::new(),
+        });
+    }
+    
+    match fs::read_to_string(&hito_path) {
+        Ok(content) => {
+            match serde_json::from_str::<HitoFile>(&content) {
+                Ok(data) => Ok(data),
+                Err(e) => Err(format!("Failed to parse .hito.json file: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("Failed to read .hito.json file: {}", e)),
+    }
+}
+
+/// Save categories and hotkeys to .hito.json in the specified directory.
+#[tauri::command]
+fn save_hito_config(
+    directory: String,
+    categories: Vec<CategoryData>,
+    image_categories: Vec<(String, Vec<String>)>,
+    hotkeys: Vec<HotkeyData>,
+    filename: Option<String>,
+) -> Result<(), String> {
+    let hito_path = get_hito_file_path(&directory, filename.as_deref());
+    
+    let data = HitoFile {
+        categories,
+        image_categories,
+        hotkeys,
+    };
+    
+    let json_content = serde_json::to_string_pretty(&data)
+        .map_err(|e| format!("Failed to serialize .hito.json: {}", e))?;
+    
+    fs::write(&hito_path, json_content)
+        .map_err(|e| format!("Failed to write .hito.json file: {}", e))?;
+    
+    Ok(())
+}
+
 /// Initializes and runs the Tauri application with configured plugins and invoke handlers.
 ///
 /// This starts the application builder with the opener, dialog, and macOS permissions plugins,
@@ -230,7 +313,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_macos_permissions::init())
-        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image])
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image, load_hito_config, save_hito_config])
         .setup(|_app| {
             // File drops in Tauri 2.0 are handled through the event system
             // JavaScript will listen for tauri://drag-drop events
