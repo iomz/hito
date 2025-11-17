@@ -83,6 +83,11 @@ export async function browseImages(path: string): Promise<void> {
   state.currentModalIndex = -1;
   state.currentDirectory = path;
   
+  // Clear categories and hotkeys state before loading new config
+  state.categories = [];
+  state.imageCategories.clear();
+  state.hotkeys = [];
+  
   // Reset config file path to default when browsing new directory
   if (elements.configFilePathInput) {
     elements.configFilePathInput.value = "";
@@ -170,6 +175,12 @@ export async function browseImages(path: string): Promise<void> {
     
     // Load categories and hotkeys for this directory
     await loadHitoConfig();
+    
+    // Render category and hotkey lists (will show empty state if no config)
+    const { renderCategoryList } = await import("../ui/categories.js");
+    const { renderHotkeyList } = await import("../ui/hotkeys.js");
+    renderCategoryList();
+    renderHotkeyList();
     
     // Show sidebar toggle button when browsing a directory
     if (elements.hotkeySidebarToggle) {

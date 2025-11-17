@@ -1,6 +1,7 @@
 import { state, elements } from "../state.js";
 import { createElement } from "../utils/dom.js";
 import type { Category, HotkeyConfig } from "../types.js";
+import { confirm } from "../utils/dialog.js";
 
 interface HitoFile {
   categories?: Category[];
@@ -168,10 +169,14 @@ export function renderCategoryList(): void {
 
     const deleteBtn = createElement("button", "category-delete-btn");
     deleteBtn.textContent = "Delete";
-    deleteBtn.onclick = () => {
-      deleteCategory(category.id).catch((error) => {
+    deleteBtn.onclick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await deleteCategory(category.id);
+      } catch (error) {
         console.error("Failed to delete category:", error);
-      });
+      }
     };
 
     categoryActions.appendChild(editBtn);
@@ -591,34 +596,54 @@ function showCategoryDialog(existingCategory?: Category): void {
  * Delete a category.
  */
 async function deleteCategory(categoryId: string): Promise<void> {
-  if (
-    confirm(
-      "Are you sure you want to delete this category? This will remove it from all images.",
-    )
-  ) {
-    // Remove category from all images
-    state.imageCategories.forEach((categoryIds, imagePath) => {
-      const updatedIds = categoryIds.filter((id) => id !== categoryId);
-      if (updatedIds.length === 0) {
-        state.imageCategories.delete(imagePath);
-      } else {
-        state.imageCategories.set(imagePath, updatedIds);
-      }
-    });
-
-    // Remove category
-    state.categories = state.categories.filter((c) => c.id !== categoryId);
-
-    await saveHitoConfig();
-    renderCategoryList();
-    if (state.currentModalIndex >= 0) {
-      renderCurrentImageCategories();
-      renderModalCategories();
+  const userConfirmed = await confirm(
+    "Are you sure you want to delete this category? This will remove it from all images.",
+    {
+      title: "Delete Category",
     }
-    // Refresh hotkey list to update action dropdowns
-    const { renderHotkeyList } = await import("./hotkeys.js");
-    renderHotkeyList();
+  );
+
+  if (!userConfirmed) {
+    return;
   }
+
+  // Remove category from all images
+  state.imageCategories.forEach((categoryIds, imagePath) => {
+    const updatedIds = categoryIds.filter((id) => id !== categoryId);
+    if (updatedIds.length === 0) {
+      state.imageCategories.delete(imagePath);
+    } else {
+      state.imageCategories.set(imagePath, updatedIds);
+    }
+  });
+
+  // Clean up hotkeys that reference this category
+  state.hotkeys.forEach((hotkey) => {
+    if (hotkey.action) {
+      // Check for all action patterns that reference this category
+      if (
+        hotkey.action === `toggle_category_${categoryId}` ||
+        hotkey.action === `toggle_category_next_${categoryId}` ||
+        hotkey.action.startsWith(`assign_category_${categoryId}`)
+      ) {
+        // Clear the action, allowing hotkeys without actions
+        hotkey.action = "";
+      }
+    }
+  });
+
+  // Remove category
+  state.categories = state.categories.filter((c) => c.id !== categoryId);
+
+  await saveHitoConfig();
+  renderCategoryList();
+  if (state.currentModalIndex >= 0) {
+    renderCurrentImageCategories();
+    renderModalCategories();
+  }
+  // Refresh hotkey list to update action dropdowns
+  const { renderHotkeyList } = await import("./hotkeys.js");
+  renderHotkeyList();
 }
 
 /**

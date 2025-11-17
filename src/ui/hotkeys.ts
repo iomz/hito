@@ -2,6 +2,7 @@ import { state, elements } from "../state.js";
 import { createElement } from "../utils/dom.js";
 import type { HotkeyConfig } from "../types.js";
 import { saveHitoConfig } from "./categories.js";
+import { confirm } from "../utils/dialog.js";
 
 /**
  * Width of the hotkey sidebar when open.
@@ -139,7 +140,15 @@ export function renderHotkeyList(): void {
     const deleteBtn = createElement("button", "hotkey-delete-btn");
     deleteBtn.textContent = "Delete";
     deleteBtn.setAttribute("aria-label", `Delete hotkey ${hotkey.id}`);
-    deleteBtn.onclick = () => deleteHotkey(hotkey.id);
+    deleteBtn.onclick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await deleteHotkey(hotkey.id);
+      } catch (error) {
+        console.error("Failed to delete hotkey:", error);
+      }
+    };
     
     hotkeyActions.appendChild(editBtn);
     hotkeyActions.appendChild(deleteBtn);
@@ -445,14 +454,20 @@ function editHotkey(hotkeyId: string): void {
 /**
  * Delete a hotkey.
  */
-function deleteHotkey(hotkeyId: string): void {
-  if (confirm("Are you sure you want to delete this hotkey?")) {
-    state.hotkeys = state.hotkeys.filter(h => h.id !== hotkeyId);
-    renderHotkeyList();
-    saveHitoConfig().catch((error) => {
-      console.error("Failed to save hotkeys:", error);
-    });
+async function deleteHotkey(hotkeyId: string): Promise<void> {
+  const userConfirmed = await confirm("Are you sure you want to delete this hotkey?", {
+    title: "Delete Hotkey",
+  });
+
+  if (!userConfirmed) {
+    return;
   }
+
+  state.hotkeys = state.hotkeys.filter(h => h.id !== hotkeyId);
+  renderHotkeyList();
+  saveHitoConfig().catch((error) => {
+    console.error("Failed to save hotkeys:", error);
+  });
 }
 
 /**
