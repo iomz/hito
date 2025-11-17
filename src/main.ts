@@ -10,7 +10,7 @@ import { clearImageGrid } from "./ui/grid.js";
 import { expandDropZone } from "./ui/dropZone.js";
 import { clearError } from "./ui/error.js";
 import { hideSpinner } from "./ui/spinner.js";
-import { closeModal } from "./ui/modal.js";
+import { closeModal, updateShortcutsOverlay } from "./ui/modal.js";
 import { cleanupObserver } from "./core/observer.js";
 
 function initializeElements(): void {
@@ -27,6 +27,7 @@ function initializeElements(): void {
   elements.modalPrevBtn = querySelector("#modal-prev");
   elements.modalNextBtn = querySelector("#modal-next");
   elements.shortcutsOverlay = querySelector("#keyboard-shortcuts-overlay");
+  elements.shortcutsList = querySelector("#shortcuts-list");
   elements.hotkeySidebar = querySelector("#hotkey-sidebar");
   elements.hotkeySidebarToggle = querySelector("#hotkey-sidebar-toggle");
   elements.hotkeySidebarClose = querySelector("#hotkey-sidebar-close");
@@ -110,6 +111,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupCategories().catch((error) => {
     console.error("Failed to setup categories:", error);
   });
+  
+  // Initialize shortcuts overlay
+  updateShortcutsOverlay();
   
   // Setup sidebar tabs
   const categoryTab = querySelector('[data-tab="categories"]');

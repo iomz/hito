@@ -3,6 +3,7 @@ import { createElement } from "../utils/dom.js";
 import type { HotkeyConfig } from "../types.js";
 import { saveHitoConfig } from "./categories.js";
 import { confirm } from "../utils/dialog.js";
+import { updateShortcutsOverlay } from "./modal.js";
 
 /**
  * Width of the hotkey sidebar when open.
@@ -113,6 +114,9 @@ export function renderHotkeyList(): void {
   
   elements.hotkeyList.innerHTML = "";
   
+  // Update shortcuts overlay when hotkeys change
+  updateShortcutsOverlay();
+  
   if (state.hotkeys.length === 0) {
     const emptyState = createElement("div", "hotkey-empty-state");
     emptyState.textContent = "No hotkeys configured. Click 'Add Hotkey' to create one.";
@@ -170,6 +174,27 @@ function populateActionDropdown(actionInput: HTMLSelectElement, existingAction?:
   while (actionInput.children.length > 1) {
     actionInput.removeChild(actionInput.lastChild!);
   }
+  
+  // Add navigation actions
+  const navigationGroup = createElement("optgroup") as HTMLOptGroupElement;
+  navigationGroup.label = "Navigation Actions";
+  
+  const nextImageOption = createElement("option") as HTMLOptionElement;
+  nextImageOption.value = "next_image";
+  nextImageOption.textContent = "Next Image";
+  navigationGroup.appendChild(nextImageOption);
+  
+  const prevImageOption = createElement("option") as HTMLOptionElement;
+  prevImageOption.value = "previous_image";
+  prevImageOption.textContent = "Previous Image";
+  navigationGroup.appendChild(prevImageOption);
+  
+  const deleteImageOption = createElement("option") as HTMLOptionElement;
+  deleteImageOption.value = "delete_image_and_next";
+  deleteImageOption.textContent = "Delete Image and move to next";
+  navigationGroup.appendChild(deleteImageOption);
+  
+  actionInput.appendChild(navigationGroup);
   
   // Add category toggle actions
   if (state.categories.length > 0) {
@@ -475,6 +500,25 @@ async function deleteHotkey(hotkeyId: string): Promise<void> {
  */
 export async function executeHotkeyAction(action: string): Promise<void> {
   if (!action) {
+    return;
+  }
+  
+  // Handle navigation actions
+  if (action === "next_image") {
+    const { showNextImage } = await import("./modal.js");
+    showNextImage();
+    return;
+  }
+  
+  if (action === "previous_image") {
+    const { showPreviousImage } = await import("./modal.js");
+    showPreviousImage();
+    return;
+  }
+  
+  if (action === "delete_image_and_next") {
+    const { deleteCurrentImage } = await import("./modal.js");
+    await deleteCurrentImage();
     return;
   }
   
