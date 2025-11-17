@@ -1,5 +1,6 @@
 import { elements } from "../state.js";
 import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage } from "../ui/modal.js";
+import { checkAndExecuteHotkey } from "../ui/hotkeys.js";
 
 /**
  * Install global keyboard and click handlers to manage modal navigation, closing, and the shortcuts overlay.
@@ -15,6 +16,14 @@ import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, d
  */
 export function setupKeyboardHandlers(): void {
   document.addEventListener("keydown", (e) => {
+    // Check for configured hotkeys first (works even when modal is closed)
+    if (checkAndExecuteHotkey(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    // Only handle modal-specific shortcuts when modal is open
     if (!elements.modal) {
       return;
     }

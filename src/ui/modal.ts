@@ -3,6 +3,8 @@ import { loadImageData } from "../utils/images.js";
 import { showError } from "./error.js";
 import { showNotification } from "./notification.js";
 import { removeImageFromGrid } from "./grid.js";
+import { closeHotkeySidebar } from "./hotkeys.js";
+import { renderCurrentImageCategories, renderModalCategories } from "./categories.js";
 
 /**
  * Opens the image viewer modal for the image at the given index, ensuring the image data is available and updating modal UI.
@@ -46,13 +48,20 @@ export async function openModal(imageIndex: number): Promise<void> {
   elements.modalImage.src = dataUrl;
   // Normalize path: convert backslashes to forward slashes before extracting filename
   const normalized = imagePath.replace(/\\/g, "/");
-  elements.modalCaption.textContent = 
-    `${imageIndex + 1} / ${state.allImagePaths.length} - ${normalized.split("/").pop() || imagePath}`;
+  if (elements.modalCaptionText) {
+    elements.modalCaptionText.textContent = 
+      `${imageIndex + 1} / ${state.allImagePaths.length} - ${normalized.split("/").pop() || imagePath}`;
+  }
   elements.modal.style.display = "flex";
+  elements.modal.classList.add("open");
   
   if (elements.shortcutsOverlay) {
     elements.shortcutsOverlay.style.display = "none";
   }
+  
+  // Update current image categories display
+  renderCurrentImageCategories();
+  renderModalCategories();
   
   updateModalButtons();
 }
@@ -63,6 +72,7 @@ export async function openModal(imageIndex: number): Promise<void> {
 export function closeModal(): void {
   if (elements.modal) {
     elements.modal.style.display = "none";
+    elements.modal.classList.remove("open");
   }
   if (elements.shortcutsOverlay) {
     elements.shortcutsOverlay.style.display = "none";
@@ -81,6 +91,7 @@ export function showNextImage(): void {
   }
   if (state.currentModalIndex < state.allImagePaths.length - 1) {
     openModal(state.currentModalIndex + 1);
+    // Categories will be updated by openModal
   }
 }
 
@@ -92,6 +103,7 @@ export function showNextImage(): void {
 export function showPreviousImage(): void {
   if (state.currentModalIndex > 0) {
     openModal(state.currentModalIndex - 1);
+    // Categories will be updated by openModal
   }
 }
 

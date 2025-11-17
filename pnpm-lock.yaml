@@ -11,6 +11,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.9.0
         version: 2.9.0
+      '@tauri-apps/plugin-store':
+        specifier: ^2
+        version: 2.4.1
       tauri-plugin-macos-permissions-api:
         specifier: ^2.3.0
         version: 2.3.0
@@ -454,6 +457,9 @@ packages:
     resolution: {integrity: sha512-pvylWC9QckrOS9ATWXIXcgu7g2hKK5xTL5ZQyZU/U0n9l88SEFGcWgLQNa8WZmd+wWIOWhkxOFcOl3i6ubDNNw==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@tauri-apps/plugin-store@2.4.1':
+    resolution: {integrity: sha512-ckGSEzZ5Ii4Hf2D5x25Oqnm2Zf9MfDWAzR+volY0z/OOBz6aucPKEY0F649JvQ0Vupku6UJo7ugpGRDOFOunkA==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -1333,6 +1339,10 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.9.4
       '@tauri-apps/cli-win32-ia32-msvc': 2.9.4
       '@tauri-apps/cli-win32-x64-msvc': 2.9.4
+
+  '@tauri-apps/plugin-store@2.4.1':
+    dependencies:
+      '@tauri-apps/api': 2.9.0
 
   '@types/chai@5.2.3':
     dependencies:
