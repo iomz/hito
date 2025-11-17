@@ -5,6 +5,7 @@ import { showNotification } from "./notification.js";
 import { removeImageFromGrid } from "./grid.js";
 import { closeHotkeySidebar } from "./hotkeys.js";
 import { renderCurrentImageCategories, renderModalCategories } from "./categories.js";
+import { createElement } from "../utils/dom.js";
 
 /**
  * Opens the image viewer modal for the image at the given index, ensuring the image data is available and updating modal UI.
@@ -213,5 +214,122 @@ export async function deleteCurrentImage(): Promise<void> {
     // Always reset the deletion flag
     state.isDeletingImage = false;
   }
+}
+
+/**
+ * Update the keyboard shortcuts overlay with default shortcuts and user-configured hotkeys.
+ * Shows default modal navigation shortcuts on the left, custom category hotkeys on the right.
+ */
+export function updateShortcutsOverlay(): void {
+  if (!elements.shortcutsList) return;
+
+  elements.shortcutsList.innerHTML = "";
+
+  // Create 2-column container
+  const columnsContainer = createElement("div", "shortcuts-columns");
+
+  // Left column: Default shortcuts
+  const leftColumn = createElement("div", "shortcuts-column shortcuts-column-left");
+  const defaultSection = createElement("div", "shortcuts-section");
+  
+  const heading = createElement("h3", "shortcuts-heading");
+  heading.textContent = "Default Shortcuts";
+  defaultSection.appendChild(heading);
+  
+  const defaultShortcuts = [
+    { key: "←", desc: "Previous image" },
+    { key: "→", desc: "Next image" },
+    { key: "Esc", desc: "Close modal" },
+    { key: "?", desc: "Show/hide this help" },
+    { key: "Delete", desc: "Delete image and move to next" },
+  ];
+
+  defaultShortcuts.forEach(({ key, desc }) => {
+    const item = createElement("div", "shortcut-item");
+    
+    const keySpan = createElement("span", "shortcut-key");
+    keySpan.textContent = key;
+    
+    const descSpan = createElement("span", "shortcut-desc");
+    descSpan.textContent = desc;
+    
+    item.appendChild(keySpan);
+    item.appendChild(descSpan);
+    defaultSection.appendChild(item);
+  });
+
+  leftColumn.appendChild(defaultSection);
+  columnsContainer.appendChild(leftColumn);
+
+  // Right column: Custom hotkeys
+  const rightColumn = createElement("div", "shortcuts-column shortcuts-column-right");
+  
+  // Filter hotkeys with actions
+  const activeHotkeys = state.hotkeys.filter(h => h.action);
+  
+  if (activeHotkeys.length > 0) {
+    const customSection = createElement("div", "shortcuts-section");
+    
+    const heading = createElement("h3", "shortcuts-heading");
+    heading.textContent = "Custom Hotkeys";
+    customSection.appendChild(heading);
+
+    activeHotkeys.forEach((hotkey) => {
+      const item = createElement("div", "shortcut-item");
+      
+      // Format hotkey display
+      const keyParts = [...hotkey.modifiers, hotkey.key];
+      const keyDisplay = keyParts.join(" + ");
+      
+      const keySpan = createElement("span", "shortcut-key");
+      keySpan.textContent = keyDisplay;
+      
+      // Format action description
+      let actionDesc = "Unknown action";
+      
+      if (hotkey.action === "next_image") {
+        actionDesc = "Next Image";
+      } else if (hotkey.action === "previous_image") {
+        actionDesc = "Previous Image";
+      } else if (hotkey.action === "delete_image_and_next") {
+        actionDesc = "Delete Image and move to next";
+      } else if (hotkey.action.startsWith("toggle_category_next_")) {
+        const categoryId = hotkey.action.replace("toggle_category_next_", "");
+        const category = state.categories.find((c) => c.id === categoryId);
+        actionDesc = category 
+          ? `Toggle "${category.name}" and move to next`
+          : "Toggle category and move to next";
+      } else if (hotkey.action.startsWith("toggle_category_")) {
+        const categoryId = hotkey.action.replace("toggle_category_", "");
+        const category = state.categories.find((c) => c.id === categoryId);
+        actionDesc = category 
+          ? `Toggle "${category.name}"`
+          : "Toggle category";
+      } else if (hotkey.action.startsWith("assign_category_")) {
+        const categoryId = hotkey.action.replace("assign_category_", "");
+        const category = state.categories.find((c) => c.id === categoryId);
+        actionDesc = category 
+          ? `Assign "${category.name}"`
+          : "Assign category";
+      }
+      
+      const descSpan = createElement("span", "shortcut-desc");
+      descSpan.textContent = actionDesc;
+      
+      item.appendChild(keySpan);
+      item.appendChild(descSpan);
+      customSection.appendChild(item);
+    });
+
+    rightColumn.appendChild(customSection);
+  } else {
+    // Show empty state if no custom hotkeys
+    const emptyState = createElement("div", "shortcuts-empty");
+    emptyState.textContent = "No custom hotkeys";
+    rightColumn.appendChild(emptyState);
+  }
+
+  columnsContainer.appendChild(rightColumn);
+  elements.shortcutsList.appendChild(columnsContainer);
 }
 

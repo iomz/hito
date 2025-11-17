@@ -52,22 +52,24 @@ src/
 │
 ├── utils/
 │   ├── dom.ts                 # DOM utilities (querySelector, createElement)
-│   ├── dialog.ts              # Dialog utility
+│   ├── dialog.ts              # Dialog utilities (file picker, custom confirm modal)
 │   └── images.ts              # Image loading and creation utilities
 │
 ├── ui/
-│   ├── spinner.ts             # Spinner UI functions
-│   ├── error.ts               # Error UI functions
+│   ├── breadcrumb.ts          # Breadcrumb navigation functions
+│   ├── categories.ts          # Category management and UI
 │   ├── dropZone.ts            # Drop zone UI functions
+│   ├── error.ts               # Error UI functions
 │   ├── grid.ts                # Image grid functions
+│   ├── hotkeys.ts             # Hotkey configuration and sidebar
 │   ├── modal.ts               # Modal UI functions
 │   ├── notification.ts        # Notification bar functions
-│   └── breadcrumb.ts          # Breadcrumb navigation functions
+│   └── spinner.ts             # Spinner UI functions
 │
 ├── handlers/
 │   ├── dragDrop.ts            # Drag and drop handlers
-│   ├── modal.ts               # Modal handlers
 │   ├── keyboard.ts            # Keyboard handlers
+│   ├── modal.ts               # Modal handlers
 │   └── permissions.ts         # macOS permissions handler
 │
 └── core/

@@ -536,7 +536,7 @@ button {
   background-color: #1a1a1a;
   border-radius: 12px;
   padding: 30px 40px;
-  max-width: 500px;
+  max-width: 800px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
@@ -547,21 +547,72 @@ button {
   text-align: center;
 }
 
+.shortcuts-columns {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+.shortcuts-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.shortcuts-column-left {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding-right: 40px;
+}
+
+.shortcuts-column-right {
+  padding-left: 40px;
+}
+
+.shortcuts-section {
+  margin-bottom: 20px;
+}
+
+.shortcuts-section:last-child {
+  margin-bottom: 0;
+}
+
+.shortcuts-empty {
+  color: #999;
+  text-align: center;
+  padding: 20px 0;
+  font-size: 0.9em;
+}
+
+.shortcuts-heading {
+  margin: 0 0 12px 0;
+  padding-top: 16px;
+  color: #f1f1f1;
+  font-size: 1em;
+  font-weight: 600;
+  text-align: left;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.shortcuts-section:first-child .shortcuts-heading {
+  border-top: none;
+  padding-top: 0;
+}
+
 .shortcut-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 0;
   border-bottom: 1px solid #333;
+  gap: 16px;
 }
 
-.shortcut-item:last-child {
+.shortcuts-section:last-child .shortcut-item:last-child {
   border-bottom: none;
 }
 
 .shortcut-key {
   background-color: #2a2a2a;
-  color: #f1f1f1;
+  color: #22c55e;
   padding: 6px 12px;
   border-radius: 4px;
   font-family: monospace;
@@ -570,12 +621,39 @@ button {
   text-align: center;
   border: 1px solid #444;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
 
 .shortcut-desc {
   color: #ccc;
   font-size: 0.95em;
-  margin-left: 20px;
+  text-align: right;
+  flex: 1;
+}
+
+/* Responsive: Stack columns on smaller screens */
+@media (max-width: 768px) {
+  .shortcuts-content {
+    max-width: 500px;
+    padding: 20px 30px;
+  }
+
+  .shortcuts-columns {
+    flex-direction: column;
+    gap: 30px;
+  }
+
+  .shortcuts-column-left {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-right: 0;
+    padding-bottom: 30px;
+  }
+
+  .shortcuts-column-right {
+    padding-left: 0;
+    padding-top: 30px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

@@ -1127,6 +1127,162 @@ describe("categories UI and management", () => {
       expect(deleteBtn).toBeTruthy();
       expect(deleteBtn.onclick).toBeTruthy();
     });
+
+    it("should show custom confirmation dialog when delete button is clicked", async () => {
+      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
+
+      const { renderCategoryList } = await import("./categories.js");
+      renderCategoryList();
+
+      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
+
+      // Click delete button
+      deleteBtn.click();
+
+      // Wait for dialog to appear
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Check that confirm dialog was created
+      const confirmDialog = document.querySelector(".confirm-dialog-overlay");
+      expect(confirmDialog).toBeTruthy();
+
+      // Check dialog message
+      const body = document.querySelector(".confirm-dialog-body");
+      expect(body?.textContent).toContain("Are you sure you want to delete this category");
+
+      // Clean up - click cancel
+      const cancelBtn = document.querySelector(".confirm-dialog-cancel") as HTMLButtonElement;
+      cancelBtn?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    it("should not delete category when user cancels confirmation", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ];
+
+      const { renderCategoryList } = await import("./categories.js");
+      renderCategoryList();
+
+      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
+
+      // Click delete button
+      deleteBtn.click();
+
+      // Wait for dialog
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Click cancel
+      const cancelBtn = document.querySelector(".confirm-dialog-cancel") as HTMLButtonElement;
+      cancelBtn.click();
+
+      // Wait for promise to resolve
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Category should still exist
+      expect(state.categories).toHaveLength(2);
+      expect(state.categories[0].id).toBe("cat1");
+    });
+
+    it("should delete category when user confirms", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { renderCategoryList } = await import("./categories.js");
+      renderCategoryList();
+
+      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
+
+      // Click delete button
+      deleteBtn.click();
+
+      // Wait for dialog
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Click confirm
+      const confirmBtn = document.querySelector(".confirm-dialog-confirm") as HTMLButtonElement;
+      confirmBtn.click();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Category should be removed
+      expect(state.categories).toHaveLength(1);
+      expect(state.categories[0].id).toBe("cat2");
+    });
+
+    it("should remove category from all images when deleted", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ];
+      state.imageCategories.set("/img1.jpg", ["cat1", "cat2"]);
+      state.imageCategories.set("/img2.jpg", ["cat1"]);
+      state.imageCategories.set("/img3.jpg", ["cat2"]);
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { renderCategoryList } = await import("./categories.js");
+      renderCategoryList();
+
+      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
+
+      // Click delete button
+      deleteBtn.click();
+
+      // Wait for dialog
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Click confirm
+      const confirmBtn = document.querySelector(".confirm-dialog-confirm") as HTMLButtonElement;
+      confirmBtn.click();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Check image categories
+      expect(state.imageCategories.get("/img1.jpg")).toEqual(["cat2"]);
+      expect(state.imageCategories.has("/img2.jpg")).toBe(false);
+      expect(state.imageCategories.get("/img3.jpg")).toEqual(["cat2"]);
+    });
+
+    it("should clean up hotkeys that reference deleted category", async () => {
+      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+        { id: "h2", key: "B", modifiers: ["Ctrl"], action: "toggle_category_next_cat1" },
+        { id: "h3", key: "C", modifiers: ["Ctrl"], action: "assign_category_cat1" },
+        { id: "h4", key: "D", modifiers: ["Ctrl"], action: "toggle_category_cat2" },
+      ];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { renderCategoryList } = await import("./categories.js");
+      renderCategoryList();
+
+      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
+
+      // Click delete button
+      deleteBtn.click();
+
+      // Wait for dialog
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Click confirm
+      const confirmBtn = document.querySelector(".confirm-dialog-confirm") as HTMLButtonElement;
+      confirmBtn.click();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Check hotkeys - actions for cat1 should be cleared
+      expect(state.hotkeys[0].action).toBe("");
+      expect(state.hotkeys[1].action).toBe("");
+      expect(state.hotkeys[2].action).toBe("");
+      expect(state.hotkeys[3].action).toBe("toggle_category_cat2");
+    });
   });
 
   describe("setupCategories", () => {

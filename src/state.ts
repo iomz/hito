@@ -31,6 +31,7 @@ export const elements = {
   modalCaptionText: null as HTMLElement | null,
   closeBtn: null as HTMLElement | null,
   shortcutsOverlay: null as HTMLElement | null,
+  shortcutsList: null as HTMLElement | null,
   modalPrevBtn: null as HTMLElement | null,
   modalNextBtn: null as HTMLElement | null,
   hotkeySidebar: null as HTMLElement | null,

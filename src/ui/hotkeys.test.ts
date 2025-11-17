@@ -12,6 +12,7 @@ vi.mock("./categories.js", () => ({
 
 vi.mock("./modal.js", () => ({
   showNextImage: vi.fn(),
+  updateShortcutsOverlay: vi.fn(),
 }));
 
 describe("hotkeys", () => {
@@ -564,6 +565,397 @@ describe("hotkeys", () => {
 
       const dialog = document.querySelector(".hotkey-dialog-overlay");
       expect(dialog).not.toBeNull();
+    });
+  });
+
+  describe("deleteHotkey", () => {
+    it("should render delete button for each hotkey", async () => {
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+        { id: "h2", key: "B", modifiers: ["Ctrl"], action: "toggle_category_cat2" },
+      ];
+
+      const { renderHotkeyList } = await import("./hotkeys.js");
+      renderHotkeyList();
+
+      const deleteBtns = elements.hotkeyList?.querySelectorAll(".hotkey-delete-btn");
+      expect(deleteBtns).toHaveLength(2);
+      expect(deleteBtns?.[0]?.textContent).toBe("Delete");
+      expect(deleteBtns?.[1]?.textContent).toBe("Delete");
+    });
+
+    it("should show custom confirmation dialog when delete button is clicked", async () => {
+      state.hotkeys = [{ id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" }];
+
+      const { renderHotkeyList } = await import("./hotkeys.js");
+      renderHotkeyList();
+
+      const deleteBtn = elements.hotkeyList?.querySelector(".hotkey-delete-btn") as HTMLButtonElement;
+
+      // Click delete button
+      deleteBtn.click();
+
+      // Wait for dialog to appear
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Check that confirm dialog was created
+      const confirmDialog = document.querySelector(".confirm-dialog-overlay");
+      expect(confirmDialog).toBeTruthy();
+
+      // Check dialog message
+      const body = document.querySelector(".confirm-dialog-body");
+      expect(body?.textContent).toContain("Are you sure you want to delete this hotkey");
+
+      // Clean up - click cancel
+      const cancelBtn = document.querySelector(".confirm-dialog-cancel") as HTMLButtonElement;
+      cancelBtn?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    it("should not delete hotkey when user cancels confirmation", async () => {
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+        { id: "h2", key: "B", modifiers: ["Ctrl"], action: "toggle_category_cat2" },
+      ];
+
+      const { renderHotkeyList } = await import("./hotkeys.js");
+      renderHotkeyList();
+
+      const deleteBtn = elements.hotkeyList?.querySelector(".hotkey-delete-btn") as HTMLButtonElement;
+
+      // Click delete button
+      deleteBtn.click();
+
+      // Wait for dialog
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Click cancel
+      const cancelBtn = document.querySelector(".confirm-dialog-cancel") as HTMLButtonElement;
+      cancelBtn.click();
+
+      // Wait for promise to resolve
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Hotkey should still exist
+      expect(state.hotkeys).toHaveLength(2);
+      expect(state.hotkeys[0].id).toBe("h1");
+    });
+
+    it("should delete hotkey when user confirms", async () => {
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+        { id: "h2", key: "B", modifiers: ["Ctrl"], action: "toggle_category_cat2" },
+      ];
+
+      const { renderHotkeyList } = await import("./hotkeys.js");
+      renderHotkeyList();
+
+      const deleteBtn = elements.hotkeyList?.querySelector(".hotkey-delete-btn") as HTMLButtonElement;
+
+      // Click delete button
+      deleteBtn.click();
+
+      // Wait for dialog
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Click confirm
+      const confirmBtn = document.querySelector(".confirm-dialog-confirm") as HTMLButtonElement;
+      confirmBtn.click();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Hotkey should be removed
+      expect(state.hotkeys).toHaveLength(1);
+      expect(state.hotkeys[0].id).toBe("h2");
+    });
+  });
+
+  describe("populateActionDropdown", () => {
+    it("should populate dropdown with category toggle actions", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ];
+
+      const { setupHotkeySidebar } = await import("./hotkeys.js");
+      setupHotkeySidebar();
+
+      if (elements.addHotkeyBtn) {
+        elements.addHotkeyBtn.click();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const actionInput = document.querySelector("#hotkey-action-input") as HTMLSelectElement;
+      expect(actionInput).not.toBeNull();
+
+      // Check for toggle category options
+      const toggleOptions = Array.from(actionInput.options).filter(
+        opt => opt.value.startsWith("toggle_category_") && !opt.value.includes("_next_")
+      );
+      expect(toggleOptions).toHaveLength(2);
+      expect(toggleOptions[0].value).toBe("toggle_category_cat1");
+      expect(toggleOptions[0].textContent).toContain("Toggle Category 1");
+      expect(toggleOptions[1].value).toBe("toggle_category_cat2");
+      expect(toggleOptions[1].textContent).toContain("Toggle Category 2");
+
+      // Clean up
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn?.click();
+    });
+
+    it("should populate dropdown with toggle and move to next actions", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+      ];
+
+      const { setupHotkeySidebar } = await import("./hotkeys.js");
+      setupHotkeySidebar();
+
+      if (elements.addHotkeyBtn) {
+        elements.addHotkeyBtn.click();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const actionInput = document.querySelector("#hotkey-action-input") as HTMLSelectElement;
+      expect(actionInput).not.toBeNull();
+
+      // Check for toggle and next options
+      const toggleNextOptions = Array.from(actionInput.options).filter(
+        opt => opt.value.startsWith("toggle_category_next_")
+      );
+      expect(toggleNextOptions).toHaveLength(1);
+      expect(toggleNextOptions[0].value).toBe("toggle_category_next_cat1");
+      expect(toggleNextOptions[0].textContent).toContain("Toggle Category 1 and move to next");
+
+      // Clean up
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn?.click();
+    });
+
+    it("should show message when no categories available", async () => {
+      state.categories = [];
+
+      const { setupHotkeySidebar } = await import("./hotkeys.js");
+      setupHotkeySidebar();
+
+      if (elements.addHotkeyBtn) {
+        elements.addHotkeyBtn.click();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const actionInput = document.querySelector("#hotkey-action-input") as HTMLSelectElement;
+      expect(actionInput).not.toBeNull();
+
+      // Check for "no categories" message
+      const noCategoriesOption = Array.from(actionInput.options).find(
+        opt => opt.textContent?.includes("No categories available")
+      );
+      expect(noCategoriesOption).toBeTruthy();
+      expect(noCategoriesOption?.disabled).toBe(true);
+
+      // Clean up
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn?.click();
+    });
+
+    it("should select existing action when editing hotkey", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+      ];
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+      ];
+
+      const { renderHotkeyList } = await import("./hotkeys.js");
+      renderHotkeyList();
+
+      // Click edit button
+      const editBtn = elements.hotkeyList?.querySelector(".hotkey-edit-btn") as HTMLButtonElement;
+      editBtn.click();
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const actionInput = document.querySelector("#hotkey-action-input") as HTMLSelectElement;
+      expect(actionInput).not.toBeNull();
+      expect(actionInput.value).toBe("toggle_category_cat1");
+
+      // Clean up
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn?.click();
+    });
+
+    it("should show disabled option for missing action", async () => {
+      state.categories = [
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ];
+      state.hotkeys = [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+      ];
+
+      const { renderHotkeyList } = await import("./hotkeys.js");
+      renderHotkeyList();
+
+      // Click edit button
+      const editBtn = elements.hotkeyList?.querySelector(".hotkey-edit-btn") as HTMLButtonElement;
+      editBtn.click();
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const actionInput = document.querySelector("#hotkey-action-input") as HTMLSelectElement;
+      expect(actionInput).not.toBeNull();
+
+      // Check for missing action option
+      const missingOption = Array.from(actionInput.options).find(
+        opt => opt.value === "toggle_category_cat1"
+      );
+      expect(missingOption).toBeTruthy();
+      expect(missingOption?.disabled).toBe(true);
+      expect(missingOption?.textContent).toContain("category not found");
+
+      // Clean up
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn?.click();
+    });
+  });
+
+  describe("hotkey dialog interactions", () => {
+    it("should capture key press in dialog", async () => {
+      const { setupHotkeySidebar } = await import("./hotkeys.js");
+      setupHotkeySidebar();
+
+      if (elements.addHotkeyBtn) {
+        elements.addHotkeyBtn.click();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const keyDisplay = document.querySelector("#hotkey-key-display") as HTMLElement;
+      expect(keyDisplay).not.toBeNull();
+
+      // Simulate key press
+      const keyEvent = new KeyboardEvent("keydown", {
+        key: "K",
+        ctrlKey: true,
+        bubbles: true,
+      });
+
+      keyDisplay.dispatchEvent(keyEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Key should be captured
+      expect(keyDisplay.textContent).toContain("K");
+      expect(keyDisplay.textContent).toContain("Ctrl");
+
+      // Clean up
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn?.click();
+    });
+
+    it("should not capture modifier keys alone", async () => {
+      const { setupHotkeySidebar } = await import("./hotkeys.js");
+      setupHotkeySidebar();
+
+      if (elements.addHotkeyBtn) {
+        elements.addHotkeyBtn.click();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const keyDisplay = document.querySelector("#hotkey-key-display") as HTMLElement;
+
+      // Simulate pressing only Ctrl
+      const keyEvent = new KeyboardEvent("keydown", {
+        key: "Control",
+        ctrlKey: true,
+        bubbles: true,
+      });
+
+      keyDisplay.dispatchEvent(keyEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Should still say "Press keys..."
+      expect(keyDisplay.textContent).toContain("Press keys");
+
+      // Clean up
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn?.click();
+    });
+
+    it("should show error when trying to save without capturing a key", async () => {
+      const { setupHotkeySidebar } = await import("./hotkeys.js");
+      setupHotkeySidebar();
+
+      if (elements.addHotkeyBtn) {
+        elements.addHotkeyBtn.click();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Try to save without capturing a key
+      const saveBtn = document.querySelector(".hotkey-dialog-save") as HTMLButtonElement;
+      saveBtn.click();
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Error message should appear
+      const errorMsg = document.querySelector(".hotkey-error-message") as HTMLElement;
+      expect(errorMsg).not.toBeNull();
+      expect(errorMsg.style.display).not.toBe("none");
+      expect(errorMsg.textContent).toContain("Please capture a key combination");
+
+      // Clean up
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn?.click();
+    });
+
+    it("should close dialog when close button is clicked", async () => {
+      const { setupHotkeySidebar } = await import("./hotkeys.js");
+      setupHotkeySidebar();
+
+      if (elements.addHotkeyBtn) {
+        elements.addHotkeyBtn.click();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const dialog = document.querySelector(".hotkey-dialog-overlay");
+      expect(dialog).not.toBeNull();
+
+      const closeBtn = document.querySelector(".hotkey-dialog-close") as HTMLButtonElement;
+      closeBtn.click();
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Dialog should be removed
+      expect(document.querySelector(".hotkey-dialog-overlay")).toBeNull();
+    });
+
+    it("should close dialog when cancel button is clicked", async () => {
+      const { setupHotkeySidebar } = await import("./hotkeys.js");
+      setupHotkeySidebar();
+
+      if (elements.addHotkeyBtn) {
+        elements.addHotkeyBtn.click();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const dialog = document.querySelector(".hotkey-dialog-overlay");
+      expect(dialog).not.toBeNull();
+
+      const cancelBtn = document.querySelector(".hotkey-dialog-cancel") as HTMLButtonElement;
+      cancelBtn.click();
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Dialog should be removed
+      expect(document.querySelector(".hotkey-dialog-overlay")).toBeNull();
     });
   });
 });
