@@ -12,27 +12,13 @@ export const SIDEBAR_WIDTH = "350px";
 /**
  * Updates the modal image layout to accommodate the sidebar state.
  * 
- * @param isOpen - Whether the sidebar is open. If true, applies sidebar offset;
- *                 if false, resets modal image styles.
+ * NOTE: This function is now a no-op. The sidebar overlays on top of the modal
+ * (z-index 1002 > 1000), so the image position remains centered and unaffected.
+ * 
+ * @param isOpen - Whether the sidebar is open (unused, kept for API compatibility)
  */
 function updateModalForSidebar(isOpen: boolean): void {
-  if (state.currentModalIndex < 0) {
-    return;
-  }
-  
-  // Use querySelector to find modal image (React manages it)
-  const modalImage = document.querySelector("#modal-image") as HTMLImageElement | null;
-  if (!modalImage) {
-    return;
-  }
-  
-  if (isOpen) {
-    modalImage.style.marginLeft = SIDEBAR_WIDTH;
-    modalImage.style.maxWidth = `calc(90% - ${SIDEBAR_WIDTH})`;
-  } else {
-    modalImage.style.marginLeft = "";
-    modalImage.style.maxWidth = "";
-  }
+  // No-op: Sidebar overlays on top, image stays centered
 }
 
 /**
