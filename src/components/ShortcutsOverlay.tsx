@@ -1,33 +1,80 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { state } from "../state";
 import type { HotkeyConfig, Category } from "../types";
+
+// Deep equality check for HotkeyConfig arrays
+function hotkeysEqual(a: HotkeyConfig[], b: HotkeyConfig[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((hotkey, i) => {
+    const other = b[i];
+    return (
+      hotkey.id === other.id &&
+      hotkey.key === other.key &&
+      hotkey.action === other.action &&
+      hotkey.modifiers.length === other.modifiers.length &&
+      hotkey.modifiers.every((mod, j) => mod === other.modifiers[j])
+    );
+  });
+}
+
+// Deep equality check for Category arrays
+function categoriesEqual(a: Category[], b: Category[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((category, i) => {
+    const other = b[i];
+    return (
+      category.id === other.id &&
+      category.name === other.name &&
+      category.color === other.color
+    );
+  });
+}
 
 export function ShortcutsOverlay() {
   const [isVisible, setIsVisible] = useState(false);
   const [hotkeys, setHotkeys] = useState<HotkeyConfig[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  
+  // Use refs to track previous values for deep equality checks
+  const prevIsVisibleRef = useRef<boolean>(false);
+  const prevHotkeysRef = useRef<HotkeyConfig[]>([]);
+  const prevCategoriesRef = useRef<Category[]>([]);
 
-  // Poll for state changes
+  // Subscribe to state changes instead of polling
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Update visibility
-      if (state.shortcutsOverlayVisible !== isVisible) {
-        setIsVisible(state.shortcutsOverlayVisible);
-      }
-      
-      // Update hotkeys
-      if (state.hotkeys !== hotkeys) {
-        setHotkeys([...state.hotkeys]);
-      }
-      
-      // Update categories
-      if (state.categories !== categories) {
-        setCategories([...state.categories]);
-      }
-    }, 100);
+    // Initialize state
+    setIsVisible(state.shortcutsOverlayVisible);
+    setHotkeys([...state.hotkeys]);
+    setCategories([...state.categories]);
+    prevIsVisibleRef.current = state.shortcutsOverlayVisible;
+    prevHotkeysRef.current = [...state.hotkeys];
+    prevCategoriesRef.current = [...state.categories];
     
-    return () => clearInterval(interval);
-  }, [isVisible, hotkeys, categories]);
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
+      // Update visibility only if it actually changed
+      if (state.shortcutsOverlayVisible !== prevIsVisibleRef.current) {
+        setIsVisible(state.shortcutsOverlayVisible);
+        prevIsVisibleRef.current = state.shortcutsOverlayVisible;
+      }
+      
+      // Update hotkeys only if content actually differs
+      if (!hotkeysEqual(state.hotkeys, prevHotkeysRef.current)) {
+        const newHotkeys = [...state.hotkeys];
+        setHotkeys(newHotkeys);
+        prevHotkeysRef.current = newHotkeys;
+      }
+      
+      // Update categories only if content actually differs
+      if (!categoriesEqual(state.categories, prevCategoriesRef.current)) {
+        const newCategories = [...state.categories];
+        setCategories(newCategories);
+        prevCategoriesRef.current = newCategories;
+      }
+    });
+    
+    return unsubscribe;
+  }, []);
 
   if (!isVisible) {
     return null;

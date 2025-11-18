@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { clearImageGrid, removeSentinel, removeImageFromGrid } from './grid';
+import { removeImageFromGrid } from './grid';
 
 describe('grid utilities', () => {
   beforeEach(() => {
@@ -26,64 +26,14 @@ describe('grid utilities', () => {
     }
   });
 
-  describe('clearImageGrid', () => {
-    it('should clear all children from the grid', () => {
-      const imageGrid = document.getElementById('image-grid');
-      if (!imageGrid) return;
-
-      // Add some children
-      const child1 = document.createElement('div');
-      const child2 = document.createElement('div');
-      imageGrid.appendChild(child1);
-      imageGrid.appendChild(child2);
-
-      expect(imageGrid.children.length).toBe(2);
-
-      // Note: clearImageGrid is now a no-op (React manages the grid)
-      // This test verifies it doesn't throw
-      clearImageGrid();
-
-      // Children remain because function is no-op
-      expect(imageGrid.children.length).toBe(2);
-    });
-
-    it('should do nothing if imageGrid is null', () => {
-      const imageGrid = document.getElementById('image-grid');
-      imageGrid?.remove();
-      // Should not throw
-      expect(() => clearImageGrid()).not.toThrow();
-    });
-  });
-
-  describe('removeSentinel', () => {
-    it('should remove sentinel element if it exists', () => {
-      const imageGrid = document.getElementById('image-grid');
-      if (!imageGrid) return;
-
-      const sentinel = document.createElement('div');
-      sentinel.id = 'load-more-sentinel';
-      imageGrid.appendChild(sentinel);
-
-      expect(document.getElementById('load-more-sentinel')).not.toBeNull();
-
-      // Note: removeSentinel is now a no-op (React manages the sentinel)
-      // This test verifies it doesn't throw
-      removeSentinel();
-
-      // Sentinel remains because function is no-op
-      expect(document.getElementById('load-more-sentinel')).not.toBeNull();
-    });
-
-    it('should do nothing if sentinel does not exist', () => {
-      // Should not throw
-      expect(() => removeSentinel()).not.toThrow();
-    });
-  });
+  // Note: clearImageGrid and removeSentinel tests removed - functions no longer exist
+  // React ImageGrid component manages the grid and sentinel
 
   describe('removeImageFromGrid', () => {
     it('should remove image item with matching data-image-path', () => {
       const imageGrid = document.getElementById('image-grid');
-      if (!imageGrid) return;
+      expect(imageGrid).not.toBeNull();
+      if (!imageGrid) return; // Type guard
 
       const imageItem1 = document.createElement('div');
       imageItem1.className = 'image-item';
@@ -105,7 +55,8 @@ describe('grid utilities', () => {
 
     it('should do nothing if no matching image path found', () => {
       const imageGrid = document.getElementById('image-grid');
-      if (!imageGrid) return;
+      expect(imageGrid).not.toBeNull();
+      if (!imageGrid) return; // Type guard
 
       const imageItem = document.createElement('div');
       imageItem.className = 'image-item';

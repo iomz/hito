@@ -24,47 +24,48 @@ export function CurrentImageCategories() {
   const [imageCategories, setImageCategories] = useState<Map<string, string[]>>(new Map());
   const [currentImagePath, setCurrentImagePath] = useState<string>("");
 
-  // Poll for state changes
+  // Subscribe to state changes
   useEffect(() => {
-    const interval = setInterval(() => {
-      const modalIndex = state.currentModalIndex;
-      const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+    // One-time initial sync
+    const modalIndex = state.currentModalIndex;
+    const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+    
+    setCurrentModalIndex(modalIndex);
+    
+    if (modalIndex >= 0 && modalIndex < imagePathsLength) {
+      const imagePath = state.allImagePaths[modalIndex].path;
+      setCurrentImagePath(imagePath);
+    } else {
+      setCurrentImagePath("");
+    }
+    
+    setCategories([...state.categories]);
+    setImageCategories(new Map(state.imageCategories));
+    
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
+      const newModalIndex = state.currentModalIndex;
+      const newImagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
       
       // Update modal index
-      if (modalIndex !== currentModalIndex) {
-        setCurrentModalIndex(modalIndex);
-        
-        if (modalIndex >= 0 && modalIndex < imagePathsLength) {
-          const imagePath = state.allImagePaths[modalIndex].path;
-          setCurrentImagePath(imagePath);
-        } else {
-          setCurrentImagePath("");
-        }
+      setCurrentModalIndex(newModalIndex);
+      
+      if (newModalIndex >= 0 && newModalIndex < newImagePathsLength) {
+        const imagePath = state.allImagePaths[newModalIndex].path;
+        setCurrentImagePath(imagePath);
+      } else {
+        setCurrentImagePath("");
       }
       
       // Update categories
-      if (state.categories !== categories) {
-        setCategories([...state.categories]);
-      }
+      setCategories([...state.categories]);
       
       // Update image categories
-      const imageCategoriesChanged = 
-        imageCategories.size !== state.imageCategories.size ||
-        Array.from(state.imageCategories.entries()).some(
-          ([path, ids]) => {
-            const currentIds = imageCategories.get(path);
-            return !currentIds || currentIds.length !== ids.length || 
-                   !ids.every(id => currentIds.includes(id));
-          }
-        );
-      
-      if (imageCategoriesChanged) {
-        setImageCategories(new Map(state.imageCategories));
-      }
-    }, 100);
+      setImageCategories(new Map(state.imageCategories));
+    });
     
-    return () => clearInterval(interval);
-  }, [currentModalIndex, categories, imageCategories]);
+    return unsubscribe;
+  }, []);
 
   const handleToggleCategory = async (categoryId: string) => {
     if (!currentImagePath) return;

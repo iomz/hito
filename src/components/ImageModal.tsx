@@ -3,7 +3,7 @@ import { state } from "../state";
 import { loadImageData } from "../utils/images";
 import { showError } from "../ui/error";
 import { ensureImagePathsArray, getFilename } from "../utils/state";
-import { updateModalButtons, closeModal, showPreviousImage, showNextImage } from "../ui/modal";
+import { closeModal, showPreviousImage, showNextImage } from "../ui/modal";
 import { ModalCategories } from "./ModalCategories";
 import { ShortcutsOverlay } from "./ShortcutsOverlay";
 import { SIDEBAR_WIDTH } from "../ui/hotkeys";
@@ -17,23 +17,23 @@ export function ImageModal() {
   const [showNextBtn, setShowNextBtn] = useState(false);
   
   const modalImageRef = useRef<HTMLImageElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+  const [isHotkeySidebarOpen, setIsHotkeySidebarOpen] = useState(false);
 
-  // Update modal image layout when sidebar state changes
+  // Subscribe to sidebar state changes
   useEffect(() => {
-    if (!modalImageRef.current) return;
-    
-    if (state.isHotkeySidebarOpen) {
-      modalImageRef.current.style.marginLeft = SIDEBAR_WIDTH;
-      modalImageRef.current.style.maxWidth = `calc(90% - ${SIDEBAR_WIDTH})`;
-    } else {
-      modalImageRef.current.style.marginLeft = "";
-      modalImageRef.current.style.maxWidth = "";
-    }
-  }, [state.isHotkeySidebarOpen, isOpen]);
+    setIsHotkeySidebarOpen(state.isHotkeySidebarOpen);
+    const unsubscribe = state.subscribe(() => {
+      setIsHotkeySidebarOpen(state.isHotkeySidebarOpen);
+    });
+    return unsubscribe;
+  }, []);
 
-  // Poll for modal state changes
+  // Subscribe to modal state changes
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const handleStateChange = async () => {
       const modalIndex = state.currentModalIndex;
       const shouldBeOpen = modalIndex >= 0;
       
@@ -42,12 +42,31 @@ export function ImageModal() {
         setCurrentIndex(modalIndex);
         
         if (shouldBeOpen && modalIndex >= 0) {
+          // Store previously focused element when opening
+          previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
+          
           // Load image data
           if (!ensureImagePathsArray("ImageModal")) {
+            // Clear any stale image state before closing
+            setImageSrc("");
+            setCaption("");
+            setShowPrevBtn(false);
+            setShowNextBtn(false);
+            // Close the modal
+            closeModal();
+            showError("Unable to load image: image list is not available");
             return;
           }
           
           if (modalIndex >= state.allImagePaths.length) {
+            // Clear any stale image state before closing
+            setImageSrc("");
+            setCaption("");
+            setShowPrevBtn(false);
+            setShowNextBtn(false);
+            // Close the modal
+            closeModal();
+            showError(`Image index ${modalIndex} is out of range`);
             return;
           }
           
@@ -75,22 +94,108 @@ export function ImageModal() {
           setShowPrevBtn(modalIndex > 0);
           setShowNextBtn(modalIndex < state.allImagePaths.length - 1);
           
-          // Update modal buttons (for backward compatibility)
-          updateModalButtons();
-          
           // Note: ModalCategories is handled by React component
         } else {
-          // Modal closed
+          // Modal closed - restore focus to previously focused element
+          if (previouslyFocusedElementRef.current) {
+            previouslyFocusedElementRef.current.focus();
+            previouslyFocusedElementRef.current = null;
+          }
+          
           setImageSrc("");
           setCaption("");
           setShowPrevBtn(false);
           setShowNextBtn(false);
         }
       }
-    }, 50); // Poll frequently for responsive UI
+    };
+
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(handleStateChange);
     
-    return () => clearInterval(interval);
+    // Initialize with current state
+    handleStateChange();
+    
+    return unsubscribe;
   }, [isOpen, currentIndex]);
+
+  // Keyboard handling and focus management
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    // Set initial focus to close button
+    setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 0);
+
+    // Get all focusable elements within the modal
+    const getFocusableElements = (): HTMLElement[] => {
+      const selector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+      return Array.from(modal.querySelectorAll<HTMLElement>(selector)).filter(
+        (el) => !el.hasAttribute('disabled') && el.tabIndex >= 0
+      );
+    };
+
+    // Handle keyboard events
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeModal();
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' && showPrevBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        showPreviousImage();
+        return;
+      }
+
+      if (e.key === 'ArrowRight' && showNextBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        showNextImage();
+        return;
+      }
+
+      // Focus trap: handle Tab and Shift+Tab
+      if (e.key === 'Tab') {
+        const focusableElements = getFocusableElements();
+        if (focusableElements.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+        const activeElement = document.activeElement as HTMLElement;
+
+        if (e.shiftKey) {
+          // Shift+Tab: if on first element, wrap to last
+          if (activeElement === firstElement || !modal.contains(activeElement)) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          // Tab: if on last element, wrap to first
+          if (activeElement === lastElement || !modal.contains(activeElement)) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, showPrevBtn, showNextBtn]);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -108,18 +213,29 @@ export function ImageModal() {
 
   return (
     <div
+      ref={modalRef}
       id="image-modal"
       className="modal open"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-caption-text"
+      aria-describedby="modal-caption"
       style={{ display: "flex" }}
       onClick={handleBackdropClick}
     >
-      <span className="close" onClick={handleCloseClick}>
+      <button
+        ref={closeButtonRef}
+        className="close"
+        onClick={handleCloseClick}
+        aria-label="Close image modal"
+      >
         &times;
-      </span>
+      </button>
       <button
         className="modal-nav modal-nav-prev"
         id="modal-prev"
         style={{ display: showPrevBtn ? "block" : "none" }}
+        aria-label="Previous image"
         onClick={(e) => {
           e.stopPropagation();
           showPreviousImage();
@@ -131,6 +247,7 @@ export function ImageModal() {
         className="modal-nav modal-nav-next"
         id="modal-next"
         style={{ display: showNextBtn ? "block" : "none" }}
+        aria-label="Next image"
         onClick={(e) => {
           e.stopPropagation();
           showNextImage();
@@ -144,6 +261,10 @@ export function ImageModal() {
         className="modal-content"
         src={imageSrc}
         alt={caption}
+        style={{
+          marginLeft: isHotkeySidebarOpen ? SIDEBAR_WIDTH : "",
+          maxWidth: isHotkeySidebarOpen ? `calc(90% - ${SIDEBAR_WIDTH})` : "",
+        }}
       />
       <div id="modal-caption" className="modal-caption">
         <span id="modal-caption-text">

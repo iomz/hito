@@ -1,5 +1,5 @@
 import { state } from "../state";
-import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage } from "../ui/modal";
+import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage, hideShortcutsOverlay } from "../ui/modal";
 import { checkAndExecuteHotkey } from "../ui/hotkeys";
 
 /**
@@ -68,7 +68,7 @@ export function setupKeyboardHandlers(): void {
       e.preventDefault();
       // Check state.shortcutsOverlayVisible instead of DOM element display style
       if (state.shortcutsOverlayVisible) {
-        state.shortcutsOverlayVisible = false;
+        toggleShortcutsOverlay();
       } else {
         closeModal();
       }
@@ -92,7 +92,7 @@ export function setupKeyboardHandlers(): void {
     if (state.shortcutsOverlayVisible) {
       const shortcutsOverlay = document.querySelector("#keyboard-shortcuts-overlay") as HTMLElement | null;
       if (shortcutsOverlay && event.target === shortcutsOverlay) {
-        state.shortcutsOverlayVisible = false;
+        hideShortcutsOverlay();
       }
     }
   };

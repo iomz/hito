@@ -33,9 +33,9 @@ export function ImageGrid() {
       setVisibleCount(0);
       setDirCount(0);
     }
-  });
+  }, [state.allImagePaths, visibleCount]);
 
-  // Track mounted state and poll for currentIndex changes
+  // Track mounted state and subscribe to state changes
   useEffect(() => {
     isMountedRef.current = true;
     
@@ -45,7 +45,7 @@ export function ImageGrid() {
     let lastDirPathsLength = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
     let lastVisibleCount = visibleCount;
     
-    // Poll for changes to state that affect what we render
+    // Subscribe to state changes
     const checkForUpdates = () => {
       if (!isMountedRef.current) return;
       
@@ -75,17 +75,17 @@ export function ImageGrid() {
       }
     };
     
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(checkForUpdates);
+    
     // Check immediately on mount
     checkForUpdates();
     
-    // Then poll for future changes
-    const interval = setInterval(checkForUpdates, 50); // Check more frequently
-    
     return () => {
       isMountedRef.current = false;
-      clearInterval(interval);
+      unsubscribe();
     };
-  }, []); // Empty deps - we're polling external state
+  }, []); // Empty deps - we're subscribing to external state
 
   // Setup IntersectionObserver for infinite scroll
   useEffect(() => {
@@ -119,6 +119,7 @@ export function ImageGrid() {
                 
                 if (nextStartIndex < state.allImagePaths.length) {
                   state.currentIndex = nextEndIndex;
+                  state.notify();
                   loadImageBatch(nextStartIndex, nextEndIndex).catch((error) => {
                     console.error("Failed to load image batch:", error);
                   });
@@ -148,7 +149,7 @@ export function ImageGrid() {
         observerRef.current = null;
       }
     };
-  }, [state.allImagePaths?.length]);
+  }, [state.allImagePaths]);
 
   // Get the visible range of images - use visibleCount (React state) not state.currentIndex
   // Ensure visibleCount never exceeds array length to prevent DOM mismatch errors
@@ -173,7 +174,7 @@ export function ImageGrid() {
       ))}
 
       {/* Sentinel for infinite scroll */}
-      {Array.isArray(state.allImagePaths) && state.allImagePaths.length > BATCH_SIZE && (
+      {safeVisibleCount < imagePathsLength && (
         <div
           ref={sentinelRef}
           id="load-more-sentinel"

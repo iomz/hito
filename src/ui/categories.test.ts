@@ -5,9 +5,6 @@ import { state } from "../state";
 const mockInvoke = vi.fn();
 
 // Mock dependencies
-vi.mock("./hotkeys", () => ({
-  renderHotkeyList: vi.fn(),
-}));
 
 vi.mock("../utils/dialog", () => ({
   confirm: vi.fn().mockResolvedValue(true),
@@ -268,11 +265,6 @@ describe("categories config file location", () => {
     it("should load hotkeys from config", async () => {
       state.currentDirectory = "/test/dir";
       
-      // Mock renderHotkeyList to avoid import errors
-      vi.doMock("./hotkeys", () => ({
-        renderHotkeyList: vi.fn(),
-      }));
-
       const mockData = {
         categories: [],
         image_categories: [],
@@ -425,70 +417,6 @@ describe("categories UI and management", () => {
     document.body.innerHTML = "";
   });
 
-  describe("renderCategoryList", () => {
-    it("should return early if categoryList element is missing", async () => {
-      // Note: renderCategoryList is now a no-op (React CategoryList component handles rendering)
-      const { renderCategoryList } = await import("./categories");
-      
-      // Should not throw
-      expect(() => renderCategoryList()).not.toThrow();
-    });
-  });
-
-  describe("renderModalCategories", () => {
-    it("should return early if modalCategories element is missing", async () => {
-      // Note: renderModalCategories is now a no-op (React ModalCategories component handles rendering)
-      const { renderModalCategories } = await import("./categories");
-      
-      // Should not throw
-      expect(() => renderModalCategories()).not.toThrow();
-    });
-
-    it("should return early if currentModalIndex is invalid", async () => {
-      // Note: renderModalCategories is now a no-op (React ModalCategories component handles rendering)
-      state.currentModalIndex = -1;
-      state.allImagePaths = [];
-
-      const { renderModalCategories } = await import("./categories");
-      
-      // Should not throw
-      expect(() => renderModalCategories()).not.toThrow();
-    });
-
-    it("should return early if no categories assigned to current image", async () => {
-      // Note: renderModalCategories is now a no-op (React ModalCategories component handles rendering)
-      state.currentModalIndex = 0;
-      state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
-      state.imageCategories.clear();
-
-      const { renderModalCategories } = await import("./categories");
-      
-      // Should not throw
-      expect(() => renderModalCategories()).not.toThrow();
-    });
-  });
-
-  describe("renderCurrentImageCategories", () => {
-    it("should return early if currentImageCategories element is missing", async () => {
-      // Note: renderCurrentImageCategories is now a no-op (React CurrentImageCategories component handles rendering)
-      const { renderCurrentImageCategories } = await import("./categories");
-      
-      // Should not throw
-      expect(() => renderCurrentImageCategories()).not.toThrow();
-    });
-
-    it("should return early if currentModalIndex is invalid", async () => {
-      // Note: renderCurrentImageCategories is now a no-op (React CurrentImageCategories component handles rendering)
-      state.currentModalIndex = -1;
-      state.allImagePaths = [];
-
-      const { renderCurrentImageCategories } = await import("./categories");
-      
-      // Should not throw
-      expect(() => renderCurrentImageCategories()).not.toThrow();
-    });
-  });
 
   describe("toggleImageCategory", () => {
     it("should add category when not present", async () => {
@@ -677,7 +605,7 @@ describe("categories UI and management", () => {
 
   describe("setupCategories", () => {
     it("should handle missing addCategoryBtn gracefully", async () => {
-      // Note: setupCategories calls renderCategoryList (no-op) and sets up button handler
+      // Note: setupCategories removed - React components handle this
       // React CategoryDialog component handles dialog visibility
       const { setupCategories } = await import("./categories");
       await setupCategories();

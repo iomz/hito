@@ -6,6 +6,12 @@ function getContrastColor(hexColor: string): string {
   // Remove # if present
   const hex = hexColor.replace("#", "");
 
+  // Validate hex format
+  if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
+    console.warn(`Invalid hex color: ${hexColor}`);
+    return "#000000"; // Default to black
+  }
+
   // Convert to RGB
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
@@ -14,8 +20,8 @@ function getContrastColor(hexColor: string): string {
   // Calculate luminance
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-  // Return black for light colors, white for dark colors
-  return luminance > 0.5 ? "#000000" : "#ffffff";
+  // Return black for light colors, white for dark colors (threshold adjusted for WCAG AA)
+  return luminance > 0.6 ? "#000000" : "#ffffff";
 }
 
 export function ModalCategories() {
@@ -24,47 +30,48 @@ export function ModalCategories() {
   const [imageCategories, setImageCategories] = useState<Map<string, string[]>>(new Map());
   const [currentImagePath, setCurrentImagePath] = useState<string>("");
 
-  // Poll for state changes
+  // Subscribe to state changes
   useEffect(() => {
-    const interval = setInterval(() => {
-      const modalIndex = state.currentModalIndex;
-      const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+    // One-time initial sync
+    const modalIndex = state.currentModalIndex;
+    const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+    
+    setCurrentModalIndex(modalIndex);
+    
+    if (modalIndex >= 0 && modalIndex < imagePathsLength) {
+      const imagePath = state.allImagePaths[modalIndex].path;
+      setCurrentImagePath(imagePath);
+    } else {
+      setCurrentImagePath("");
+    }
+    
+    setCategories([...state.categories]);
+    setImageCategories(new Map(state.imageCategories));
+    
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
+      const newModalIndex = state.currentModalIndex;
+      const newImagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
       
       // Update modal index
-      if (modalIndex !== currentModalIndex) {
-        setCurrentModalIndex(modalIndex);
-        
-        if (modalIndex >= 0 && modalIndex < imagePathsLength) {
-          const imagePath = state.allImagePaths[modalIndex].path;
-          setCurrentImagePath(imagePath);
-        } else {
-          setCurrentImagePath("");
-        }
+      setCurrentModalIndex(newModalIndex);
+      
+      if (newModalIndex >= 0 && newModalIndex < newImagePathsLength) {
+        const imagePath = state.allImagePaths[newModalIndex].path;
+        setCurrentImagePath(imagePath);
+      } else {
+        setCurrentImagePath("");
       }
       
       // Update categories
-      if (state.categories !== categories) {
-        setCategories([...state.categories]);
-      }
+      setCategories([...state.categories]);
       
       // Update image categories
-      const imageCategoriesChanged = 
-        imageCategories.size !== state.imageCategories.size ||
-        Array.from(state.imageCategories.entries()).some(
-          ([path, ids]) => {
-            const currentIds = imageCategories.get(path);
-            return !currentIds || currentIds.length !== ids.length || 
-                   !ids.every(id => currentIds.includes(id));
-          }
-        );
-      
-      if (imageCategoriesChanged) {
-        setImageCategories(new Map(state.imageCategories));
-      }
-    }, 100);
+      setImageCategories(new Map(state.imageCategories));
+    });
     
-    return () => clearInterval(interval);
-  }, [currentModalIndex, categories, imageCategories]);
+    return unsubscribe;
+  }, []);
 
   // Don't render if modal is not open or no categories assigned
   if (currentModalIndex < 0 || !currentImagePath) {

@@ -7,28 +7,38 @@ interface DirectoryItemProps {
 
 export function DirectoryItem({ path }: DirectoryItemProps) {
   // Extract directory name from path
-  const normalized = path.replace(/\\/g, "/");
+  const normalized = path.replace(/\\/g, "/").replace(/\/$/, "");
   const dirName = normalized.split("/").pop() || path;
 
   const handleClick = () => {
     handleFolder(path);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
-    <div
-      className="image-item directory-item"
-      data-directory-path={path}
-      onClick={handleClick}
-      style={{
-        cursor: "pointer",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#f0f0f0",
-        borderRadius: "8px",
-      }}
-    >
+      <div
+        className="image-item directory-item"
+        data-directory-path={path}
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        style={{
+          cursor: "pointer",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f0f0f0",
+          borderRadius: "8px",
+        }}
+      >
       <div style={{ color: "#22c55e", marginBottom: "8px" }}>
         <svg
           width="64"

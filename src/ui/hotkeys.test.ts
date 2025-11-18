@@ -5,14 +5,11 @@ import type { HotkeyConfig } from "../types";
 // Mock dependencies
 vi.mock("./categories", () => ({
   saveHitoConfig: vi.fn().mockResolvedValue(undefined),
-  renderCurrentImageCategories: vi.fn(),
-  renderCategoryList: vi.fn(),
   toggleCategoryForCurrentImage: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./modal", () => ({
   showNextImage: vi.fn(),
-  updateShortcutsOverlay: vi.fn(),
 }));
 
 vi.mock("../utils/dialog", () => ({
@@ -108,8 +105,8 @@ describe("hotkeys", () => {
       expect(state.isHotkeySidebarOpen).toBe(true);
     });
 
-    it("should return early if sidebar element is missing", async () => {
-      // Note: toggleHotkeySidebar no longer checks for sidebar element
+    it("should handle missing sidebar element gracefully", async () => {
+      // Note: toggleHotkeySidebar checks for sidebar element and returns early if missing
       const { toggleHotkeySidebar } = await import("./hotkeys");
       await expect(toggleHotkeySidebar()).resolves.not.toThrow();
     });
@@ -143,20 +140,15 @@ describe("hotkeys", () => {
       expect(modalImage?.style.maxWidth).toBe("");
     });
 
-    it("should return early if sidebar element is missing", async () => {
-      // Note: closeHotkeySidebar no longer checks for sidebar element
+    it("should handle missing sidebar element gracefully", async () => {
+      // Note: closeHotkeySidebar checks for sidebar element and returns early if missing
       const { closeHotkeySidebar } = await import("./hotkeys");
       expect(() => closeHotkeySidebar()).not.toThrow();
     });
   });
 
-  describe("renderHotkeyList", () => {
-    it("should return early if hotkeyList element is missing", async () => {
-      // Note: renderHotkeyList is now a no-op (React HotkeyList component handles rendering)
-      const { renderHotkeyList } = await import("./hotkeys");
-      expect(() => renderHotkeyList()).not.toThrow();
-    });
-  });
+  // Note: renderHotkeyList tests removed - function no longer exists
+  // React HotkeyList component handles rendering
 
   describe("checkAndExecuteHotkey", () => {
     beforeEach(() => {

@@ -43,7 +43,7 @@ export function hideNotification(): void {
   notifyListeners();
 }
 
-export function NotificationBar() {
+export function NotificationBar(): React.JSX.Element {
   const [message, setMessage] = useState("");
   const [isVisible, setIsVisible] = useState(false);
 
@@ -67,6 +67,9 @@ export function NotificationBar() {
     <div
       id="notification-bar"
       className={`notification-bar ${isVisible ? "show" : ""}`}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
       {message}
     </div>

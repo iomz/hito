@@ -22,18 +22,8 @@ vi.mock("../ui/spinner", () => ({
   hideSpinner: vi.fn(),
 }));
 
-vi.mock("../ui/grid", () => ({
-  clearImageGrid: vi.fn(),
-  removeSentinel: vi.fn(),
-}));
-
-vi.mock("../ui/dropZone", () => ({
-  collapseDropZone: vi.fn(),
-}));
-
 vi.mock("../core/observer", () => ({
   cleanupObserver: vi.fn(),
-  setupIntersectionObserver: vi.fn(),
 }));
 
 vi.mock("../ui/notification", () => ({
@@ -46,11 +36,6 @@ vi.mock("../handlers/dragDrop", () => ({
 
 vi.mock("../ui/categories", () => ({
   loadHitoConfig: vi.fn().mockResolvedValue(undefined),
-  renderCategoryList: vi.fn(),
-}));
-
-vi.mock("../ui/hotkeys", () => ({
-  renderHotkeyList: vi.fn(),
 }));
 
 vi.mock("../utils/tauri", () => ({
@@ -292,7 +277,7 @@ describe("browse", () => {
 
       await browseImages("/test/path");
 
-      expect(state.currentIndex).toBeGreaterThanOrEqual(0); // Set based on images
+      expect(state.currentIndex).toBe(0); // Checks empty-list default behavior: currentIndex is reset to 0 when directories and images are empty
       expect(state.isLoadingBatch).toBe(false);
       expect(state.currentModalIndex).toBe(-1);
     });

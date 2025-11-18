@@ -1,18 +1,14 @@
 import { state } from "./state";
 import { querySelector } from "./utils/dom";
 import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop";
-import { setupModalHandlers } from "./handlers/modal";
 import { setupKeyboardHandlers } from "./handlers/keyboard";
-// Note: setupHotkeySidebar, setupCategories, updateShortcutsOverlay removed - React components handle this now
-import { clearImageGrid } from "./ui/grid";
-// Note: expandDropZone import removed - React handles this now
+// Note: setupHotkeySidebar, setupCategories, updateShortcutsOverlay, setupModalHandlers removed - React components handle this now
 import { clearError } from "./ui/error";
 import { hideSpinner } from "./ui/spinner";
 import { closeModal } from "./ui/modal";
 import { cleanupObserver } from "./core/observer";
 
 export async function resetToHome(): Promise<void> {
-  clearImageGrid();
   // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   clearError();
   hideSpinner();
@@ -37,9 +33,9 @@ export async function resetToHome(): Promise<void> {
   state.categories = [];
   state.imageCategories.clear();
   state.hotkeys = [];
+  state.notify();
   
-  // Reset config file path input
-  const configFilePathInput = document.querySelector("#config-file-path-input") as HTMLInputElement | null;
+  const configFilePathInput = document.querySelector("#config-file-path") as HTMLInputElement | null;
   if (configFilePathInput) {
     configFilePathInput.value = "";
     configFilePathInput.placeholder = ".hito.json";
@@ -78,7 +74,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupDocumentDragHandlers();
   setupDragDropHandlers();
   setupHTML5DragDrop();
-  setupModalHandlers();
   setupKeyboardHandlers();
   // Note: HotkeySidebar React component handles its own event handlers now
   // Note: Categories setup handled by HotkeySidebar React component
