@@ -13,7 +13,7 @@ import { closeModal, updateShortcutsOverlay } from "./ui/modal.js";
 import { cleanupObserver } from "./core/observer.js";
 import { initializeElements } from "./utils/elements.js";
 
-async function resetToHome(): Promise<void> {
+export async function resetToHome(): Promise<void> {
   clearImageGrid();
   expandDropZone();
   clearError();
