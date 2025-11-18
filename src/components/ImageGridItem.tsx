@@ -1,0 +1,115 @@
+import React, { useState, useEffect } from "react";
+import { loadImageData } from "../utils/images";
+import { openModal } from "../ui/modal";
+import { state } from "../state";
+
+interface ImageGridItemProps {
+  imagePath: string;
+}
+
+export function ImageGridItem({ imagePath }: ImageGridItemProps) {
+  const [imageData, setImageData] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    if (!imagePath || typeof imagePath !== "string") {
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadImage = async () => {
+      try {
+        const dataUrl = await loadImageData(imagePath);
+        if (!cancelled) {
+          setImageData(dataUrl);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error(`Failed to load image: ${imagePath}`, error);
+          setHasError(true);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadImage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imagePath]);
+
+  const handleClick = () => {
+    // Find the index of this image in the state
+    const index = state.allImagePaths.findIndex((img) => img.path === imagePath);
+    if (index >= 0) {
+      openModal(index);
+    }
+  };
+
+  return (
+    <div
+      className="image-item"
+      data-image-path={imagePath}
+      onClick={handleClick}
+      style={{
+        backgroundColor: isLoading ? "#f0f0f0" : "",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: hasError ? "default" : "pointer",
+      }}
+    >
+      {isLoading && (
+        <div className="placeholder" style={{ width: "60px", height: "60px", opacity: 0.6 }}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="60"
+            height="60"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+        </div>
+      )}
+
+      {!isLoading && !hasError && imageData && (
+        <img src={imageData} alt={imagePath} loading="lazy" />
+      )}
+
+      {hasError && (
+        <div className="error-placeholder" style={{ color: "#ef4444", textAlign: "center", padding: "10px" }}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="40"
+            height="40"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <p style={{ fontSize: "0.75em", marginTop: "4px" }}>Failed to load</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
