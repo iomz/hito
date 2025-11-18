@@ -12,7 +12,7 @@ describe("notification", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     // Render NotificationBar component
-    render(React.createElement(NotificationBar), { container });
+    render(<NotificationBar />, { container });
   });
 
   afterEach(() => {

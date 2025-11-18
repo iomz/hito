@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { showSpinner, hideSpinner } from "./spinner";
 import { state } from "../state";
 
@@ -8,14 +8,8 @@ describe("spinner", () => {
     state.isLoading = false;
   });
 
-  afterEach(() => {
-    // Clean up state
-    state.isLoading = false;
-  });
-
   describe("showSpinner", () => {
     it("should set isLoading state to true", () => {
-      state.isLoading = false;
       showSpinner();
       expect(state.isLoading).toBe(true);
     });

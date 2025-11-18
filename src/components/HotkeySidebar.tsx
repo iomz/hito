@@ -14,6 +14,11 @@ export function HotkeySidebar() {
   const [currentDirectory, setCurrentDirectory] = useState("");
 
   useEffect(() => {
+    // Sync initial state
+    setIsOpen(state.isHotkeySidebarOpen);
+    setCurrentDirectory(state.currentDirectory);
+    
+    // Subscribe to future changes
     const unsubscribe = state.subscribe(() => {
       setIsOpen(state.isHotkeySidebarOpen);
       setCurrentDirectory(state.currentDirectory);

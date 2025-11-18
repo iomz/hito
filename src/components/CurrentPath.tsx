@@ -18,7 +18,7 @@ export function CurrentPath() {
       setIsVisible(state.currentDirectory.length > 0);
     });
     return unsubscribe;
-  }, [state]);
+  }, []);
 
   if (!isVisible || !currentDirectory) {
     return (

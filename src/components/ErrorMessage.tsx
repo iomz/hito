@@ -1,29 +1,27 @@
-import React, { useEffect, useRef, useState } from "react";
-import { ERROR_MESSAGE_EVENT } from "../ui/error";
+import React, { useEffect, useState } from "react";
+import { state } from "../state";
 
 export function ErrorMessage() {
-  const [errorText, setErrorText] = useState("");
-  const errorRef = useRef<HTMLParagraphElement>(null);
+  const [errorText, setErrorText] = useState(state.errorMessage);
 
   useEffect(() => {
-    const errorElement = errorRef.current;
-    if (!errorElement) return;
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
+      setErrorText(state.errorMessage);
+    });
 
-    // Listen for custom event dispatched by vanilla JS error functions
-    const handleErrorUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ message: string }>;
-      setErrorText(customEvent.detail.message);
-    };
+    // Initialize with current state
+    setErrorText(state.errorMessage);
 
-    errorElement.addEventListener(ERROR_MESSAGE_EVENT, handleErrorUpdate);
-
-    return () => {
-      errorElement.removeEventListener(ERROR_MESSAGE_EVENT, handleErrorUpdate);
-    };
+    return unsubscribe;
   }, []);
 
+  if (!errorText) {
+    return null;
+  }
+
   return (
-    <p ref={errorRef} id="error-msg" className="error" role="alert" aria-live="polite">
+    <p id="error-msg" className="error" role="alert" aria-live="polite">
       {errorText}
     </p>
   );

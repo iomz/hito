@@ -414,7 +414,6 @@ describe("categories UI and management", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
-    document.body.innerHTML = "";
   });
 
 
@@ -600,18 +599,6 @@ describe("categories UI and management", () => {
       expect(state.imageCategories.get("/img1.jpg")).toEqual(["cat2"]);
       expect(state.imageCategories.has("/img2.jpg")).toBe(false);
       expect(state.imageCategories.get("/img3.jpg")).toEqual(["cat2"]);
-    });
-  });
-
-  describe("setupCategories", () => {
-    it("should handle missing addCategoryBtn gracefully", async () => {
-      // Note: setupCategories removed - React components handle this
-      // React CategoryDialog component handles dialog visibility
-      const { setupCategories } = await import("./categories");
-      await setupCategories();
-
-      // Should not throw
-      expect(() => setupCategories()).not.toThrow();
     });
   });
 

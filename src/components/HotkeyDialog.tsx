@@ -18,6 +18,7 @@ export function HotkeyDialog() {
   const keyDisplayRef = useRef<HTMLDivElement>(null);
   const actionSelectRef = useRef<HTMLSelectElement>(null);
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const rafRefs = useRef<number[]>([]);
 
   // Subscribe to state changes for visibility and hotkey
   useEffect(() => {
@@ -38,9 +39,11 @@ export function HotkeyDialog() {
 
   // Initialize or reset state when visibility or hotkey changes
   useEffect(() => {
-    // Clear any pending timeouts
+    // Clear any pending timeouts and animation frames
     timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
     timeoutRefs.current = [];
+    rafRefs.current.forEach(rafId => cancelAnimationFrame(rafId));
+    rafRefs.current = [];
     
     if (isVisible) {
       // Dialog opening
@@ -60,21 +63,27 @@ export function HotkeyDialog() {
       setShowError(false);
       setIsCapturing(false);
       
-      // Populate action dropdown after a short delay to ensure DOM is ready
-      const timeout1 = setTimeout(() => {
-        if (actionSelectRef.current) {
-          populateActionDropdown(actionSelectRef.current, hotkey?.action);
-        }
-      }, 0);
-      timeoutRefs.current.push(timeout1);
+      // Populate action dropdown - check if ref is available immediately, otherwise use requestAnimationFrame
+      if (actionSelectRef.current) {
+        populateActionDropdown(actionSelectRef.current, hotkey?.action);
+      } else {
+        const rafId = requestAnimationFrame(() => {
+          if (actionSelectRef.current) {
+            populateActionDropdown(actionSelectRef.current, hotkey?.action);
+          }
+        });
+        rafRefs.current.push(rafId);
+      }
       
-      // Auto-start capture for new hotkeys
+      // Auto-start capture for new hotkeys using requestAnimationFrame for predictable timing
       if (!hotkey) {
-        const timeout2 = setTimeout(() => {
-          keyDisplayRef.current?.focus();
-          setIsCapturing(true);
-        }, 100);
-        timeoutRefs.current.push(timeout2);
+        const rafId = requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            keyDisplayRef.current?.focus();
+            setIsCapturing(true);
+          });
+        });
+        rafRefs.current.push(rafId);
       }
     } else {
       // Dialog closing
@@ -87,9 +96,11 @@ export function HotkeyDialog() {
     }
     
     return () => {
-      // Cleanup timeouts on unmount or dependency change
+      // Cleanup timeouts and animation frames on unmount or dependency change
       timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
       timeoutRefs.current = [];
+      rafRefs.current.forEach(rafId => cancelAnimationFrame(rafId));
+      rafRefs.current = [];
     };
   }, [isVisible, editingHotkey]);
 

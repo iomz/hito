@@ -106,19 +106,15 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
  * Blocks the browser's default handling of `dragover` and `drop` when the event target is not contained within the drop zone, preventing unintended navigations or file openings.
  */
 export function setupDocumentDragHandlers(): void {
-  document.addEventListener("dragover", (e) => {
+  const preventDefaultOutsideDropZone = (e: DragEvent) => {
     const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
     if (!dropZone?.contains(e.target as Node)) {
       e.preventDefault();
     }
-  });
+  };
   
-  document.addEventListener("drop", (e) => {
-    const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
-    if (!dropZone?.contains(e.target as Node)) {
-      e.preventDefault();
-    }
-  });
+  document.addEventListener("dragover", preventDefaultOutsideDropZone);
+  document.addEventListener("drop", preventDefaultOutsideDropZone);
 }
 
 /**
@@ -156,6 +152,8 @@ export function setupDragDropHandlers(): void {
  * 
  * NOTE: This is now a no-op. The React DropZone component handles all HTML5 drag & drop events
  * (onDragEnter, onDragOver, onDragLeave, onDrop) and manages the drag-over state.
+ * 
+ * @deprecated React DropZone component now handles all HTML5 drag & drop events. This function will be removed in a future version.
  */
 export function setupHTML5DragDrop(): void {
   // No-op: React DropZone component handles all HTML5 drag & drop events
