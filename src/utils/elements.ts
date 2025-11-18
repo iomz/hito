@@ -1,5 +1,5 @@
 import { elements } from "../state";
-import { querySelector } from "./dom.js";
+import { querySelector } from "./dom";
 
 /**
  * Element selector configuration for initialization.

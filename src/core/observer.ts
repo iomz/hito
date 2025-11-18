@@ -1,8 +1,8 @@
 import { state, elements } from "../state";
-import { BATCH_SIZE } from "../constants.js";
-import { createElement } from "../utils/dom.js";
+import { BATCH_SIZE } from "../constants";
+import { createElement } from "../utils/dom";
 import { removeSentinel } from "../ui/grid";
-import { loadImageBatch } from "./browse.js";
+import { loadImageBatch } from "./browse";
 
 /**
  * Removes the load-more sentinel from the DOM and disconnects any active IntersectionObserver.

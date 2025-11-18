@@ -1,18 +1,18 @@
 import { state } from "../state";
-import { BATCH_SIZE } from "../constants.js";
-import type { ImagePath, DirectoryContents } from "../types.js";
-import { createElement } from "../utils/dom.js";
-import { loadImageData, createImageElement, createPlaceholder, createErrorPlaceholder } from "../utils/images.js";
-import { showSpinner, hideSpinner } from "../ui/spinner.js";
-import { showError, clearError } from "../ui/error.js";
+import { BATCH_SIZE } from "../constants";
+import type { ImagePath, DirectoryContents } from "../types";
+import { createElement } from "../utils/dom";
+import { loadImageData, createImageElement, createPlaceholder, createErrorPlaceholder } from "../utils/images";
+import { showSpinner, hideSpinner } from "../ui/spinner";
+import { showError, clearError } from "../ui/error";
 import { clearImageGrid, removeSentinel } from "../ui/grid";
-import { collapseDropZone } from "../ui/dropZone.js";
-import { cleanupObserver, setupIntersectionObserver } from "./observer.js";
-import { showNotification } from "../ui/notification.js";
-import { handleFolder } from "../handlers/dragDrop.js";
+// Note: collapseDropZone import removed - React handles this now
+import { cleanupObserver, setupIntersectionObserver } from "./observer";
+import { showNotification } from "../ui/notification";
+import { handleFolder } from "../handlers/dragDrop";
 import { loadHitoConfig } from "../ui/categories";
 import { ensureImagePathsArray } from "../utils/state";
-import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 
 export async function loadImageBatch(startIndex: number, endIndex: number): Promise<void> {
   if (!ensureImagePathsArray("loadImageBatch")) {
@@ -34,7 +34,6 @@ export async function loadImageBatch(startIndex: number, endIndex: number): Prom
 }
 
 export async function browseImages(path: string): Promise<void> {
-  console.log('[browseImages] START - path:', path);
   // React manages imageGrid now, so don't require it
   const errorMsg = document.querySelector("#error-msg") as HTMLElement | null;
   const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
@@ -46,11 +45,10 @@ export async function browseImages(path: string): Promise<void> {
     return;
   }
   
-  console.log('[browseImages] Elements OK, proceeding...');
   clearError();
   clearImageGrid();
   showSpinner();
-  collapseDropZone();
+  // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   cleanupObserver();
   
   // Reset state
@@ -74,16 +72,10 @@ export async function browseImages(path: string): Promise<void> {
   }
   
   try {
-    console.log('[browseImages] Checking Tauri invoke availability...');
     if (!isTauriInvokeAvailable()) {
       throw new Error("Tauri invoke API not available");
     }
-    console.log('[browseImages] Invoking list_images for path:', path);
     const contents = await invokeTauri<DirectoryContents>("list_images", { path });
-    console.log('[browseImages] Received contents:', {
-      directoriesCount: contents.directories?.length || 0,
-      imagesCount: contents.images?.length || 0
-    });
     
     // Store directories and images - ensure they are arrays
     const directories = Array.isArray(contents.directories) ? contents.directories : [];
@@ -99,13 +91,6 @@ export async function browseImages(path: string): Promise<void> {
     // This ensures ImageGrid sees the correct index when it mounts
     const firstBatchEnd = Math.min(BATCH_SIZE, images.length);
     state.currentIndex = images.length > 0 ? firstBatchEnd : 0;
-    
-    console.log('[browseImages] Setting state:', {
-      currentIndex: state.currentIndex,
-      imagesLength: images.length,
-      directoriesLength: directories.length,
-      firstBatchEnd
-    });
     
     // Now update the arrays - this will trigger ImageGrid to mount
     state.allDirectoryPaths = directories;
@@ -127,7 +112,6 @@ export async function browseImages(path: string): Promise<void> {
     }
     
     // Hide spinner after everything is loaded
-    console.log('[browseImages] SUCCESS - hiding spinner');
     hideSpinner();
   } catch (error) {
     console.error('[browseImages] ERROR:', error);

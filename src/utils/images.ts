@@ -1,8 +1,8 @@
 import { state } from "../state";
-import { createElement } from "./dom.js";
-import { openModal } from "../ui/modal.js";
+import { createElement } from "./dom";
+import { openModal } from "../ui/modal";
 import { ensureImagePathsArray, getFilename } from "./state";
-import { invokeTauri } from "./tauri.js";
+import { invokeTauri } from "./tauri";
 
 /**
  * Load an image from disk, return its data URL, and cache it in the module's image cache.

@@ -1,5 +1,5 @@
 import { state } from "../state";
-import type { ImagePath } from "../types.js";
+import type { ImagePath } from "../types";
 
 /**
  * Ensures state.allImagePaths is a valid array, resetting it if necessary.
