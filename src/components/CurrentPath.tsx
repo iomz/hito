@@ -1,27 +1,21 @@
-import React, { useEffect, useState } from "react";
-import { state } from "../state";
+import React, { useEffect, useRef } from "react";
+import { elements } from "../state";
 
 export function CurrentPath() {
-  const [currentPath, setCurrentPath] = useState("");
+  const pathRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Poll for changes to state.currentDirectory
-    const interval = setInterval(() => {
-      if (state.currentDirectory !== currentPath) {
-        setCurrentPath(state.currentDirectory);
-      }
-    }, 100);
+    // Bridge React breadcrumb container to vanilla JS state
+    if (pathRef.current) {
+      (elements as any).currentPath = pathRef.current;
+      console.log("[CurrentPath] Element reference stored in elements.currentPath");
+    }
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [currentPath]);
-
-  // Don't render if no path
-  if (!currentPath) {
-    return <div id="current-path" className="current-path" style={{ display: "none" }}></div>;
-  }
-
+  // Render once and let vanilla JS populate it
+  // Do NOT re-render or it will clear the breadcrumbs
   return (
-    <div id="current-path" className="current-path">
+    <div ref={pathRef} id="current-path" className="current-path" style={{ display: "none" }}>
       {/* Breadcrumb navigation will be added by vanilla JS */}
     </div>
   );

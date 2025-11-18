@@ -1,8 +1,19 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import { elements } from "../state";
 
 export function DropZone() {
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Bridge React drop zone to vanilla JS state
+    if (dropZoneRef.current) {
+      (elements as any).dropZone = dropZoneRef.current;
+      console.log("[DropZone] Element reference stored in elements.dropZone");
+    }
+  }, []);
+
   return (
-    <div id="drop-zone" className="drop-zone">
+    <div ref={dropZoneRef} id="drop-zone" className="drop-zone">
       <div className="drop-zone-content">
         <svg
           className="drop-icon"

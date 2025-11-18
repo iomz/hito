@@ -1,6 +1,6 @@
-import { elements } from "../state.js";
-import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage } from "../ui/modal.js";
-import { checkAndExecuteHotkey } from "../ui/hotkeys.js";
+import { elements } from "../state";
+import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage } from "../ui/modal";
+import { checkAndExecuteHotkey } from "../ui/hotkeys";
 
 /**
  * Install global keyboard and click handlers to manage modal navigation, closing, and the shortcuts overlay.

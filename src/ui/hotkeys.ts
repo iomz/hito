@@ -1,7 +1,7 @@
-import { state, elements } from "../state.js";
+import { state, elements } from "../state";
 import { createElement } from "../utils/dom.js";
 import type { HotkeyConfig } from "../types.js";
-import { saveHitoConfig } from "./categories.js";
+import { saveHitoConfig } from "./categories";
 import { confirm } from "../utils/dialog.js";
 import { updateShortcutsOverlay } from "./modal.js";
 
@@ -43,7 +43,7 @@ export async function toggleHotkeySidebar(): Promise<void> {
     updateModalForSidebar(true);
     renderHotkeyList();
     // Refresh categories display
-    const { renderCurrentImageCategories, renderCategoryList } = await import("./categories.js");
+    const { renderCurrentImageCategories, renderCategoryList } = await import("./categories");
     renderCategoryList();
     if (state.currentModalIndex >= 0) {
       renderCurrentImageCategories();
@@ -505,19 +505,19 @@ export async function executeHotkeyAction(action: string): Promise<void> {
   
   // Handle navigation actions
   if (action === "next_image") {
-    const { showNextImage } = await import("./modal.js");
+    const { showNextImage } = await import("./modal");
     showNextImage();
     return;
   }
   
   if (action === "previous_image") {
-    const { showPreviousImage } = await import("./modal.js");
+    const { showPreviousImage } = await import("./modal");
     showPreviousImage();
     return;
   }
   
   if (action === "delete_image_and_next") {
-    const { deleteCurrentImage } = await import("./modal.js");
+    const { deleteCurrentImage } = await import("./modal");
     await deleteCurrentImage();
     return;
   }
@@ -534,12 +534,12 @@ export async function executeHotkeyAction(action: string): Promise<void> {
       categoryId = action.replace("assign_category_", "");
     }
     
-    const { toggleCategoryForCurrentImage } = await import("./categories.js");
+    const { toggleCategoryForCurrentImage } = await import("./categories");
     await toggleCategoryForCurrentImage(categoryId);
     
     // Move to next image only if action is "toggle_category_next_"
     if (action.startsWith("toggle_category_next_")) {
-      const { showNextImage } = await import("./modal.js");
+      const { showNextImage } = await import("./modal");
       showNextImage();
     }
     return;

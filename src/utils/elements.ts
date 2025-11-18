@@ -1,4 +1,4 @@
-import { elements } from "../state.js";
+import { elements } from "../state";
 import { querySelector } from "./dom.js";
 
 /**
