@@ -1,23 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
-import { elements } from "../state";
+import React, { useEffect, useState } from "react";
 
 export function ErrorMessage() {
   const [errorText, setErrorText] = useState("");
-  const errorRef = useRef<HTMLParagraphElement>(null);
-
-  useEffect(() => {
-    // Bridge React error element to vanilla JS state
-    if (errorRef.current) {
-      (elements as any).errorMsg = errorRef.current;
-      console.log("[ErrorMessage] Element reference stored in elements.errorMsg");
-    }
-  }, []);
 
   useEffect(() => {
     // Poll for changes to error message (written by vanilla JS)
     const interval = setInterval(() => {
-      if (elements.errorMsg) {
-        const currentText = elements.errorMsg.textContent || "";
+      const errorMsg = document.querySelector("#error-msg") as HTMLElement | null;
+      if (errorMsg) {
+        const currentText = errorMsg.textContent || "";
         if (currentText !== errorText) {
           setErrorText(currentText);
         }
@@ -28,7 +19,7 @@ export function ErrorMessage() {
   }, [errorText]);
 
   return (
-    <p ref={errorRef} id="error-msg" className="error">
+    <p id="error-msg" className="error">
       {errorText}
     </p>
   );

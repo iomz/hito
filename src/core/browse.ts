@@ -1,4 +1,4 @@
-import { state, elements } from "../state";
+import { state } from "../state";
 import { BATCH_SIZE } from "../constants.js";
 import type { ImagePath, DirectoryContents } from "../types.js";
 import { createElement } from "../utils/dom.js";
@@ -36,10 +36,12 @@ export async function loadImageBatch(startIndex: number, endIndex: number): Prom
 export async function browseImages(path: string): Promise<void> {
   console.log('[browseImages] START - path:', path);
   // React manages imageGrid now, so don't require it
-  if (!elements.errorMsg || !elements.loadingSpinner) {
+  const errorMsg = document.querySelector("#error-msg") as HTMLElement | null;
+  const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
+  if (!errorMsg || !loadingSpinner) {
     console.error('[browseImages] Missing elements:', {
-      errorMsg: !!elements.errorMsg,
-      loadingSpinner: !!elements.loadingSpinner
+      errorMsg: !!errorMsg,
+      loadingSpinner: !!loadingSpinner
     });
     return;
   }
@@ -64,9 +66,10 @@ export async function browseImages(path: string): Promise<void> {
   state.hotkeys = [];
   
   // Reset config file path to default when browsing new directory
-  if (elements.configFilePathInput) {
-    elements.configFilePathInput.value = "";
-    elements.configFilePathInput.placeholder = ".hito.json";
+  const configFilePathInput = document.querySelector("#config-file-path-input") as HTMLInputElement | null;
+  if (configFilePathInput) {
+    configFilePathInput.value = "";
+    configFilePathInput.placeholder = ".hito.json";
     state.configFilePath = "";
   }
   
@@ -118,8 +121,9 @@ export async function browseImages(path: string): Promise<void> {
     renderHotkeyList();
     
     // Show sidebar toggle button when browsing a directory
-    if (elements.hotkeySidebarToggle) {
-      elements.hotkeySidebarToggle.style.display = "flex";
+    const hotkeySidebarToggle = document.querySelector("#hotkey-sidebar-toggle") as HTMLElement | null;
+    if (hotkeySidebarToggle) {
+      hotkeySidebarToggle.style.display = "flex";
     }
     
     // Hide spinner after everything is loaded

@@ -1,13 +1,12 @@
-import { elements } from "../state";
-
 /**
  * Displays an error message in the designated error UI element.
  *
  * @param message - The error text to show to the user
  */
 export function showError(message: string): void {
-  if (elements.errorMsg) {
-    elements.errorMsg.textContent = message;
+  const errorMsg = document.querySelector("#error-msg") as HTMLElement | null;
+  if (errorMsg) {
+    errorMsg.textContent = message;
   }
 }
 
@@ -17,8 +16,9 @@ export function showError(message: string): void {
  * Removes the text content of the configured error message element if it exists.
  */
 export function clearError(): void {
-  if (elements.errorMsg) {
-    elements.errorMsg.textContent = "";
+  const errorMsg = document.querySelector("#error-msg") as HTMLElement | null;
+  if (errorMsg) {
+    errorMsg.textContent = "";
   }
 }
 

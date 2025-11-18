@@ -1,14 +1,13 @@
-import { elements } from "../state";
-
 /**
  * Make the loading spinner visible.
  *
  * If the spinner element is not available in the DOM, this is a no-op.
  */
 export function showSpinner(): void {
-  if (!elements.loadingSpinner) return;
-  elements.loadingSpinner.style.display = "flex";
-  void elements.loadingSpinner.offsetHeight; // Force reflow
+  const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
+  if (!loadingSpinner) return;
+  loadingSpinner.style.display = "flex";
+  void loadingSpinner.offsetHeight; // Force reflow
 }
 
 /**
@@ -17,8 +16,9 @@ export function showSpinner(): void {
  * Does nothing when the spinner element is not available.
  */
 export function hideSpinner(): void {
-  if (elements.loadingSpinner) {
-    elements.loadingSpinner.style.display = "none";
+  const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
+  if (loadingSpinner) {
+    loadingSpinner.style.display = "none";
   }
 }
 

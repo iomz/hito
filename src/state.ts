@@ -16,7 +16,12 @@ export const state = {
   imageCategories: new Map<string, string[]>(), // image path -> category IDs
   currentDirectory: "", // Current directory being viewed
   configFilePath: "", // Custom config file path (empty = default to currentDirectory/.hito.json)
-  resetCounter: 0 // Incremented on reset to force ImageGrid remount
+  resetCounter: 0, // Incremented on reset to force ImageGrid remount
+  shortcutsOverlayVisible: false, // Whether the keyboard shortcuts overlay is visible
+  categoryDialogVisible: false, // Whether the category dialog is visible
+  categoryDialogCategory: undefined as Category | undefined, // Category being edited (undefined = new category)
+  hotkeyDialogVisible: false, // Whether the hotkey dialog is visible
+  hotkeyDialogHotkey: undefined as HotkeyConfig | undefined // Hotkey being edited (undefined = new hotkey)
 };
 
 // DOM Elements
@@ -44,6 +49,7 @@ export const elements = {
   addCategoryBtn: null as HTMLElement | null,
   currentImageCategories: null as HTMLElement | null,
   modalCategories: null as HTMLElement | null,
-  configFilePathInput: null as HTMLInputElement | null
+  configFilePathInput: null as HTMLInputElement | null,
+  notificationBar: null as HTMLElement | null
 };
 

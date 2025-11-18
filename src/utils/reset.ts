@@ -1,4 +1,4 @@
-import { elements, state } from "../state";
+import { state } from "../state";
 import { clearImageGrid } from "../ui/grid";
 import { expandDropZone } from "../ui/dropZone.js";
 import { clearError } from "../ui/error.js";
@@ -44,20 +44,23 @@ export async function resetToHome(): Promise<void> {
   expandDropZone();
   
   // Clear current path
-  if (elements.currentPath) {
-    elements.currentPath.innerHTML = "";
-    elements.currentPath.style.display = "none";
+  const currentPath = document.querySelector("#current-path") as HTMLElement | null;
+  if (currentPath) {
+    currentPath.innerHTML = "";
+    currentPath.style.display = "none";
   }
   
   // Reset config file path input
-  if (elements.configFilePathInput) {
-    elements.configFilePathInput.value = "";
-    elements.configFilePathInput.placeholder = ".hito.json";
+  const configFilePathInput = document.querySelector("#config-file-path-input") as HTMLInputElement | null;
+  if (configFilePathInput) {
+    configFilePathInput.value = "";
+    configFilePathInput.placeholder = ".hito.json";
   }
   
   // Hide sidebar toggle button on home screen
-  if (elements.hotkeySidebarToggle) {
-    elements.hotkeySidebarToggle.style.display = "none";
+  const hotkeySidebarToggle = document.querySelector("#hotkey-sidebar-toggle") as HTMLElement | null;
+  if (hotkeySidebarToggle) {
+    hotkeySidebarToggle.style.display = "none";
   }
 
   console.log("[resetToHome] DONE");

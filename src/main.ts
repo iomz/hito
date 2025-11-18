@@ -1,4 +1,4 @@
-import { elements, state } from "./state";
+import { state } from "./state";
 import { querySelector } from "./utils/dom.js";
 import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop.js";
 import { setupModalHandlers } from "./handlers/modal.js";
@@ -11,7 +11,6 @@ import { clearError } from "./ui/error.js";
 import { hideSpinner } from "./ui/spinner.js";
 import { closeModal, updateShortcutsOverlay } from "./ui/modal";
 import { cleanupObserver } from "./core/observer.js";
-import { initializeElements } from "./utils/elements.js";
 
 export async function resetToHome(): Promise<void> {
   clearImageGrid();
@@ -22,9 +21,10 @@ export async function resetToHome(): Promise<void> {
   cleanupObserver();
   
   // Clear current path
-  if (elements.currentPath) {
-    elements.currentPath.innerHTML = "";
-    elements.currentPath.style.display = "none";
+  const currentPath = document.querySelector("#current-path") as HTMLElement | null;
+  if (currentPath) {
+    currentPath.innerHTML = "";
+    currentPath.style.display = "none";
   }
   
   // Reset state
@@ -40,30 +40,33 @@ export async function resetToHome(): Promise<void> {
   state.hotkeys = [];
   
   // Reset config file path input
-  if (elements.configFilePathInput) {
-    elements.configFilePathInput.value = "";
-    elements.configFilePathInput.placeholder = ".hito.json";
+  const configFilePathInput = document.querySelector("#config-file-path-input") as HTMLInputElement | null;
+  if (configFilePathInput) {
+    configFilePathInput.value = "";
+    configFilePathInput.placeholder = ".hito.json";
   }
   
   // Close and hide sidebar on home screen
   const { closeHotkeySidebar } = await import("./ui/hotkeys");
   closeHotkeySidebar();
   
-  if (elements.hotkeySidebarToggle) {
-    elements.hotkeySidebarToggle.style.display = "none";
+  const hotkeySidebarToggle = document.querySelector("#hotkey-sidebar-toggle") as HTMLElement | null;
+  if (hotkeySidebarToggle) {
+    hotkeySidebarToggle.style.display = "none";
   }
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-  initializeElements();
-  
-  if (!elements.dropZone) {
+  // Note: This is the legacy entry point. React App.tsx is the main entry point now.
+  const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
+  if (!dropZone) {
     return;
   }
   
   // Hide sidebar toggle button initially (home screen)
-  if (elements.hotkeySidebarToggle) {
-    elements.hotkeySidebarToggle.style.display = "none";
+  const hotkeySidebarToggle = document.querySelector("#hotkey-sidebar-toggle") as HTMLElement | null;
+  if (hotkeySidebarToggle) {
+    hotkeySidebarToggle.style.display = "none";
   }
   
   // Add click handler to h1 to reset to home screen
@@ -113,9 +116,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
   
   // Setup config file path input
-  if (elements.configFilePathInput) {
-    elements.configFilePathInput.placeholder = ".hito.json";
-    elements.configFilePathInput.addEventListener("input", (e) => {
+  const configFilePathInput = document.querySelector("#config-file-path-input") as HTMLInputElement | null;
+  if (configFilePathInput) {
+    configFilePathInput.placeholder = ".hito.json";
+    configFilePathInput.addEventListener("input", (e: Event) => {
       const target = e.target as HTMLInputElement;
       state.configFilePath = target.value.trim();
     });

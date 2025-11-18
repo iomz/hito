@@ -20,8 +20,7 @@ export async function openModal(imageIndex: number): Promise<void> {
     return;
   }
   
-  if (imageIndex < 0 || imageIndex >= state.allImagePaths.length || 
-      !elements.modalImage || !elements.modalCaption || !elements.modal) {
+  if (imageIndex < 0 || imageIndex >= state.allImagePaths.length) {
     return;
   }
   
@@ -29,12 +28,15 @@ export async function openModal(imageIndex: number): Promise<void> {
   state.currentModalIndex = imageIndex;
   const imagePath = state.allImagePaths[imageIndex].path;
   
+  // Pre-load image data if not already loaded (React component will use it)
   let dataUrl = state.loadedImages.get(imagePath);
   if (!dataUrl) {
     try {
       dataUrl = await loadImageData(imagePath);
     } catch (error) {
       showError(`Error loading image: ${error}`);
+      // Reset modal index on error
+      state.currentModalIndex = -1;
       return;
     }
   }
@@ -44,37 +46,22 @@ export async function openModal(imageIndex: number): Promise<void> {
     return;
   }
   
-  elements.modalImage.src = dataUrl;
-  if (elements.modalCaptionText) {
-    elements.modalCaptionText.textContent = 
-      `${imageIndex + 1} / ${state.allImagePaths.length} - ${getFilename(imagePath)}`;
-  }
-  elements.modal.style.display = "flex";
-  elements.modal.classList.add("open");
+  // Hide shortcuts overlay if visible
+  state.shortcutsOverlayVisible = false;
   
-  if (elements.shortcutsOverlay) {
-    elements.shortcutsOverlay.style.display = "none";
-  }
-  
-  // Update current image categories display
-  renderCurrentImageCategories();
-  renderModalCategories();
-  
-  updateModalButtons();
+  // Note: React ImageModal component handles rendering based on state.currentModalIndex
+  // Category displays will be updated by React component's polling
 }
 
 /**
  * Hide the image viewer modal and the keyboard shortcuts overlay if present.
  */
 export function closeModal(): void {
-  if (elements.modal) {
-    elements.modal.style.display = "none";
-    elements.modal.classList.remove("open");
-  }
-  if (elements.shortcutsOverlay) {
-    elements.shortcutsOverlay.style.display = "none";
-  }
+  // Reset modal index - React ImageModal component will detect and hide
   state.currentModalIndex = -1;
+  
+  // Hide shortcuts overlay if visible
+  state.shortcutsOverlayVisible = false;
 }
 
 /**
@@ -107,31 +94,21 @@ export function showPreviousImage(): void {
 /**
  * Update visibility of the modal's previous/next navigation buttons based on the current image index.
  *
- * Shows the previous button when the modal is not at the first image and shows the next button when the modal is not at the last image; hides each button otherwise.
+ * NOTE: With React managing the modal, this is now a no-op.
+ * The React ImageModal component handles button visibility based on state changes.
  */
 export function updateModalButtons(): void {
-  if (!elements.modalPrevBtn || !elements.modalNextBtn) return;
-  
-  if (!Array.isArray(state.allImagePaths)) {
-    elements.modalPrevBtn.style.display = "none";
-    elements.modalNextBtn.style.display = "none";
-    return;
-  }
-  
-  elements.modalPrevBtn.style.display = state.currentModalIndex > 0 ? "block" : "none";
-  elements.modalNextBtn.style.display = 
-    state.currentModalIndex < state.allImagePaths.length - 1 ? "block" : "none";
+  // No-op: React ImageModal component handles button visibility
 }
 
 /**
  * Toggle the keyboard shortcuts overlay between visible and hidden.
  *
- * If the overlay element is not present this function does nothing; otherwise it hides the overlay when shown and shows it when hidden.
+ * NOTE: With React managing the overlay, this now toggles state.shortcutsOverlayVisible.
+ * The React ShortcutsOverlay component handles rendering based on this state.
  */
 export function toggleShortcutsOverlay(): void {
-  if (!elements.shortcutsOverlay) return;
-  const isVisible = elements.shortcutsOverlay.style.display === "flex";
-  elements.shortcutsOverlay.style.display = isVisible ? "none" : "flex";
+  state.shortcutsOverlayVisible = !state.shortcutsOverlayVisible;
 }
 
 /**
@@ -211,118 +188,11 @@ export async function deleteCurrentImage(): Promise<void> {
 
 /**
  * Update the keyboard shortcuts overlay with default shortcuts and user-configured hotkeys.
- * Shows default modal navigation shortcuts on the left, custom category hotkeys on the right.
+ * 
+ * NOTE: With React managing the overlay, this is now a no-op.
+ * The React ShortcutsOverlay component handles rendering based on state changes.
  */
 export function updateShortcutsOverlay(): void {
-  if (!elements.shortcutsList) return;
-
-  elements.shortcutsList.innerHTML = "";
-
-  // Create 2-column container
-  const columnsContainer = createElement("div", "shortcuts-columns");
-
-  // Left column: Default shortcuts
-  const leftColumn = createElement("div", "shortcuts-column shortcuts-column-left");
-  const defaultSection = createElement("div", "shortcuts-section");
-  
-  const heading = createElement("h3", "shortcuts-heading");
-  heading.textContent = "Default Shortcuts";
-  defaultSection.appendChild(heading);
-  
-  const defaultShortcuts = [
-    { key: "←", desc: "Previous image" },
-    { key: "→", desc: "Next image" },
-    { key: "Esc", desc: "Close modal" },
-    { key: "?", desc: "Show/hide this help" },
-    { key: "Delete", desc: "Delete image and move to next" },
-  ];
-
-  defaultShortcuts.forEach(({ key, desc }) => {
-    const item = createElement("div", "shortcut-item");
-    
-    const keySpan = createElement("span", "shortcut-key");
-    keySpan.textContent = key;
-    
-    const descSpan = createElement("span", "shortcut-desc");
-    descSpan.textContent = desc;
-    
-    item.appendChild(keySpan);
-    item.appendChild(descSpan);
-    defaultSection.appendChild(item);
-  });
-
-  leftColumn.appendChild(defaultSection);
-  columnsContainer.appendChild(leftColumn);
-
-  // Right column: Custom hotkeys
-  const rightColumn = createElement("div", "shortcuts-column shortcuts-column-right");
-  
-  // Filter hotkeys with actions
-  const activeHotkeys = state.hotkeys.filter(h => h.action);
-  
-  if (activeHotkeys.length > 0) {
-    const customSection = createElement("div", "shortcuts-section");
-    
-    const heading = createElement("h3", "shortcuts-heading");
-    heading.textContent = "Custom Hotkeys";
-    customSection.appendChild(heading);
-
-    activeHotkeys.forEach((hotkey) => {
-      const item = createElement("div", "shortcut-item");
-      
-      // Format hotkey display
-      const keyParts = [...hotkey.modifiers, hotkey.key];
-      const keyDisplay = keyParts.join(" + ");
-      
-      const keySpan = createElement("span", "shortcut-key");
-      keySpan.textContent = keyDisplay;
-      
-      // Format action description
-      let actionDesc = "Unknown action";
-      
-      if (hotkey.action === "next_image") {
-        actionDesc = "Next Image";
-      } else if (hotkey.action === "previous_image") {
-        actionDesc = "Previous Image";
-      } else if (hotkey.action === "delete_image_and_next") {
-        actionDesc = "Delete Image and move to next";
-      } else if (hotkey.action.startsWith("toggle_category_next_")) {
-        const categoryId = hotkey.action.replace("toggle_category_next_", "");
-        const category = state.categories.find((c) => c.id === categoryId);
-        actionDesc = category 
-          ? `Toggle "${category.name}" and move to next`
-          : "Toggle category and move to next";
-      } else if (hotkey.action.startsWith("toggle_category_")) {
-        const categoryId = hotkey.action.replace("toggle_category_", "");
-        const category = state.categories.find((c) => c.id === categoryId);
-        actionDesc = category 
-          ? `Toggle "${category.name}"`
-          : "Toggle category";
-      } else if (hotkey.action.startsWith("assign_category_")) {
-        const categoryId = hotkey.action.replace("assign_category_", "");
-        const category = state.categories.find((c) => c.id === categoryId);
-        actionDesc = category 
-          ? `Assign "${category.name}"`
-          : "Assign category";
-      }
-      
-      const descSpan = createElement("span", "shortcut-desc");
-      descSpan.textContent = actionDesc;
-      
-      item.appendChild(keySpan);
-      item.appendChild(descSpan);
-      customSection.appendChild(item);
-    });
-
-    rightColumn.appendChild(customSection);
-  } else {
-    // Show empty state if no custom hotkeys
-    const emptyState = createElement("div", "shortcuts-empty");
-    emptyState.textContent = "No custom hotkeys";
-    rightColumn.appendChild(emptyState);
-  }
-
-  columnsContainer.appendChild(rightColumn);
-  elements.shortcutsList.appendChild(columnsContainer);
+  // No-op: React ShortcutsOverlay component handles rendering
 }
 

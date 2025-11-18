@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { initializeElements } from "./utils/elements";
 import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop";
 import { setupModalHandlers } from "./handlers/modal";
 import { setupKeyboardHandlers } from "./handlers/keyboard";
 import { setupHotkeySidebar } from "./ui/hotkeys";
 import { setupCategories } from "./ui/categories";
 import { updateShortcutsOverlay } from "./ui/modal";
-import { elements, state } from "./state";
+import { state } from "./state";
 import { DropZone } from "./components/DropZone";
 import { CurrentPath } from "./components/CurrentPath";
 import { ErrorMessage } from "./components/ErrorMessage";
 import { LoadingSpinner } from "./components/LoadingSpinner";
 import { ImageGrid } from "./components/ImageGrid";
+import { NotificationBar } from "./components/NotificationBar";
+import { CategoryList } from "./components/CategoryList";
+import { HotkeyList } from "./components/HotkeyList";
+import { ImageModal } from "./components/ImageModal";
+import { CurrentImageCategories } from "./components/CurrentImageCategories";
+import { CategoryDialog } from "./components/CategoryDialog";
+import { HotkeyDialog } from "./components/HotkeyDialog";
 
 function App() {
   console.log('[App] Component rendering...');
@@ -34,17 +40,10 @@ function App() {
 
   useEffect(() => {
     console.log('[App] useEffect - initializing...');
-    // Initialize DOM element references first!
-    initializeElements();
-    console.log('[App] Elements initialized:', {
-      dropZone: !!elements.dropZone,
-      errorMsg: !!elements.errorMsg,
-      loadingSpinner: !!elements.loadingSpinner,
-      currentPath: !!elements.currentPath
-    });
     // Hide sidebar toggle button initially (home screen)
-    if (elements.hotkeySidebarToggle) {
-      elements.hotkeySidebarToggle.style.display = "none";
+    const hotkeySidebarToggle = document.querySelector("#hotkey-sidebar-toggle") as HTMLElement | null;
+    if (hotkeySidebarToggle) {
+      hotkeySidebarToggle.style.display = "none";
     }
     
     // Setup all event handlers after DOM is ready
@@ -108,9 +107,10 @@ function App() {
     }
     
     // Setup config file path input
-    if (elements.configFilePathInput) {
-      elements.configFilePathInput.placeholder = ".hito.json";
-      elements.configFilePathInput.addEventListener("input", (e) => {
+    const configFilePathInput = document.querySelector("#config-file-path-input") as HTMLInputElement | null;
+    if (configFilePathInput) {
+      configFilePathInput.placeholder = ".hito.json";
+      configFilePathInput.addEventListener("input", (e: Event) => {
         const target = e.target as HTMLInputElement;
         state.configFilePath = target.value.trim();
       });
@@ -119,7 +119,7 @@ function App() {
 
   return (
     <>
-      <div id="notification-bar" className="notification-bar"></div>
+      <NotificationBar />
       <button id="hotkey-sidebar-toggle" className="hotkey-sidebar-toggle" aria-label="Toggle configuration sidebar">
         <span className="hamburger-icon">
           <span></span>
@@ -157,12 +157,12 @@ function App() {
                 <h4>Image Categories</h4>
                 <button id="add-category-btn" className="add-category-btn">+ Add</button>
               </div>
-              <div id="category-list" className="category-list"></div>
-              <div id="current-image-categories" className="current-image-categories"></div>
+              <CategoryList />
+              <CurrentImageCategories />
             </div>
             
             <div id="hotkeys-panel" className="sidebar-panel">
-              <div id="hotkey-list" className="hotkey-list"></div>
+              <HotkeyList />
               <button id="add-hotkey-btn" className="add-hotkey-btn">+ Add Hotkey</button>
             </div>
             
@@ -179,22 +179,9 @@ function App() {
           </div>
         </div>
 
-        <div id="image-modal" className="modal">
-          <span className="close">&times;</span>
-          <button className="modal-nav modal-nav-prev" id="modal-prev">&#10094;</button>
-          <button className="modal-nav modal-nav-next" id="modal-next">&#10095;</button>
-          <img id="modal-image" className="modal-content" />
-          <div id="modal-caption" className="modal-caption">
-            <span id="modal-caption-text"></span>
-            <span id="modal-categories" className="modal-categories"></span>
-          </div>
-          <div id="keyboard-shortcuts-overlay" className="keyboard-shortcuts-overlay">
-            <div className="shortcuts-content">
-              <h2>Keyboard Shortcuts</h2>
-              <div id="shortcuts-list"></div>
-            </div>
-          </div>
-        </div>
+        <ImageModal />
+        <CategoryDialog />
+        <HotkeyDialog />
       </main>
     </>
   );
