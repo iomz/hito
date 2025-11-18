@@ -67,7 +67,6 @@ export function closeModal(): void {
   
   // Hide shortcuts overlay if visible
   hideShortcutsOverlay();
-  state.notify();
 }
 
 /**

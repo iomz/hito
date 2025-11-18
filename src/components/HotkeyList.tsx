@@ -13,35 +13,22 @@ export function HotkeyList() {
   const hotkeysRef = useRef<HotkeyConfig[]>([]);
 
   useEffect(() => {
-    hotkeysRef.current = hotkeys;
-  }, [hotkeys]);
+    // Initialize with current state before subscribing
+    const currentHotkeys = Array.isArray(state.hotkeys) ? state.hotkeys : [];
+    hotkeysRef.current = [...currentHotkeys];
+    setHotkeys([...currentHotkeys]);
 
-  useEffect(() => {
     // Subscribe to state changes
     const unsubscribe = state.subscribe(() => {
       const currentHotkeys = Array.isArray(state.hotkeys) ? state.hotkeys : [];
       const prevHotkeys = hotkeysRef.current;
 
-      // Check if hotkeys changed
-      if (
-        currentHotkeys.length !== prevHotkeys.length ||
-        currentHotkeys.some(
-          (hotkey, idx) =>
-            !prevHotkeys[idx] ||
-            hotkey.id !== prevHotkeys[idx].id ||
-            hotkey.key !== prevHotkeys[idx].key ||
-            hotkey.modifiers.length !== prevHotkeys[idx].modifiers.length ||
-            !hotkey.modifiers.every((mod, i) => mod === prevHotkeys[idx].modifiers[i]) ||
-            hotkey.action !== prevHotkeys[idx].action
-        )
-      ) {
+      // Deep equality check using JSON.stringify (objects have deterministic key order)
+      if (JSON.stringify(currentHotkeys) !== JSON.stringify(prevHotkeys)) {
+        hotkeysRef.current = [...currentHotkeys];
         setHotkeys([...currentHotkeys]);
       }
     });
-
-    // Initialize with current state
-    const currentHotkeys = Array.isArray(state.hotkeys) ? state.hotkeys : [];
-    setHotkeys([...currentHotkeys]);
 
     return unsubscribe;
   }, []);
@@ -54,14 +41,6 @@ export function HotkeyList() {
   const handleDelete = async (hotkeyId: string) => {
     const { deleteHotkey } = await import("../ui/hotkeys");
     await deleteHotkey(hotkeyId);
-    
-    // Trigger re-render after deletion with type-safety check
-    if (Array.isArray(state.hotkeys)) {
-      setHotkeys([...state.hotkeys]);
-    } else {
-      // Fallback to previous hotkeys if state.hotkeys is not an array
-      setHotkeys(hotkeys);
-    }
   };
 
   if (hotkeys.length === 0) {

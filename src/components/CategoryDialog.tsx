@@ -55,13 +55,19 @@ export function CategoryDialog() {
   const [showError, setShowError] = useState(false);
   
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const isVisibleRef = useRef(isVisible);
+
+  // Update ref when isVisible changes
+  useEffect(() => {
+    isVisibleRef.current = isVisible;
+  }, [isVisible]);
 
   // Subscribe to dialog state changes instead of polling
   useEffect(() => {
     const updateDialogState = () => {
       const newVisible = state.categoryDialogVisible;
       
-      if (newVisible !== isVisible) {
+      if (newVisible !== isVisibleRef.current) {
         setIsVisible(newVisible);
         
         if (newVisible) {
@@ -94,7 +100,7 @@ export function CategoryDialog() {
     const unsubscribe = state.subscribe(updateDialogState);
     
     return unsubscribe;
-  }, [isVisible]);
+  }, []);
 
   // Check for duplicate name as user types
   useEffect(() => {
@@ -158,7 +164,6 @@ export function CategoryDialog() {
       state.categories.push(newCategory);
     }
     
-    state.notify();
     await saveHitoConfig();
     // Note: CategoryList component handles rendering via subscription
     

@@ -75,9 +75,7 @@ export function CategoryList() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleDelete(category.id).catch((error) => {
-                    console.error("Failed to delete category:", error);
-                  });
+                  handleDelete(category.id);
                 }}
               >
                 Delete

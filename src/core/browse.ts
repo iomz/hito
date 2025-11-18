@@ -1,13 +1,10 @@
 import { state } from "../state";
 import { BATCH_SIZE } from "../constants";
-import type { ImagePath, DirectoryContents } from "../types";
-import { createElement } from "../utils/dom";
-import { loadImageData, createImageElement, createPlaceholder, createErrorPlaceholder } from "../utils/images";
-import { showSpinner, hideSpinner } from "../ui/spinner";
-import { showError, clearError } from "../ui/error";
+import type { DirectoryContents } from "../types";
 import { cleanupObserver } from "./observer";
 import { showNotification } from "../ui/notification";
-import { handleFolder } from "../handlers/dragDrop";
+import { showError, clearError } from "../ui/error";
+import { hideSpinner } from "../ui/spinner";
 import { loadHitoConfig } from "../ui/categories";
 import { ensureImagePathsArray } from "../utils/state";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
@@ -48,8 +45,9 @@ export async function loadImageBatch(startIndex: number, endIndex: number): Prom
 
 export async function browseImages(path: string): Promise<void> {
   // React manages imageGrid and spinner now, so don't require DOM elements
+  // Clear any previous error and show loading spinner via state
   clearError();
-  showSpinner();
+  state.isLoading = true;
   // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   cleanupObserver();
   
@@ -64,15 +62,11 @@ export async function browseImages(path: string): Promise<void> {
   state.categories = [];
   state.imageCategories.clear();
   state.hotkeys = [];
-  state.notify();
   
   // Reset config file path to default when browsing new directory
-  const configFilePathInput = document.querySelector("#config-file-path-input") as HTMLInputElement | null;
-  if (configFilePathInput) {
-    configFilePathInput.value = "";
-    configFilePathInput.placeholder = ".hito.json";
-    state.configFilePath = "";
-  }
+  state.configFilePath = "";
+  
+  state.notify();
   
   try {
     if (!isTauriInvokeAvailable()) {
@@ -86,7 +80,8 @@ export async function browseImages(path: string): Promise<void> {
     
     if (images.length === 0 && directories.length === 0) {
       showNotification("No images or directories found in this directory.");
-      hideSpinner();
+      state.isLoading = false;
+      state.notify();
       return;
     }
     
@@ -103,16 +98,16 @@ export async function browseImages(path: string): Promise<void> {
     // Load categories and hotkeys for this directory
     await loadHitoConfig();
     
-    // Show sidebar toggle button when browsing a directory
-    const hotkeySidebarToggle = document.querySelector("#hotkey-sidebar-toggle") as HTMLElement | null;
-    if (hotkeySidebarToggle) {
-      hotkeySidebarToggle.style.display = "flex";
-    }
+    // Note: HotkeySidebar React component handles visibility based on state.currentDirectory
+    // No need to manually show/hide the sidebar toggle button
     
     // Hide spinner after everything is loaded
-    hideSpinner();
+    state.isLoading = false;
+    state.notify();
   } catch (error) {
     console.error('[browseImages] ERROR:', error);
+    state.isLoading = false;
+    state.notify();
     hideSpinner();
     showError(`Error: ${error}`);
   }

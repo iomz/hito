@@ -277,7 +277,7 @@ describe("browse", () => {
 
       await browseImages("/test/path");
 
-      expect(state.currentIndex).toBe(0); // Checks empty-list default behavior: currentIndex is reset to 0 when directories and images are empty
+      expect(state.currentIndex).toBe(0); // Reset to 0 when empty
       expect(state.isLoadingBatch).toBe(false);
       expect(state.currentModalIndex).toBe(-1);
     });

@@ -29,6 +29,7 @@ export const state = {
   hotkeyDialogVisible: false, // Whether the hotkey dialog is visible
   hotkeyDialogHotkey: undefined as HotkeyConfig | undefined, // Hotkey being edited (undefined = new hotkey)
   isLoading: false, // Whether the loading spinner should be visible
+  errorMessage: "", // Current error message to display (empty = no error)
   
   // Subscribe to state changes
   subscribe(listener: StateChangeListener): () => void {

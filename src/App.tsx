@@ -16,16 +16,14 @@ import { HotkeySidebar } from "./components/HotkeySidebar";
 
 function App() {
   const [hasContent, setHasContent] = useState(false);
-  const [currentDirectory, setCurrentDirectory] = useState(state.currentDirectory);
 
-  // Subscribe to state changes to reactively show/hide ImageGrid and sync currentDirectory
+  // Subscribe to state changes to reactively show/hide ImageGrid
   useEffect(() => {
     // One-time initial sync
     const imageCount = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
     const dirCount = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
     const shouldShow = imageCount > 0 || dirCount > 0;
     setHasContent(shouldShow);
-    setCurrentDirectory(state.currentDirectory);
     
     // Subscribe to state changes
     const unsubscribe = state.subscribe(() => {
@@ -33,7 +31,6 @@ function App() {
       const newDirCount = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
       const newShouldShow = newImageCount > 0 || newDirCount > 0;
       setHasContent(newShouldShow);
-      setCurrentDirectory(state.currentDirectory);
     });
     
     return unsubscribe;
