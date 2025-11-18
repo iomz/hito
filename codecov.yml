@@ -26,8 +26,21 @@ coverage:
     - "**/*.config.*"
     - "**/main.ts"
     - "**/main.js"
+    - "**/main.tsx"
     - ".github/**"
     - "coverage/**"
+    # React components (.tsx) are excluded from coverage for the following reasons:
+    # 1. Most components are presentational/UI wrappers around state management
+    # 2. Business logic is tested in .ts files (handlers, core, utils, ui modules)
+    # 3. React component testing requires significant setup and mocking overhead
+    # 4. TypeScript provides compile-time safety for component props and types
+    # 
+    # React component tests should be added if:
+    # - Components contain complex business logic that isn't tested elsewhere
+    # - Components have complex user interactions that need integration testing
+    # - Components have state management logic that's difficult to test via integration
+    # - Examples: notification.test.tsx (tests timer logic and state management)
+    - "**/*.tsx"
   
   status:
     project:

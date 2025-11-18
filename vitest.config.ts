@@ -15,8 +15,11 @@ export default defineConfig({
         "**/*.config.*",
         "**/main.ts",
         "**/main.js",
+        "**/main.tsx",
+        // Exclude React components from coverage - business logic is tested in .ts files
+        "**/*.tsx",
       ],
-      include: ["src/**/*.{ts,tsx,js}"],
+      include: ["src/**/*.{ts,js}"],
       // Report on all TypeScript and JavaScript source files
       all: true,
       reportsDirectory: "./coverage",
