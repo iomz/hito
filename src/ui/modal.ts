@@ -1,4 +1,4 @@
-import { state, elements } from "../state";
+import { state } from "../state";
 import { loadImageData } from "../utils/images";
 import { showError } from "./error";
 import { showNotification } from "./notification";

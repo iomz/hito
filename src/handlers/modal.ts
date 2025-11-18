@@ -1,4 +1,4 @@
-import { elements } from "../state";
+// Note: elements object removed - React components handle DOM access
 import { closeModal, showPreviousImage, showNextImage } from "../ui/modal";
 
 /**
