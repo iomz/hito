@@ -23,7 +23,7 @@ import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
  * process the state update (via microtask). The function name is kept for backward compatibility,
  * but it should be understood that this is a state management function, not an image loading function.
  * 
- * @param startIndex - Start index of the batch (unused, kept for API compatibility)
+ * @param startIndex - Start index of the batch; used to guard against out-of-range requests
  * @param endIndex - End index of the batch (unused, kept for API compatibility)
  */
 export async function loadImageBatch(startIndex: number, endIndex: number): Promise<void> {
