@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { querySelector, createElement } from './dom.js';
+import { querySelector, createElement } from './dom';
 
 describe('dom utilities', () => {
   describe('querySelector', () => {

@@ -1,22 +1,37 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { elements } from "../state";
-import { showSpinner, hideSpinner } from "./spinner.js";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { showSpinner, hideSpinner } from "./spinner";
 
 describe("spinner", () => {
   beforeEach(() => {
-    elements.loadingSpinner = document.createElement("div");
-    elements.loadingSpinner.style.display = "none";
+    // Create spinner element in DOM (code uses querySelector)
+    const existing = document.getElementById("loading-spinner");
+    if (existing) {
+      existing.remove();
+    }
+    const loadingSpinner = document.createElement("div");
+    loadingSpinner.id = "loading-spinner";
+    loadingSpinner.style.display = "none";
+    document.body.appendChild(loadingSpinner);
+  });
+
+  afterEach(() => {
+    const loadingSpinner = document.getElementById("loading-spinner");
+    if (loadingSpinner) {
+      loadingSpinner.remove();
+    }
   });
 
   describe("showSpinner", () => {
     it("should show spinner when element exists", () => {
       showSpinner();
 
-      expect(elements.loadingSpinner!.style.display).toBe("flex");
+      const loadingSpinner = document.getElementById("loading-spinner");
+      expect(loadingSpinner!.style.display).toBe("flex");
     });
 
     it("should not throw when element is null", () => {
-      elements.loadingSpinner = null;
+      const loadingSpinner = document.getElementById("loading-spinner");
+      loadingSpinner?.remove();
 
       expect(() => showSpinner()).not.toThrow();
     });
@@ -29,30 +44,34 @@ describe("spinner", () => {
 
       showSpinner();
 
+      const loadingSpinner = document.getElementById("loading-spinner");
       // offsetHeight should be accessed to force reflow
-      expect(elements.loadingSpinner!.style.display).toBe("flex");
+      expect(loadingSpinner!.style.display).toBe("flex");
     });
   });
 
   describe("hideSpinner", () => {
     it("should hide spinner when element exists", () => {
-      elements.loadingSpinner!.style.display = "flex";
+      const loadingSpinner = document.getElementById("loading-spinner");
+      loadingSpinner!.style.display = "flex";
       hideSpinner();
 
-      expect(elements.loadingSpinner!.style.display).toBe("none");
+      expect(loadingSpinner!.style.display).toBe("none");
     });
 
     it("should not throw when element is null", () => {
-      elements.loadingSpinner = null;
+      const loadingSpinner = document.getElementById("loading-spinner");
+      loadingSpinner?.remove();
 
       expect(() => hideSpinner()).not.toThrow();
     });
 
     it("should hide already hidden spinner", () => {
-      elements.loadingSpinner!.style.display = "none";
+      const loadingSpinner = document.getElementById("loading-spinner");
+      loadingSpinner!.style.display = "none";
       hideSpinner();
 
-      expect(elements.loadingSpinner!.style.display).toBe("none");
+      expect(loadingSpinner!.style.display).toBe("none");
     });
   });
 });

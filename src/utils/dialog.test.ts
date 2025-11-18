@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { open, confirm } from "./dialog.js";
+import { open, confirm } from "./dialog";
 
 describe("dialog utilities", () => {
   beforeEach(() => {

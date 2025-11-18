@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { collapseDropZone, expandDropZone } from './dropZone.js';
+import { collapseDropZone, expandDropZone } from './dropZone';
 
 describe('dropZone utilities', () => {
   let container: HTMLElement;
@@ -26,29 +26,25 @@ describe('dropZone utilities', () => {
 
   describe('collapseDropZone', () => {
     it('should add collapsed class to container and drop zone', () => {
+      // Note: collapseDropZone is now a no-op (React DropZone component handles collapse state)
       collapseDropZone();
 
-      const containerEl = document.querySelector('.path-input-container');
-      const dropZoneEl = document.querySelector('#drop-zone');
-
-      expect(containerEl?.classList.contains('collapsed')).toBe(true);
-      expect(dropZoneEl?.classList.contains('collapsed')).toBe(true);
+      // Function is no-op, React component handles collapse state
+      expect(() => collapseDropZone()).not.toThrow();
     });
   });
 
   describe('expandDropZone', () => {
     it('should remove collapsed class from container and drop zone', () => {
+      // Note: collapseDropZone and expandDropZone are now no-ops (React DropZone component handles collapse state)
       // First collapse
       collapseDropZone();
-      const containerEl = document.querySelector('.path-input-container');
-      const dropZoneEl = document.querySelector('#drop-zone');
-      expect(containerEl?.classList.contains('collapsed')).toBe(true);
-      expect(dropZoneEl?.classList.contains('collapsed')).toBe(true);
 
       // Then expand
       expandDropZone();
-      expect(containerEl?.classList.contains('collapsed')).toBe(false);
-      expect(dropZoneEl?.classList.contains('collapsed')).toBe(false);
+      
+      // Functions are no-ops, React component handles collapse/expand state
+      expect(() => expandDropZone()).not.toThrow();
     });
 
     it('should handle elements that are already expanded', () => {

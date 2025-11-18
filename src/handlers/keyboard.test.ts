@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { elements } from "../state.js";
+import { state } from "../state";
 
 // Mock dependencies
-vi.mock("../ui/modal.js", () => ({
+vi.mock("../ui/modal", () => ({
   closeModal: vi.fn(),
   showPreviousImage: vi.fn(),
   showNextImage: vi.fn(),
@@ -10,7 +10,7 @@ vi.mock("../ui/modal.js", () => ({
   deleteCurrentImage: vi.fn(),
 }));
 
-vi.mock("../ui/hotkeys.js", () => ({
+vi.mock("../ui/hotkeys", () => ({
   checkAndExecuteHotkey: vi.fn().mockReturnValue(false),
 }));
 
@@ -25,9 +25,9 @@ describe("keyboard handlers", () => {
       <div id="keyboard-shortcuts-overlay"></div>
     `;
 
-    // Initialize elements
-    elements.modal = document.getElementById("image-modal");
-    elements.shortcutsOverlay = document.getElementById("keyboard-shortcuts-overlay");
+    // Reset state (keyboard handler checks state.currentModalIndex instead of DOM styles)
+    state.currentModalIndex = -1;
+    state.shortcutsOverlayVisible = false;
 
     // Reset mocks
     vi.clearAllMocks();
@@ -71,14 +71,13 @@ describe("keyboard handlers", () => {
 
   describe("setupKeyboardHandlers", () => {
     it("should call showPreviousImage on ArrowLeft", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { showPreviousImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { showPreviousImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowLeft" });
       document.dispatchEvent(event);
@@ -87,14 +86,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should call showNextImage on ArrowRight", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { showNextImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { showNextImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -103,37 +101,31 @@ describe("keyboard handlers", () => {
     });
 
     it("should close shortcuts overlay on Escape when overlay is visible", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { closeModal } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { closeModal } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
-      if (elements.shortcutsOverlay) {
-        elements.shortcutsOverlay.style.display = "flex";
-      }
+      // Set modal as open and overlay as visible (state-based checks)
+      state.currentModalIndex = 0;
+      state.shortcutsOverlayVisible = true;
 
       const event = new KeyboardEvent("keydown", { key: "Escape" });
       document.dispatchEvent(event);
 
-      expect(elements.shortcutsOverlay?.style.display).toBe("none");
+      expect(state.shortcutsOverlayVisible).toBe(false);
       expect(closeModal).not.toHaveBeenCalled();
     });
 
     it("should close modal on Escape when overlay is not visible", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { closeModal } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { closeModal } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
-      if (elements.shortcutsOverlay) {
-        elements.shortcutsOverlay.style.display = "none";
-      }
+      // Set modal as open but overlay not visible (state-based checks)
+      state.currentModalIndex = 0;
+      state.shortcutsOverlayVisible = false;
 
       const event = new KeyboardEvent("keydown", { key: "Escape" });
       document.dispatchEvent(event);
@@ -142,14 +134,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should toggle shortcuts overlay on ? key", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { toggleShortcutsOverlay } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { toggleShortcutsOverlay } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "?" });
       document.dispatchEvent(event);
@@ -158,14 +149,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should toggle shortcuts overlay on Shift+/", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { toggleShortcutsOverlay } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { toggleShortcutsOverlay } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", {
         key: "/",
@@ -177,14 +167,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should delete current image on Delete key", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { deleteCurrentImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { deleteCurrentImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "Delete" });
       document.dispatchEvent(event);
@@ -193,14 +182,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should delete current image on Backspace key", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { deleteCurrentImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { deleteCurrentImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "Backspace" });
       document.dispatchEvent(event);
@@ -209,14 +197,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should delete current image on Delete code", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { deleteCurrentImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { deleteCurrentImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { code: "Delete" });
       document.dispatchEvent(event);
@@ -225,14 +212,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should delete current image on Backspace code", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { deleteCurrentImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { deleteCurrentImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { code: "Backspace" });
       document.dispatchEvent(event);
@@ -241,14 +227,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should not handle modal shortcuts when modal is not visible", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { showNextImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { showNextImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "none";
-      }
+      // Modal is closed (state-based check)
+      state.currentModalIndex = -1;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -257,12 +242,13 @@ describe("keyboard handlers", () => {
     });
 
     it("should not handle modal shortcuts when modal element is missing", async () => {
-      elements.modal = null;
-
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { showNextImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { showNextImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
+
+      // Modal is closed (state-based check)
+      state.currentModalIndex = -1;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -271,17 +257,16 @@ describe("keyboard handlers", () => {
     });
 
     it("should check hotkeys first before modal shortcuts", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
-      const { showNextImage } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
+      const { showNextImage } = await import("../ui/modal");
 
       vi.mocked(checkAndExecuteHotkey).mockReturnValue(true);
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -291,8 +276,8 @@ describe("keyboard handlers", () => {
     });
 
     it("should prevent default and stop propagation when hotkey is executed", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
 
       vi.mocked(checkAndExecuteHotkey).mockReturnValue(true);
 
@@ -309,15 +294,16 @@ describe("keyboard handlers", () => {
     });
 
     it("should close modal when clicking on modal backdrop", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { closeModal } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { closeModal } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
+      const modal = document.getElementById("image-modal");
+      if (modal) {
         const clickEvent = new MouseEvent("click", { bubbles: true });
         Object.defineProperty(clickEvent, "target", {
-          value: elements.modal,
+          value: modal,
           enumerable: true,
         });
         window.dispatchEvent(clickEvent);
@@ -327,34 +313,37 @@ describe("keyboard handlers", () => {
     });
 
     it("should hide shortcuts overlay when clicking on overlay", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
 
       setupKeyboardHandlers();
 
-      if (elements.shortcutsOverlay) {
-        elements.shortcutsOverlay.style.display = "flex";
+      // Set overlay as visible (state-based check)
+      state.shortcutsOverlayVisible = true;
 
+      const shortcutsOverlay = document.getElementById("keyboard-shortcuts-overlay");
+      if (shortcutsOverlay) {
         const clickEvent = new MouseEvent("click", { bubbles: true });
         Object.defineProperty(clickEvent, "target", {
-          value: elements.shortcutsOverlay,
+          value: shortcutsOverlay,
           enumerable: true,
         });
         window.dispatchEvent(clickEvent);
       }
 
-      expect(elements.shortcutsOverlay?.style.display).toBe("none");
+      expect(state.shortcutsOverlayVisible).toBe(false);
     });
 
     it("should not close modal when clicking inside modal content", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { closeModal } = await import("../ui/modal.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { closeModal } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
       // Create a child element inside modal
+      const modal = document.getElementById("image-modal");
       const modalContent = document.createElement("div");
-      if (elements.modal) {
-        elements.modal.appendChild(modalContent);
+      if (modal) {
+        modal.appendChild(modalContent);
 
         const clickEvent = new MouseEvent("click", { bubbles: true });
         Object.defineProperty(clickEvent, "target", {
@@ -368,13 +357,12 @@ describe("keyboard handlers", () => {
     });
 
     it("should prevent default on ArrowLeft", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowLeft" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -385,13 +373,12 @@ describe("keyboard handlers", () => {
     });
 
     it("should prevent default on ArrowRight", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -402,13 +389,12 @@ describe("keyboard handlers", () => {
     });
 
     it("should prevent default on Escape", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "Escape" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -419,13 +405,12 @@ describe("keyboard handlers", () => {
     });
 
     it("should prevent default on ?", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "?" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -436,13 +421,12 @@ describe("keyboard handlers", () => {
     });
 
     it("should prevent default on Delete", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "Delete" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -453,61 +437,38 @@ describe("keyboard handlers", () => {
     });
 
     it("should handle modal visibility check using computed style", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { showNextImage } = await import("../ui/modal.js");
-
-      // Mock getComputedStyle to return display: none
-      const originalGetComputedStyle = window.getComputedStyle;
-      window.getComputedStyle = vi.fn(() => ({
-        display: "none",
-        visibility: "visible",
-      })) as any;
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { showNextImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        // Set inline style but computed style will be none
-        elements.modal.style.display = "flex";
-      }
+      // Modal is closed (state-based check, not DOM style)
+      state.currentModalIndex = -1;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
 
       expect(showNextImage).not.toHaveBeenCalled();
-
-      // Restore
-      window.getComputedStyle = originalGetComputedStyle;
     });
 
     it("should handle modal visibility check using visibility hidden", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { showNextImage } = await import("../ui/modal.js");
-
-      // Mock getComputedStyle to return visibility: hidden
-      const originalGetComputedStyle = window.getComputedStyle;
-      window.getComputedStyle = vi.fn(() => ({
-        display: "flex",
-        visibility: "hidden",
-      })) as any;
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { showNextImage } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Modal is closed (state-based check, not DOM style)
+      state.currentModalIndex = -1;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
 
       expect(showNextImage).not.toHaveBeenCalled();
-
-      // Restore
-      window.getComputedStyle = originalGetComputedStyle;
     });
 
     it("should skip hotkey handling when typing in INPUT element", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
 
       vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
       vi.mocked(checkAndExecuteHotkey).mockClear();
@@ -543,8 +504,8 @@ describe("keyboard handlers", () => {
     });
 
     it("should skip hotkey handling when typing in TEXTAREA element", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
 
       vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
       vi.mocked(checkAndExecuteHotkey).mockClear();
@@ -570,8 +531,8 @@ describe("keyboard handlers", () => {
     });
 
     it("should skip hotkey handling when typing in contenteditable element", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
 
       vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
       vi.mocked(checkAndExecuteHotkey).mockClear();
@@ -598,8 +559,8 @@ describe("keyboard handlers", () => {
     });
 
     it("should skip hotkey handling when typing in element with isContentEditable", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
 
       vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
       vi.mocked(checkAndExecuteHotkey).mockClear();
@@ -629,8 +590,8 @@ describe("keyboard handlers", () => {
     });
 
     it("should still check hotkeys when typing in regular elements", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
 
       vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
 
@@ -653,18 +614,17 @@ describe("keyboard handlers", () => {
     });
 
     it("should still allow modal shortcuts when typing in INPUT", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard.js");
-      const { closeModal } = await import("../ui/modal.js");
-      const { checkAndExecuteHotkey } = await import("../ui/hotkeys.js");
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { closeModal } = await import("../ui/modal");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
 
       vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
       vi.mocked(checkAndExecuteHotkey).mockClear();
 
       setupKeyboardHandlers();
 
-      if (elements.modal) {
-        elements.modal.style.display = "flex";
-      }
+      // Set modal as open (state-based check)
+      state.currentModalIndex = 0;
 
       const input = document.createElement("input");
       document.body.appendChild(input);

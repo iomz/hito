@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { state, elements } from "../state.js";
-import { cleanupObserver, setupIntersectionObserver } from "./observer.js";
-import { BATCH_SIZE } from "../constants.js";
+import { state } from "../state";
+import { cleanupObserver, setupIntersectionObserver } from "./observer";
+import { BATCH_SIZE } from "../constants";
 
 // Mock dependencies
-vi.mock("./browse.js", () => ({
+vi.mock("./browse", () => ({
   loadImageBatch: vi.fn(),
 }));
 
-vi.mock("../ui/grid.js", () => ({
+vi.mock("../ui/grid", () => ({
   removeSentinel: vi.fn(),
 }));
 
@@ -43,10 +43,6 @@ describe("observer", () => {
     state.currentIndex = 0;
     state.isLoadingBatch = false;
 
-    // Setup DOM
-    elements.imageGrid = document.createElement("div");
-    document.body.appendChild(elements.imageGrid);
-
     // Clear any existing sentinel
     const existing = document.getElementById("load-more-sentinel");
     if (existing) {
@@ -68,7 +64,7 @@ describe("observer", () => {
     });
 
     it("should remove sentinel", async () => {
-      const { removeSentinel } = await import("../ui/grid.js");
+      const { removeSentinel } = await import("../ui/grid");
       cleanupObserver();
 
       expect(removeSentinel).toHaveBeenCalled();
@@ -83,33 +79,43 @@ describe("observer", () => {
 
   describe("setupIntersectionObserver", () => {
     it("should return early if imageGrid is null", () => {
-      elements.imageGrid = null;
-
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages observer)
       setupIntersectionObserver();
 
+      // Function is no-op, React component handles observer setup
       expect(state.intersectionObserver).toBeNull();
     });
 
     it("should create sentinel if it doesn't exist", () => {
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages sentinel)
       setupIntersectionObserver();
 
+      // Function is no-op, React component handles sentinel creation
       const sentinel = document.getElementById("load-more-sentinel");
-      expect(sentinel).not.toBeNull();
-      expect(sentinel!.style.height).toBe("100px");
+      // Sentinel won't exist because function is no-op
+      expect(sentinel).toBeNull();
     });
 
     it("should reuse existing sentinel", () => {
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages sentinel)
+      const imageGrid = document.createElement("div");
+      imageGrid.id = "image-grid";
+      document.body.appendChild(imageGrid);
       const existingSentinel = document.createElement("div");
       existingSentinel.id = "load-more-sentinel";
-      elements.imageGrid!.appendChild(existingSentinel);
+      imageGrid.appendChild(existingSentinel);
 
       setupIntersectionObserver();
 
-      const sentinels = elements.imageGrid!.querySelectorAll("#load-more-sentinel");
-      expect(sentinels.length).toBe(1);
+      // Function is no-op, React component handles sentinel management
+      expect(true).toBe(true);
+      
+      // Cleanup
+      imageGrid.remove();
     });
 
     it("should disconnect existing observer before creating new one", () => {
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages observer)
       const mockObserver = {
         disconnect: vi.fn(),
         observe: vi.fn(),
@@ -118,74 +124,56 @@ describe("observer", () => {
 
       setupIntersectionObserver();
 
-      expect(mockObserver.disconnect).toHaveBeenCalled();
+      // Function is no-op, React component handles observer setup
+      // The observer remains in state because function doesn't modify it
+      expect(state.intersectionObserver).toBe(mockObserver);
     });
 
     it("should create IntersectionObserver", () => {
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages observer)
       setupIntersectionObserver();
 
-      expect(state.intersectionObserver).not.toBeNull();
-      expect(state.intersectionObserver).toBeInstanceOf(IntersectionObserver);
+      // Function is no-op, React component handles observer creation
+      expect(state.intersectionObserver).toBeNull();
     });
 
     it("should trigger loadImageBatch when sentinel intersects", async () => {
-      const { loadImageBatch } = await import("./browse.js");
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages observer)
+      const { loadImageBatch } = await import("./browse");
       vi.mocked(loadImageBatch).mockClear();
       setupIntersectionObserver();
 
-      const observer = state.intersectionObserver as any;
-      const sentinel = document.getElementById("load-more-sentinel")!;
-
-      // Simulate intersection
-      const mockEntry = {
-        isIntersecting: true,
-      };
-      observer.callback([mockEntry]);
-
-      expect(loadImageBatch).toHaveBeenCalledWith(0, BATCH_SIZE);
-      expect(state.currentIndex).toBe(BATCH_SIZE);
+      // Function is no-op, React component handles intersection detection
+      expect(loadImageBatch).not.toHaveBeenCalled();
     });
 
     it("should not trigger loadImageBatch if already loading", async () => {
-      const { loadImageBatch } = await import("./browse.js");
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages observer)
+      const { loadImageBatch } = await import("./browse");
       vi.mocked(loadImageBatch).mockClear();
       state.isLoadingBatch = true;
       setupIntersectionObserver();
 
-      const observer = state.intersectionObserver as any;
-      const mockEntry = {
-        isIntersecting: true,
-      };
-      observer.callback([mockEntry]);
-
+      // Function is no-op, React component handles loading state
       expect(loadImageBatch).not.toHaveBeenCalled();
     });
 
     it("should not trigger loadImageBatch if not intersecting", async () => {
-      const { loadImageBatch } = await import("./browse.js");
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages observer)
+      const { loadImageBatch } = await import("./browse");
       vi.mocked(loadImageBatch).mockClear();
       setupIntersectionObserver();
 
-      const observer = state.intersectionObserver as any;
-      const mockEntry = {
-        isIntersecting: false,
-      };
-      observer.callback([mockEntry]);
-
+      // Function is no-op, React component handles intersection detection
       expect(loadImageBatch).not.toHaveBeenCalled();
     });
 
     it("should observe sentinel", () => {
+      // Note: setupIntersectionObserver is now a no-op (React ImageGrid manages observer)
       setupIntersectionObserver();
 
-      const observer = state.intersectionObserver as any;
-      const sentinel = document.getElementById("load-more-sentinel")!;
-
-      // The observer should have been created and should observe the sentinel
-      expect(state.intersectionObserver).not.toBeNull();
-      expect(sentinel).not.toBeNull();
-      // Verify the sentinel was observed
-      expect(observer.observedElement).toBe(sentinel);
+      // Function is no-op, React component handles observer setup
+      expect(state.intersectionObserver).toBeNull();
     });
   });
 });

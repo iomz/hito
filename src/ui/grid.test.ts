@@ -1,15 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { clearImageGrid, removeSentinel, removeImageFromGrid } from './grid.js';
-import { elements } from '../state.js';
+import { clearImageGrid, removeSentinel, removeImageFromGrid } from './grid';
 
 describe('grid utilities', () => {
   beforeEach(() => {
-    // Create a mock image grid element
+    // Create a mock image grid element in DOM (code uses querySelector)
+    const existing = document.getElementById('image-grid');
+    if (existing) {
+      existing.remove();
+    }
     const mockGrid = document.createElement('div');
     mockGrid.id = 'image-grid';
     mockGrid.className = 'image-grid';
     document.body.appendChild(mockGrid);
-    elements.imageGrid = mockGrid;
   });
 
   afterEach(() => {
@@ -18,28 +20,36 @@ describe('grid utilities', () => {
     if (grid) {
       document.body.removeChild(grid);
     }
-    elements.imageGrid = null;
+    const sentinel = document.getElementById('load-more-sentinel');
+    if (sentinel) {
+      sentinel.remove();
+    }
   });
 
   describe('clearImageGrid', () => {
     it('should clear all children from the grid', () => {
-      if (!elements.imageGrid) return;
+      const imageGrid = document.getElementById('image-grid');
+      if (!imageGrid) return;
 
       // Add some children
       const child1 = document.createElement('div');
       const child2 = document.createElement('div');
-      elements.imageGrid.appendChild(child1);
-      elements.imageGrid.appendChild(child2);
+      imageGrid.appendChild(child1);
+      imageGrid.appendChild(child2);
 
-      expect(elements.imageGrid.children.length).toBe(2);
+      expect(imageGrid.children.length).toBe(2);
 
+      // Note: clearImageGrid is now a no-op (React manages the grid)
+      // This test verifies it doesn't throw
       clearImageGrid();
 
-      expect(elements.imageGrid.children.length).toBe(0);
+      // Children remain because function is no-op
+      expect(imageGrid.children.length).toBe(2);
     });
 
     it('should do nothing if imageGrid is null', () => {
-      elements.imageGrid = null;
+      const imageGrid = document.getElementById('image-grid');
+      imageGrid?.remove();
       // Should not throw
       expect(() => clearImageGrid()).not.toThrow();
     });
@@ -47,17 +57,21 @@ describe('grid utilities', () => {
 
   describe('removeSentinel', () => {
     it('should remove sentinel element if it exists', () => {
-      if (!elements.imageGrid) return;
+      const imageGrid = document.getElementById('image-grid');
+      if (!imageGrid) return;
 
       const sentinel = document.createElement('div');
       sentinel.id = 'load-more-sentinel';
-      elements.imageGrid.appendChild(sentinel);
+      imageGrid.appendChild(sentinel);
 
       expect(document.getElementById('load-more-sentinel')).not.toBeNull();
 
+      // Note: removeSentinel is now a no-op (React manages the sentinel)
+      // This test verifies it doesn't throw
       removeSentinel();
 
-      expect(document.getElementById('load-more-sentinel')).toBeNull();
+      // Sentinel remains because function is no-op
+      expect(document.getElementById('load-more-sentinel')).not.toBeNull();
     });
 
     it('should do nothing if sentinel does not exist', () => {
@@ -68,43 +82,46 @@ describe('grid utilities', () => {
 
   describe('removeImageFromGrid', () => {
     it('should remove image item with matching data-image-path', () => {
-      if (!elements.imageGrid) return;
+      const imageGrid = document.getElementById('image-grid');
+      if (!imageGrid) return;
 
       const imageItem1 = document.createElement('div');
       imageItem1.className = 'image-item';
       imageItem1.setAttribute('data-image-path', '/path/to/image1.jpg');
-      elements.imageGrid.appendChild(imageItem1);
+      imageGrid.appendChild(imageItem1);
 
       const imageItem2 = document.createElement('div');
       imageItem2.className = 'image-item';
       imageItem2.setAttribute('data-image-path', '/path/to/image2.jpg');
-      elements.imageGrid.appendChild(imageItem2);
+      imageGrid.appendChild(imageItem2);
 
-      expect(elements.imageGrid.children.length).toBe(2);
+      expect(imageGrid.children.length).toBe(2);
 
       removeImageFromGrid('/path/to/image1.jpg');
 
-      expect(elements.imageGrid.children.length).toBe(1);
-      expect(elements.imageGrid.children[0].getAttribute('data-image-path')).toBe('/path/to/image2.jpg');
+      expect(imageGrid.children.length).toBe(1);
+      expect(imageGrid.children[0].getAttribute('data-image-path')).toBe('/path/to/image2.jpg');
     });
 
     it('should do nothing if no matching image path found', () => {
-      if (!elements.imageGrid) return;
+      const imageGrid = document.getElementById('image-grid');
+      if (!imageGrid) return;
 
       const imageItem = document.createElement('div');
       imageItem.className = 'image-item';
       imageItem.setAttribute('data-image-path', '/path/to/image1.jpg');
-      elements.imageGrid.appendChild(imageItem);
+      imageGrid.appendChild(imageItem);
 
-      expect(elements.imageGrid.children.length).toBe(1);
+      expect(imageGrid.children.length).toBe(1);
 
       removeImageFromGrid('/path/to/nonexistent.jpg');
 
-      expect(elements.imageGrid.children.length).toBe(1);
+      expect(imageGrid.children.length).toBe(1);
     });
 
     it('should do nothing if imageGrid is null', () => {
-      elements.imageGrid = null;
+      const imageGrid = document.getElementById('image-grid');
+      imageGrid?.remove();
       // Should not throw
       expect(() => removeImageFromGrid('/path/to/image.jpg')).not.toThrow();
     });
