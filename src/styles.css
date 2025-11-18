@@ -416,6 +416,12 @@ button {
   cursor: pointer;
   transition: color 0.2s;
   z-index: 1001;
+  /* Reset button defaults to maintain original appearance */
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .close:hover,

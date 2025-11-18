@@ -1,5 +1,11 @@
 import type { ImagePath, DirectoryPath, HotkeyConfig, Category } from "./types";
 
+// State change listener type
+type StateChangeListener = () => void;
+
+// State change listeners
+const listeners = new Set<StateChangeListener>();
+
 // State
 export const state = {
   allImagePaths: [] as ImagePath[],
@@ -21,7 +27,21 @@ export const state = {
   categoryDialogVisible: false, // Whether the category dialog is visible
   categoryDialogCategory: undefined as Category | undefined, // Category being edited (undefined = new category)
   hotkeyDialogVisible: false, // Whether the hotkey dialog is visible
-  hotkeyDialogHotkey: undefined as HotkeyConfig | undefined // Hotkey being edited (undefined = new hotkey)
+  hotkeyDialogHotkey: undefined as HotkeyConfig | undefined, // Hotkey being edited (undefined = new hotkey)
+  isLoading: false, // Whether the loading spinner should be visible
+  
+  // Subscribe to state changes
+  subscribe(listener: StateChangeListener): () => void {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  },
+  
+  // Notify all listeners of state changes
+  notify(): void {
+    listeners.forEach((listener) => listener());
+  }
 };
 
 // DOM Elements

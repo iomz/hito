@@ -14,16 +14,12 @@ export function HotkeySidebar() {
   const [currentDirectory, setCurrentDirectory] = useState("");
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (state.isHotkeySidebarOpen !== isOpen) {
-        setIsOpen(state.isHotkeySidebarOpen);
-      }
-      if (state.currentDirectory !== currentDirectory) {
-        setCurrentDirectory(state.currentDirectory);
-      }
-    }, 100);
-    return () => clearInterval(interval);
-  }, [isOpen, currentDirectory]);
+    const unsubscribe = state.subscribe(() => {
+      setIsOpen(state.isHotkeySidebarOpen);
+      setCurrentDirectory(state.currentDirectory);
+    });
+    return unsubscribe;
+  }, []);
 
   const handleToggle = () => {
     toggleHotkeySidebar();

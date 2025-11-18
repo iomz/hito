@@ -1,23 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { state } from "../state";
 
 export function ConfigFileInput() {
-  const [value, setValue] = useState("");
+  // Initialize local state from global state once
+  const [value, setValue] = useState(state.configFilePath);
+  const valueRef = useRef(value);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   useEffect(() => {
-    // Sync with global state
-    const interval = setInterval(() => {
-      if (state.configFilePath !== value) {
+    // Subscribe to state changes to sync when configFilePath changes externally
+    const unsubscribe = state.subscribe(() => {
+      // Only update if the change came from outside (not from our own handleChange)
+      if (state.configFilePath !== valueRef.current) {
         setValue(state.configFilePath);
       }
-    }, 100);
-    return () => clearInterval(interval);
-  }, [value]);
+    });
+
+    return unsubscribe;
+  }, []); // Empty deps - subscribe once and never recreate
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value.trim();
     setValue(newValue);
+    valueRef.current = newValue; // Update ref immediately to prevent subscription from triggering redundant update
     state.configFilePath = newValue;
+    state.notify(); // Notify other subscribers of the change
   };
 
   return (

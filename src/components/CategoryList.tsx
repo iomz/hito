@@ -1,47 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { state } from "../state";
 import type { Category } from "../types";
-import { showCategoryDialog } from "../ui/categories";
+import { showCategoryDialog, deleteCategory } from "../ui/categories";
 
 export function CategoryList() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [imageCategories, setImageCategories] = useState<Map<string, string[]>>(new Map());
 
-  // Poll for changes to categories and imageCategories
+  // Subscribe to state changes instead of polling
   useEffect(() => {
-    const interval = setInterval(() => {
-      const currentCategories = Array.isArray(state.categories) ? state.categories : [];
-      const currentImageCategories = state.imageCategories instanceof Map 
-        ? new Map(state.imageCategories) 
-        : new Map();
-
-      // Check if categories changed
-      if (currentCategories.length !== categories.length ||
-          currentCategories.some((cat, idx) => 
-            !categories[idx] || 
-            cat.id !== categories[idx].id || 
-            cat.name !== categories[idx].name ||
-            cat.color !== categories[idx].color
-          )) {
-        setCategories([...currentCategories]);
-      }
-
-      // Check if imageCategories changed
-      if (currentImageCategories.size !== imageCategories.size ||
-          Array.from(currentImageCategories.entries()).some(([path, ids]) => {
-            const existingIds = imageCategories.get(path);
-            return !existingIds || 
-                   existingIds.length !== ids.length ||
-                   !existingIds.every(id => ids.includes(id));
-          })) {
-        setImageCategories(new Map(currentImageCategories));
-      }
-    }, 100);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [categories, imageCategories]);
+    const unsubscribe = state.subscribe(() => {
+      setCategories(Array.isArray(state.categories) ? [...state.categories] : []);
+      setImageCategories(new Map(state.imageCategories));
+    });
+    
+    // Initialize
+    setCategories(Array.isArray(state.categories) ? [...state.categories] : []);
+    setImageCategories(new Map(state.imageCategories));
+    
+    return unsubscribe;
+  }, []);
 
   // Calculate image count for a category
   const getImageCount = (categoryId: string): number => {
@@ -55,12 +33,11 @@ export function CategoryList() {
   };
 
   const handleDelete = async (categoryId: string) => {
-    const { deleteCategory } = await import("../ui/categories");
-    await deleteCategory(categoryId);
-    
-    // Trigger re-render after deletion
-    setCategories([...state.categories]);
-    setImageCategories(new Map(state.imageCategories));
+    try {
+      await deleteCategory(categoryId);
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+    }
   };
 
   if (categories.length === 0) {

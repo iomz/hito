@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { state } from "../state";
 import type { HotkeyConfig } from "../types";
-import { updateShortcutsOverlay } from "../ui/modal";
 
 // Format a hotkey combination for display
 function formatHotkeyDisplay(config: HotkeyConfig): string {
@@ -11,35 +10,41 @@ function formatHotkeyDisplay(config: HotkeyConfig): string {
 
 export function HotkeyList() {
   const [hotkeys, setHotkeys] = useState<HotkeyConfig[]>([]);
+  const hotkeysRef = useRef<HotkeyConfig[]>([]);
 
   useEffect(() => {
-    // Poll for changes to hotkeys
-    const interval = setInterval(() => {
+    hotkeysRef.current = hotkeys;
+  }, [hotkeys]);
+
+  useEffect(() => {
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
       const currentHotkeys = Array.isArray(state.hotkeys) ? state.hotkeys : [];
+      const prevHotkeys = hotkeysRef.current;
 
       // Check if hotkeys changed
       if (
-        currentHotkeys.length !== hotkeys.length ||
+        currentHotkeys.length !== prevHotkeys.length ||
         currentHotkeys.some(
           (hotkey, idx) =>
-            !hotkeys[idx] ||
-            hotkey.id !== hotkeys[idx].id ||
-            hotkey.key !== hotkeys[idx].key ||
-            hotkey.modifiers.length !== hotkeys[idx].modifiers.length ||
-            !hotkey.modifiers.every((mod, i) => mod === hotkeys[idx].modifiers[i]) ||
-            hotkey.action !== hotkeys[idx].action
+            !prevHotkeys[idx] ||
+            hotkey.id !== prevHotkeys[idx].id ||
+            hotkey.key !== prevHotkeys[idx].key ||
+            hotkey.modifiers.length !== prevHotkeys[idx].modifiers.length ||
+            !hotkey.modifiers.every((mod, i) => mod === prevHotkeys[idx].modifiers[i]) ||
+            hotkey.action !== prevHotkeys[idx].action
         )
       ) {
         setHotkeys([...currentHotkeys]);
-        // Update shortcuts overlay when hotkeys change
-        updateShortcutsOverlay();
       }
-    }, 100);
+    });
 
-    return () => {
-      clearInterval(interval);
-    };
-  }, [hotkeys]);
+    // Initialize with current state
+    const currentHotkeys = Array.isArray(state.hotkeys) ? state.hotkeys : [];
+    setHotkeys([...currentHotkeys]);
+
+    return unsubscribe;
+  }, []);
 
   const handleEdit = async (hotkeyId: string) => {
     const { editHotkey } = await import("../ui/hotkeys");
@@ -50,8 +55,13 @@ export function HotkeyList() {
     const { deleteHotkey } = await import("../ui/hotkeys");
     await deleteHotkey(hotkeyId);
     
-    // Trigger re-render after deletion
-    setHotkeys([...state.hotkeys]);
+    // Trigger re-render after deletion with type-safety check
+    if (Array.isArray(state.hotkeys)) {
+      setHotkeys([...state.hotkeys]);
+    } else {
+      // Fallback to previous hotkeys if state.hotkeys is not an array
+      setHotkeys(hotkeys);
+    }
   };
 
   if (hotkeys.length === 0) {

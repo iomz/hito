@@ -64,6 +64,10 @@ export async function loadHitoConfig(): Promise<void> {
     if (data.image_categories) {
       state.imageCategories = new Map(data.image_categories);
     }
+    
+    if (data.categories || data.image_categories) {
+      state.notify();
+    }
 
     if (data.hotkeys) {
       // Ensure hotkeys have all required fields
@@ -73,9 +77,6 @@ export async function loadHitoConfig(): Promise<void> {
         modifiers: Array.isArray(h.modifiers) ? h.modifiers : [],
         action: h.action || "",
       }));
-      // Render hotkey list if sidebar is available
-      const { renderHotkeyList } = await import("./hotkeys");
-      renderHotkeyList();
     }
   } catch (error) {
     console.error("Failed to load .hito.json:", error);
@@ -127,25 +128,6 @@ export function generateCategoryColor(): string {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-/**
- * Render the list of categories.
- * 
- * NOTE: With React managing the category list, this is now a no-op.
- * The React CategoryList component handles rendering based on state changes.
- */
-export function renderCategoryList(): void {
-  // No-op: React CategoryList component handles rendering
-}
-
-/**
- * Render the current image's category assignments as tags in the modal.
- * 
- * NOTE: With React managing the modal categories, this is now a no-op.
- * The React ModalCategories component handles rendering based on state changes.
- */
-export function renderModalCategories(): void {
-  // No-op: React ModalCategories component handles rendering
-}
 
 /**
  * Get a contrasting text color (black or white) based on background color brightness.
@@ -166,15 +148,6 @@ function getContrastColor(hexColor: string): string {
   return luminance > 0.5 ? "#000000" : "#ffffff";
 }
 
-/**
- * Render the current image's category assignments.
- * 
- * NOTE: With React managing the current image categories, this is now a no-op.
- * The React CurrentImageCategories component handles rendering based on state changes.
- */
-export function renderCurrentImageCategories(): void {
-  // No-op: React CurrentImageCategories component handles rendering
-}
 
 /**
  * Toggle a category assignment for the current image.
@@ -195,7 +168,8 @@ export async function toggleImageCategory(
     // Add category
     state.imageCategories.set(imagePath, [...currentCategories, categoryId]);
   }
-
+  
+  state.notify();
   await saveHitoConfig();
   // Note: All rendering is now handled by React components:
   // - CategoryList component handles category list rendering
@@ -214,12 +188,8 @@ export async function assignImageCategory(
 
   if (!currentCategories.includes(categoryId)) {
     state.imageCategories.set(imagePath, [...currentCategories, categoryId]);
+    state.notify();
     await saveHitoConfig();
-    renderCategoryList();
-    if (state.currentModalIndex >= 0) {
-      renderCurrentImageCategories();
-      renderModalCategories();
-    }
   }
 }
 
@@ -284,6 +254,7 @@ export function isCategoryNameDuplicate(name: string, excludeId?: string): boole
 export function showCategoryDialog(existingCategory?: Category): void {
   state.categoryDialogVisible = true;
   state.categoryDialogCategory = existingCategory;
+  state.notify();
 }
 
 /**
@@ -328,17 +299,9 @@ export async function deleteCategory(categoryId: string): Promise<void> {
 
   // Remove category
   state.categories = state.categories.filter((c) => c.id !== categoryId);
+  state.notify();
 
   await saveHitoConfig();
-  // Note: renderCategoryList() removed - React CategoryList component handles rendering
-  // React component will detect state changes via polling
-  if (state.currentModalIndex >= 0) {
-    renderCurrentImageCategories();
-    renderModalCategories();
-  }
-  // Refresh hotkey list to update action dropdowns
-  const { renderHotkeyList } = await import("./hotkeys");
-  renderHotkeyList();
 }
 
 /**
@@ -347,7 +310,6 @@ export async function deleteCategory(categoryId: string): Promise<void> {
 export async function setupCategories(): Promise<void> {
   // Categories will be loaded when a directory is browsed
   // Just initialize the UI here
-  renderCategoryList();
 
   const addCategoryBtn = document.querySelector("#add-category-btn") as HTMLElement | null;
   if (addCategoryBtn) {

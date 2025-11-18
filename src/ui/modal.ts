@@ -3,7 +3,6 @@ import { loadImageData } from "../utils/images";
 import { showError } from "./error";
 import { showNotification } from "./notification";
 import { removeImageFromGrid } from "./grid";
-import { renderCurrentImageCategories, renderModalCategories } from "./categories";
 import { createElement } from "../utils/dom";
 import { ensureImagePathsArray, normalizePath, getFilename } from "../utils/state";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
@@ -26,6 +25,7 @@ export async function openModal(imageIndex: number): Promise<void> {
   
   const requestedIndex = imageIndex;
   state.currentModalIndex = imageIndex;
+  state.notify();
   const imagePath = state.allImagePaths[imageIndex].path;
   
   // Pre-load image data if not already loaded (React component will use it)
@@ -33,10 +33,15 @@ export async function openModal(imageIndex: number): Promise<void> {
   if (!dataUrl) {
     try {
       dataUrl = await loadImageData(imagePath);
+      // Cache the dataUrl only if it's valid
+      if (dataUrl) {
+        state.loadedImages.set(imagePath, dataUrl);
+      }
     } catch (error) {
       showError(`Error loading image: ${error}`);
       // Reset modal index on error
       state.currentModalIndex = -1;
+      state.notify();
       return;
     }
   }
@@ -47,7 +52,7 @@ export async function openModal(imageIndex: number): Promise<void> {
   }
   
   // Hide shortcuts overlay if visible
-  state.shortcutsOverlayVisible = false;
+  hideShortcutsOverlay();
   
   // Note: React ImageModal component handles rendering based on state.currentModalIndex
   // Category displays will be updated by React component's polling
@@ -61,7 +66,8 @@ export function closeModal(): void {
   state.currentModalIndex = -1;
   
   // Hide shortcuts overlay if visible
-  state.shortcutsOverlayVisible = false;
+  hideShortcutsOverlay();
+  state.notify();
 }
 
 /**
@@ -91,15 +97,6 @@ export function showPreviousImage(): void {
   }
 }
 
-/**
- * Update visibility of the modal's previous/next navigation buttons based on the current image index.
- *
- * NOTE: With React managing the modal, this is now a no-op.
- * The React ImageModal component handles button visibility based on state changes.
- */
-export function updateModalButtons(): void {
-  // No-op: React ImageModal component handles button visibility
-}
 
 /**
  * Toggle the keyboard shortcuts overlay between visible and hidden.
@@ -109,6 +106,18 @@ export function updateModalButtons(): void {
  */
 export function toggleShortcutsOverlay(): void {
   state.shortcutsOverlayVisible = !state.shortcutsOverlayVisible;
+  state.notify();
+}
+
+/**
+ * Hide the keyboard shortcuts overlay.
+ *
+ * NOTE: With React managing the overlay, this sets state.shortcutsOverlayVisible to false.
+ * The React ShortcutsOverlay component handles rendering based on this state.
+ */
+export function hideShortcutsOverlay(): void {
+  state.shortcutsOverlayVisible = false;
+  state.notify();
 }
 
 /**
@@ -153,6 +162,7 @@ export async function deleteCurrentImage(): Promise<void> {
     
     // Remove from image list
     state.allImagePaths.splice(deletedIndex, 1);
+    state.notify();
     
     // Adjust currentIndex if the deleted image was before the current batch loading position
     if (deletedIndex < state.currentIndex) {
@@ -186,13 +196,4 @@ export async function deleteCurrentImage(): Promise<void> {
   }
 }
 
-/**
- * Update the keyboard shortcuts overlay with default shortcuts and user-configured hotkeys.
- * 
- * NOTE: With React managing the overlay, this is now a no-op.
- * The React ShortcutsOverlay component handles rendering based on state changes.
- */
-export function updateShortcutsOverlay(): void {
-  // No-op: React ShortcutsOverlay component handles rendering
-}
 

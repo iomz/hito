@@ -1,77 +1,51 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { showSpinner, hideSpinner } from "./spinner";
+import { state } from "../state";
 
 describe("spinner", () => {
   beforeEach(() => {
-    // Create spinner element in DOM (code uses querySelector)
-    const existing = document.getElementById("loading-spinner");
-    if (existing) {
-      existing.remove();
-    }
-    const loadingSpinner = document.createElement("div");
-    loadingSpinner.id = "loading-spinner";
-    loadingSpinner.style.display = "none";
-    document.body.appendChild(loadingSpinner);
+    // Reset state
+    state.isLoading = false;
   });
 
   afterEach(() => {
-    const loadingSpinner = document.getElementById("loading-spinner");
-    if (loadingSpinner) {
-      loadingSpinner.remove();
-    }
+    // Clean up state
+    state.isLoading = false;
   });
 
   describe("showSpinner", () => {
-    it("should show spinner when element exists", () => {
+    it("should set isLoading state to true", () => {
+      state.isLoading = false;
       showSpinner();
-
-      const loadingSpinner = document.getElementById("loading-spinner");
-      expect(loadingSpinner!.style.display).toBe("flex");
+      expect(state.isLoading).toBe(true);
     });
 
-    it("should not throw when element is null", () => {
-      const loadingSpinner = document.getElementById("loading-spinner");
-      loadingSpinner?.remove();
-
+    it("should not throw when called", () => {
       expect(() => showSpinner()).not.toThrow();
     });
 
-    it("should force reflow", () => {
-      const offsetHeightSpy = vi.spyOn(
-        Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight")!,
-        "get"
-      );
-
+    it("should set isLoading to true even if already true", () => {
+      state.isLoading = true;
       showSpinner();
-
-      const loadingSpinner = document.getElementById("loading-spinner");
-      // offsetHeight should be accessed to force reflow
-      expect(loadingSpinner!.style.display).toBe("flex");
+      expect(state.isLoading).toBe(true);
     });
   });
 
   describe("hideSpinner", () => {
-    it("should hide spinner when element exists", () => {
-      const loadingSpinner = document.getElementById("loading-spinner");
-      loadingSpinner!.style.display = "flex";
+    it("should set isLoading state to false", () => {
+      state.isLoading = true;
       hideSpinner();
-
-      expect(loadingSpinner!.style.display).toBe("none");
+      expect(state.isLoading).toBe(false);
     });
 
-    it("should not throw when element is null", () => {
-      const loadingSpinner = document.getElementById("loading-spinner");
-      loadingSpinner?.remove();
-
+    it("should not throw when called", () => {
       expect(() => hideSpinner()).not.toThrow();
     });
 
-    it("should hide already hidden spinner", () => {
-      const loadingSpinner = document.getElementById("loading-spinner");
-      loadingSpinner!.style.display = "none";
+    it("should set isLoading to false even if already false", () => {
+      state.isLoading = false;
       hideSpinner();
-
-      expect(loadingSpinner!.style.display).toBe("none");
+      expect(state.isLoading).toBe(false);
     });
   });
 });

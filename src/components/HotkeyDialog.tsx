@@ -17,68 +17,81 @@ export function HotkeyDialog() {
   
   const keyDisplayRef = useRef<HTMLDivElement>(null);
   const actionSelectRef = useRef<HTMLSelectElement>(null);
+  const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // Poll for dialog state changes
+  // Subscribe to state changes for visibility and hotkey
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (state.hotkeyDialogVisible !== isVisible) {
-        setIsVisible(state.hotkeyDialogVisible);
-        
-        if (state.hotkeyDialogVisible) {
-          // Dialog opening
-          const hotkey = state.hotkeyDialogHotkey;
-          setEditingHotkey(hotkey);
-          
-          if (hotkey) {
-            setCapturedModifiers([...hotkey.modifiers]);
-            setCapturedKey(hotkey.key);
-            setAction(hotkey.action || "");
-          } else {
-            setCapturedModifiers([]);
-            setCapturedKey("");
-            setAction("");
-          }
-          
-          setErrorMessage("");
-          setShowError(false);
-          setIsCapturing(false);
-          
-          // Set action state
-          setAction(hotkey?.action || "");
-          
-          // Populate action dropdown after a short delay to ensure DOM is ready
-          setTimeout(() => {
-            if (actionSelectRef.current) {
-              populateActionDropdown(actionSelectRef.current, hotkey?.action);
-            }
-          }, 0);
-          
-          // Auto-start capture for new hotkeys
-          if (!hotkey) {
-            setTimeout(() => {
-              keyDisplayRef.current?.focus();
-              setIsCapturing(true);
-            }, 100);
-          }
-        } else {
-          // Dialog closing
-          setCapturedModifiers([]);
-          setCapturedKey("");
-          setAction("");
-          setErrorMessage("");
-          setShowError(false);
-          setIsCapturing(false);
-        }
+    // Initial sync
+    setIsVisible(state.hotkeyDialogVisible);
+    setEditingHotkey(state.hotkeyDialogHotkey);
+    setCategories([...state.categories]);
+    
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
+      setIsVisible(state.hotkeyDialogVisible);
+      setEditingHotkey(state.hotkeyDialogHotkey);
+      setCategories([...state.categories]);
+    });
+    
+    return unsubscribe;
+  }, []);
+
+  // Initialize or reset state when visibility or hotkey changes
+  useEffect(() => {
+    // Clear any pending timeouts
+    timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+    timeoutRefs.current = [];
+    
+    if (isVisible) {
+      // Dialog opening
+      const hotkey = editingHotkey;
+      
+      if (hotkey) {
+        setCapturedModifiers([...hotkey.modifiers]);
+        setCapturedKey(hotkey.key);
+        setAction(hotkey.action || "");
+      } else {
+        setCapturedModifiers([]);
+        setCapturedKey("");
+        setAction("");
       }
       
-      // Update categories
-      if (state.categories !== categories) {
-        setCategories([...state.categories]);
+      setErrorMessage("");
+      setShowError(false);
+      setIsCapturing(false);
+      
+      // Populate action dropdown after a short delay to ensure DOM is ready
+      const timeout1 = setTimeout(() => {
+        if (actionSelectRef.current) {
+          populateActionDropdown(actionSelectRef.current, hotkey?.action);
+        }
+      }, 0);
+      timeoutRefs.current.push(timeout1);
+      
+      // Auto-start capture for new hotkeys
+      if (!hotkey) {
+        const timeout2 = setTimeout(() => {
+          keyDisplayRef.current?.focus();
+          setIsCapturing(true);
+        }, 100);
+        timeoutRefs.current.push(timeout2);
       }
-    }, 50);
+    } else {
+      // Dialog closing
+      setCapturedModifiers([]);
+      setCapturedKey("");
+      setAction("");
+      setErrorMessage("");
+      setShowError(false);
+      setIsCapturing(false);
+    }
     
-    return () => clearInterval(interval);
-  }, [isVisible, categories]);
+    return () => {
+      // Cleanup timeouts on unmount or dependency change
+      timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+      timeoutRefs.current = [];
+    };
+  }, [isVisible, editingHotkey]);
 
   // Update action dropdown when categories change
   useEffect(() => {
@@ -150,6 +163,7 @@ export function HotkeyDialog() {
   const handleCancel = () => {
     state.hotkeyDialogVisible = false;
     state.hotkeyDialogHotkey = undefined;
+    state.notify();
   };
 
   const handleSave = async () => {
@@ -193,13 +207,19 @@ export function HotkeyDialog() {
     }
     
     // Note: HotkeyList component handles rendering via polling
-    await saveHitoConfig().catch((error: unknown) => {
+    try {
+      await saveHitoConfig();
+    } catch (error: unknown) {
       console.error("Failed to save hotkeys:", error);
-    });
+      setErrorMessage("Failed to save hotkey. Please try again.");
+      setShowError(true);
+      return;
+    }
     
     // Close dialog
     state.hotkeyDialogVisible = false;
     state.hotkeyDialogHotkey = undefined;
+    state.notify();
   };
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {

@@ -1,21 +1,206 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { state } from "../state";
+import { handleFileDrop, selectFolder } from "../handlers/dragDrop";
 
 export function DropZone() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
       const hasDirectory = state.currentDirectory.length > 0;
-      if (hasDirectory !== isCollapsed) {
-        setIsCollapsed(hasDirectory);
+      setIsCollapsed(hasDirectory);
+    });
+
+    // Initialize with current state
+    setIsCollapsed(state.currentDirectory.length > 0);
+
+    // Listen to Tauri drag events for visual feedback
+    const handleTauriDragEnter = () => setIsDragOver(true);
+    const handleTauriDragLeave = () => setIsDragOver(false);
+    
+    window.addEventListener('tauri-drag-enter', handleTauriDragEnter);
+    window.addEventListener('tauri-drag-over', handleTauriDragEnter);
+    window.addEventListener('tauri-drag-leave', handleTauriDragLeave);
+    window.addEventListener('tauri-drag-drop', handleTauriDragLeave);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('tauri-drag-enter', handleTauriDragEnter);
+      window.removeEventListener('tauri-drag-over', handleTauriDragEnter);
+      window.removeEventListener('tauri-drag-leave', handleTauriDragLeave);
+      window.removeEventListener('tauri-drag-drop', handleTauriDragLeave);
+    };
+  }, []);
+
+  const extractFilesFromDataTransfer = async (dataTransfer: DataTransfer): Promise<string[]> => {
+    const paths: string[] = [];
+    
+    // Try using DataTransfer.items first (supports FileSystemEntry)
+    if (dataTransfer.items && dataTransfer.items.length > 0) {
+      for (let i = 0; i < dataTransfer.items.length; i++) {
+        const item = dataTransfer.items[i];
+        
+        // Check if it's a file entry
+        if (item.kind === 'file') {
+          const entry = item.webkitGetAsEntry();
+          if (entry) {
+            // For directories, try to get the path
+            if (entry.isDirectory) {
+              // In browser context, we can't get actual file system paths from FileSystemEntry
+              // Tauri's native drag-and-drop should be used for this
+              // For HTML5 drag-drop, we'll need to fall back to file input
+              continue;
+            } else if (entry.isFile) {
+              // For files, try to get the file and extract path
+              try {
+                const file = await new Promise<File>((resolve, reject) => {
+                  (entry as FileSystemFileEntry).file(resolve, reject);
+                });
+                // Try to get path from file (Tauri might add this property)
+                const path = (file as any).path;
+                if (path) {
+                  paths.push(path);
+                }
+              } catch (err) {
+                console.warn('Failed to get file from entry:', err);
+              }
+            }
+          }
+        }
       }
-    }, 100);
-    return () => clearInterval(interval);
-  }, [isCollapsed]);
+    }
+    
+    // Fallback to DataTransfer.files
+    if (paths.length === 0 && dataTransfer.files && dataTransfer.files.length > 0) {
+      for (let i = 0; i < dataTransfer.files.length; i++) {
+        const file = dataTransfer.files[i];
+        // Try to get path from file (Tauri might add this property)
+        const path = (file as any).path;
+        if (path) {
+          paths.push(path);
+        }
+      }
+    }
+    
+    return paths;
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const dataTransfer = e.dataTransfer;
+    if (!dataTransfer) return;
+    
+    // Extract files/folders from the drop event
+    const paths = await extractFilesFromDataTransfer(dataTransfer);
+    
+    // If we got paths, pass them to handleFileDrop
+    if (paths.length > 0) {
+      await handleFileDrop(paths);
+    } else {
+      // If we couldn't extract paths (browser limitation), show error
+      console.warn('Could not extract file paths from drop event. Use the file picker instead.');
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Ensure drag-over state is set when dragging over
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    // Only remove drag-over state if we're actually leaving the drop zone
+    // (not just moving between child elements)
+    const currentTarget = e.currentTarget;
+    const relatedTarget = e.relatedTarget as Node | null;
+    
+    if (!currentTarget.contains(relatedTarget)) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+    }
+  };
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) {
+      e.target.value = '';
+      return;
+    }
+    
+    // Extract paths from selected files
+    // With webkitdirectory, files might have a path property (Tauri might add this)
+    // or we can try to extract from webkitRelativePath
+    const paths: string[] = [];
+    let rootDirPath: string | null = null;
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      // Try to get path from file (Tauri might add this property)
+      const path = (file as any).path;
+      if (path) {
+        // If we have an absolute path, use it
+        // For webkitdirectory, if the path is a file path, we'll need to get its parent
+        // But handleFileDrop can handle that
+        if (!rootDirPath) {
+          rootDirPath = path;
+        }
+        break; // We only need one path to get the directory
+      }
+    }
+    
+    // Clear the input value after selection
+    e.target.value = '';
+    
+    // If we got a path, pass it to handleFileDrop
+    // handleFileDrop will handle getting the parent directory if needed
+    if (rootDirPath) {
+      await handleFileDrop([rootDirPath]);
+    } else {
+      // Fallback: HTML5 file input with webkitdirectory doesn't provide absolute paths
+      // in browser context, so fall back to Tauri's native dialog
+      console.warn('Could not extract file paths from file input. Falling back to Tauri dialog.');
+      await selectFolder();
+    }
+  };
 
   return (
-    <div id="drop-zone" className={`drop-zone ${isCollapsed ? "collapsed" : ""}`}>
+    <div 
+      id="drop-zone" 
+      className={`drop-zone ${isCollapsed ? "collapsed" : ""} ${isDragOver ? "drag-over" : ""}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={handleClick}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        {...({ webkitdirectory: true, directory: true } as any)}
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+      />
       <div className="drop-zone-content">
         <svg
           className="drop-icon"

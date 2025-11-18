@@ -45,6 +45,8 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
   }, [imagePath]);
 
   const handleClick = () => {
+    if (hasError) return;
+    
     // Find the index of this image in the state
     const index = state.allImagePaths.findIndex((img) => img.path === imagePath);
     if (index >= 0) {
@@ -86,7 +88,11 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
       )}
 
       {!isLoading && !hasError && imageData && (
-        <img src={imageData} alt={imagePath} loading="lazy" />
+        <img 
+          src={imageData} 
+          alt={imagePath.split('/').pop()?.split('.')[0] || 'Image'} 
+          loading="lazy" 
+        />
       )}
 
       {hasError && (

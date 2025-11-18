@@ -3,7 +3,6 @@ import { createElement } from "../utils/dom";
 import type { HotkeyConfig } from "../types";
 import { saveHitoConfig } from "./categories";
 import { confirm } from "../utils/dialog";
-import { updateShortcutsOverlay } from "./modal";
 
 /**
  * Width of the hotkey sidebar when open.
@@ -44,17 +43,11 @@ export async function toggleHotkeySidebar(): Promise<void> {
   if (!hotkeySidebar) return;
   
   state.isHotkeySidebarOpen = !state.isHotkeySidebarOpen;
+  state.notify();
   
   if (state.isHotkeySidebarOpen) {
     hotkeySidebar.classList.add("open");
     updateModalForSidebar(true);
-    renderHotkeyList();
-    // Refresh categories display
-    const { renderCurrentImageCategories, renderCategoryList } = await import("./categories");
-    renderCategoryList();
-    if (state.currentModalIndex >= 0) {
-      renderCurrentImageCategories();
-    }
   } else {
     hotkeySidebar.classList.remove("open");
     updateModalForSidebar(false);
@@ -69,6 +62,7 @@ export function closeHotkeySidebar(): void {
   if (!hotkeySidebar) return;
   
   state.isHotkeySidebarOpen = false;
+  state.notify();
   hotkeySidebar.classList.remove("open");
   updateModalForSidebar(false);
 }
@@ -112,17 +106,6 @@ export function isHotkeyDuplicate(key: string, modifiers: string[], excludeId?: 
   });
 }
 
-/**
- * Render the list of configured hotkeys.
- * 
- * NOTE: With React managing the hotkey list, this is now a no-op.
- * The React HotkeyList component handles rendering based on state changes.
- */
-export function renderHotkeyList(): void {
-  // No-op: React HotkeyList component handles rendering
-  // Update shortcuts overlay when hotkeys change (still needed)
-  updateShortcutsOverlay();
-}
 
 /**
  * Populate the action dropdown with available category actions.
@@ -212,6 +195,7 @@ export function populateActionDropdown(actionInput: HTMLSelectElement, existingA
 export function showHotkeyDialog(existingHotkey?: HotkeyConfig): void {
   state.hotkeyDialogVisible = true;
   state.hotkeyDialogHotkey = existingHotkey;
+  state.notify();
 }
 
 /**
@@ -237,8 +221,7 @@ export async function deleteHotkey(hotkeyId: string): Promise<void> {
   }
 
   state.hotkeys = state.hotkeys.filter(h => h.id !== hotkeyId);
-  // Note: renderHotkeyList() removed - React HotkeyList component handles rendering
-  // React component will detect state changes via polling
+  state.notify();
   saveHitoConfig().catch((error) => {
     console.error("Failed to save hotkeys:", error);
   });

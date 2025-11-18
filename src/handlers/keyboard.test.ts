@@ -2,13 +2,18 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { state } from "../state";
 
 // Mock dependencies
-vi.mock("../ui/modal", () => ({
-  closeModal: vi.fn(),
-  showPreviousImage: vi.fn(),
-  showNextImage: vi.fn(),
-  toggleShortcutsOverlay: vi.fn(),
-  deleteCurrentImage: vi.fn(),
-}));
+vi.mock("../ui/modal", async () => {
+  const actual = await vi.importActual<typeof import("../ui/modal")>("../ui/modal");
+  return {
+    ...actual,
+    closeModal: vi.fn(),
+    showPreviousImage: vi.fn(),
+    showNextImage: vi.fn(),
+    deleteCurrentImage: vi.fn(),
+    // Keep the real implementations for toggleShortcutsOverlay and hideShortcutsOverlay
+    // since they update state which the tests check
+  };
+});
 
 vi.mock("../ui/hotkeys", () => ({
   checkAndExecuteHotkey: vi.fn().mockReturnValue(false),
@@ -135,27 +140,28 @@ describe("keyboard handlers", () => {
 
     it("should toggle shortcuts overlay on ? key", async () => {
       const { setupKeyboardHandlers } = await import("./keyboard");
-      const { toggleShortcutsOverlay } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
       state.currentModalIndex = 0;
+      state.shortcutsOverlayVisible = false;
 
       const event = new KeyboardEvent("keydown", { key: "?" });
       document.dispatchEvent(event);
 
-      expect(toggleShortcutsOverlay).toHaveBeenCalled();
+      // Check that state was toggled
+      expect(state.shortcutsOverlayVisible).toBe(true);
     });
 
     it("should toggle shortcuts overlay on Shift+/", async () => {
       const { setupKeyboardHandlers } = await import("./keyboard");
-      const { toggleShortcutsOverlay } = await import("../ui/modal");
 
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
       state.currentModalIndex = 0;
+      state.shortcutsOverlayVisible = false;
 
       const event = new KeyboardEvent("keydown", {
         key: "/",
@@ -163,7 +169,8 @@ describe("keyboard handlers", () => {
       });
       document.dispatchEvent(event);
 
-      expect(toggleShortcutsOverlay).toHaveBeenCalled();
+      // Check that state was toggled
+      expect(state.shortcutsOverlayVisible).toBe(true);
     });
 
     it("should delete current image on Delete key", async () => {

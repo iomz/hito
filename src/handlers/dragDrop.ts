@@ -3,8 +3,6 @@ import { DRAG_EVENTS } from "../constants";
 import type { DragDropEvent } from "../types";
 import { showSpinner, hideSpinner } from "../ui/spinner";
 import { showError, clearError } from "../ui/error";
-import { clearImageGrid } from "../ui/grid";
-// Note: collapseDropZone/expandDropZone imports removed - React handles this now
 import { browseImages } from "../core/browse";
 import { open } from "../utils/dialog";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
@@ -55,15 +53,8 @@ export function handleFolder(folderPath: string): void {
  * @param event - The drop payload: a Tauri event, a DragDropEvent object, or an array of file/folder path strings.
  */
 export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent | string[]): Promise<void> {
-  // React manages imageGrid now, so don't require it
-  const errorMsg = document.querySelector("#error-msg") as HTMLElement | null;
-  const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
-  if (!errorMsg || !loadingSpinner) {
-    return;
-  }
-  
+  // React manages imageGrid and spinner now, so don't require DOM elements
   clearError();
-  clearImageGrid();
   
   const paths = extractPathsFromEvent(event);
   
@@ -156,34 +147,18 @@ export function setupDragDropHandlers(): void {
     showSpinner();
     // Note: DropZone React component handles collapse/expand based on state.currentDirectory
     clearError();
-    clearImageGrid();
     await selectFolder();
   });
 }
 
 /**
  * Registers HTML5 drag-and-drop handlers on the configured drop zone to prevent default browser behavior and manage the drag-over visual state.
+ * 
+ * NOTE: This is now a no-op. The React DropZone component handles all HTML5 drag & drop events
+ * (onDragEnter, onDragOver, onDragLeave, onDrop) and manages the drag-over state.
  */
 export function setupHTML5DragDrop(): void {
-  const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
-  if (!dropZone) return;
-  
-  dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.add("drag-over");
-  });
-  
-  dropZone.addEventListener("dragenter", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  });
-  
-  dropZone.addEventListener("dragleave", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.remove("drag-over");
-  });
+  // No-op: React DropZone component handles all HTML5 drag & drop events
 }
 
 /**
@@ -217,29 +192,19 @@ export async function setupTauriDragEvents(): Promise<void> {
               showSpinner();
               // Note: DropZone React component handles collapse/expand based on state.currentDirectory
               clearError();
-              clearImageGrid();
-              const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
-              if (dropZone) {
-                dropZone.classList.remove("drag-over");
-              }
+              // Notify React component to remove drag-over state
+              window.dispatchEvent(new CustomEvent('tauri-drag-drop'));
               handleFileDrop(event).catch((err) => {
                 console.error('[TauriDragEvent] handleFileDrop error:', err);
                 hideSpinner();
                 showError(`Error: ${err}`);
               });
             } else if (eventName === DRAG_EVENTS.ENTER || eventName === DRAG_EVENTS.OVER) {
-              const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
-              if (dropZone) {
-                dropZone.classList.add("drag-over");
-              }
-              showSpinner();
-              clearError();
-              clearImageGrid();
+              // Notify React component via custom event
+              window.dispatchEvent(new CustomEvent('tauri-drag-enter'));
             } else if (eventName === DRAG_EVENTS.LEAVE) {
-              const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
-              if (dropZone) {
-                dropZone.classList.remove("drag-over");
-              }
+              // Notify React component via custom event
+              window.dispatchEvent(new CustomEvent('tauri-drag-leave'));
               hideSpinner();
             }
           } catch (handlerError) {
@@ -252,8 +217,6 @@ export async function setupTauriDragEvents(): Promise<void> {
     }
   } catch (error) {
     console.error('[setupTauriDragEvents] FATAL ERROR:', error);
-    console.error('[setupTauriDragEvents] Error value:', error);
-    throw error;
   }
 }
 

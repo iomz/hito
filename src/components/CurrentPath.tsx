@@ -8,14 +8,17 @@ export function CurrentPath() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (state.currentDirectory !== currentDirectory) {
-        setCurrentDirectory(state.currentDirectory);
-        setIsVisible(state.currentDirectory.length > 0);
-      }
-    }, 100);
-    return () => clearInterval(interval);
-  }, [currentDirectory]);
+    // One-time initial sync
+    setCurrentDirectory(state.currentDirectory);
+    setIsVisible(state.currentDirectory.length > 0);
+    
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
+      setCurrentDirectory(state.currentDirectory);
+      setIsVisible(state.currentDirectory.length > 0);
+    });
+    return unsubscribe;
+  }, [state]);
 
   if (!isVisible || !currentDirectory) {
     return (

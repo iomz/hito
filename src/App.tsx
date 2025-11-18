@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop";
-import { setupModalHandlers } from "./handlers/modal";
 import { setupKeyboardHandlers } from "./handlers/keyboard";
-// Note: setupHotkeySidebar, setupCategories, updateShortcutsOverlay removed - React components handle this now
+// Note: setupHotkeySidebar, setupCategories, updateShortcutsOverlay, setupModalHandlers removed - React components handle this now
 import { state } from "./state";
 import { DropZone } from "./components/DropZone";
 import { CurrentPath } from "./components/CurrentPath";
@@ -17,27 +16,34 @@ import { HotkeySidebar } from "./components/HotkeySidebar";
 
 function App() {
   const [hasContent, setHasContent] = useState(false);
+  const [currentDirectory, setCurrentDirectory] = useState(state.currentDirectory);
 
-  // Poll for state changes to show/hide ImageGrid
+  // Subscribe to state changes to reactively show/hide ImageGrid and sync currentDirectory
   useEffect(() => {
-    const interval = setInterval(() => {
-      const imageCount = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
-      const dirCount = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
-      const shouldShow = imageCount > 0 || dirCount > 0;
-      
-      if (shouldShow !== hasContent) {
-        setHasContent(shouldShow);
-      }
-    }, 100);
-    return () => clearInterval(interval);
-  }, [hasContent]);
+    // One-time initial sync
+    const imageCount = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+    const dirCount = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
+    const shouldShow = imageCount > 0 || dirCount > 0;
+    setHasContent(shouldShow);
+    setCurrentDirectory(state.currentDirectory);
+    
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(() => {
+      const newImageCount = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+      const newDirCount = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
+      const newShouldShow = newImageCount > 0 || newDirCount > 0;
+      setHasContent(newShouldShow);
+      setCurrentDirectory(state.currentDirectory);
+    });
+    
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     // Setup all event handlers after DOM is ready
     setupDocumentDragHandlers();
     setupDragDropHandlers();
     setupHTML5DragDrop();
-    setupModalHandlers();
     setupKeyboardHandlers();
     // Note: HotkeySidebar React component handles its own event handlers now
     // Note: Categories setup handled by HotkeySidebar React component
@@ -62,17 +68,14 @@ function App() {
         <h1 style={{ cursor: "pointer" }} onClick={handleH1Click}>
           Hito
         </h1>
-
-        <div className={`path-input-container ${state.currentDirectory.length > 0 ? "collapsed" : ""}`}>
+        <div className={`path-input-container ${hasContent ? "collapsed" : ""}`}>
           <DropZone />
           <CurrentPath />
           <ErrorMessage />
         </div>
-
         <LoadingSpinner />
-        {/* Always render ImageGrid; it will be hidden when there's no content */}
+        {/* Conditionally render ImageGrid when content is available */}
         {hasContent && <ImageGrid />}
-
         <ImageModal />
         <CategoryDialog />
         <HotkeyDialog />

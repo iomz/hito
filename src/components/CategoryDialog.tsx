@@ -3,6 +3,49 @@ import { state } from "../state";
 import type { Category } from "../types";
 import { saveHitoConfig, isCategoryNameDuplicate, generateCategoryColor } from "../ui/categories";
 
+/**
+ * Generates a UUID v4 string.
+ * Uses crypto.randomUUID() if available, otherwise falls back to a random-based implementation.
+ */
+function generateUUID(): string {
+  // Use crypto.randomUUID() if available (modern browsers and Node.js 14.17.0+)
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  
+  // Fallback: Generate UUID v4-like string using crypto.getRandomValues()
+  // Format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  const hex = "0123456789abcdef";
+  
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const randomValues = new Uint8Array(16);
+    crypto.getRandomValues(randomValues);
+    
+    // Set version (4) and variant bits according to RFC 4122
+    randomValues[6] = (randomValues[6] & 0x0f) | 0x40; // Version 4
+    randomValues[8] = (randomValues[8] & 0x3f) | 0x80; // Variant 10
+    
+    // Convert to UUID string format
+    const parts: string[] = [];
+    for (let i = 0; i < 16; i++) {
+      parts.push(hex[randomValues[i] >> 4]);
+      parts.push(hex[randomValues[i] & 0x0f]);
+      if (i === 3 || i === 5 || i === 7 || i === 9) {
+        parts.push("-");
+      }
+    }
+    return parts.join("");
+  }
+  
+  // Final fallback: Use Math.random() (less secure but works everywhere)
+  const template = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
+  return template.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return hex[v];
+  });
+}
+
 export function CategoryDialog() {
   const [isVisible, setIsVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | undefined>(undefined);
@@ -13,13 +56,15 @@ export function CategoryDialog() {
   
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Poll for dialog state changes
+  // Subscribe to dialog state changes instead of polling
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (state.categoryDialogVisible !== isVisible) {
-        setIsVisible(state.categoryDialogVisible);
+    const updateDialogState = () => {
+      const newVisible = state.categoryDialogVisible;
+      
+      if (newVisible !== isVisible) {
+        setIsVisible(newVisible);
         
-        if (state.categoryDialogVisible) {
+        if (newVisible) {
           // Dialog opening
           const category = state.categoryDialogCategory;
           setEditingCategory(category);
@@ -40,9 +85,15 @@ export function CategoryDialog() {
           setShowError(false);
         }
       }
-    }, 50);
+    };
     
-    return () => clearInterval(interval);
+    // Initialize state
+    updateDialogState();
+    
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(updateDialogState);
+    
+    return unsubscribe;
   }, [isVisible]);
 
   // Check for duplicate name as user types
@@ -64,6 +115,7 @@ export function CategoryDialog() {
   const handleCancel = () => {
     state.categoryDialogVisible = false;
     state.categoryDialogCategory = undefined;
+    state.notify();
   };
 
   const handleSave = async () => {
@@ -99,23 +151,21 @@ export function CategoryDialog() {
     } else {
       // Add new category
       const newCategory: Category = {
-        id: `category_${Date.now()}`,
+        id: generateUUID(),
         name: trimmedName,
         color,
       };
       state.categories.push(newCategory);
     }
-
-    await saveHitoConfig();
-    // Note: CategoryList component handles rendering via polling
     
-    // Refresh hotkey list to update action dropdowns
-    const { renderHotkeyList } = await import("../ui/hotkeys");
-    renderHotkeyList();
+    state.notify();
+    await saveHitoConfig();
+    // Note: CategoryList component handles rendering via subscription
     
     // Close dialog
     state.categoryDialogVisible = false;
     state.categoryDialogCategory = undefined;
+    state.notify();
   };
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -124,11 +174,23 @@ export function CategoryDialog() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      handleCancel();
+  // Handle Escape key to close dialog
+  useEffect(() => {
+    if (!isVisible) {
+      return;
     }
-  };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleCancel();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isVisible]);
 
   if (!isVisible) {
     return null;
@@ -138,7 +200,6 @@ export function CategoryDialog() {
     <div
       className="category-dialog-overlay"
       onClick={handleOverlayClick}
-      onKeyDown={handleKeyDown}
     >
       <div className="category-dialog">
         <div className="category-dialog-header">

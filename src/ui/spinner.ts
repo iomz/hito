@@ -1,24 +1,26 @@
+import { state } from "../state";
+
 /**
  * Make the loading spinner visible.
  *
- * If the spinner element is not available in the DOM, this is a no-op.
+ * Updates state to show the spinner. React LoadingSpinner component will react to this.
  */
 export function showSpinner(): void {
-  const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
-  if (!loadingSpinner) return;
-  loadingSpinner.style.display = "flex";
-  void loadingSpinner.offsetHeight; // Force reflow
+  if (!state.isLoading) {
+    state.isLoading = true;
+    state.notify();
+  }
 }
 
 /**
  * Hide the loading spinner element if present.
  *
- * Does nothing when the spinner element is not available.
+ * Updates state to hide the spinner. React LoadingSpinner component will react to this.
  */
 export function hideSpinner(): void {
-  const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
-  if (loadingSpinner) {
-    loadingSpinner.style.display = "none";
+  if (state.isLoading) {
+    state.isLoading = false;
+    state.notify();
   }
 }
 
