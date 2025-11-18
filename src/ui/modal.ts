@@ -1,11 +1,11 @@
-import { state, elements } from "../state.js";
-import { loadImageData } from "../utils/images.js";
-import { showError } from "./error.js";
-import { showNotification } from "./notification.js";
-import { removeImageFromGrid } from "./grid.js";
-import { renderCurrentImageCategories, renderModalCategories } from "./categories.js";
+import { state, elements } from "../state";
+import { loadImageData } from "../utils/images";
+import { showError } from "./error";
+import { showNotification } from "./notification";
+import { removeImageFromGrid } from "./grid";
+import { renderCurrentImageCategories, renderModalCategories } from "./categories";
 import { createElement } from "../utils/dom.js";
-import { ensureImagePathsArray, normalizePath, getFilename } from "../utils/state.js";
+import { ensureImagePathsArray, normalizePath, getFilename } from "../utils/state";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
 
 /**

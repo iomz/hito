@@ -1,4 +1,4 @@
-import { elements } from "../state.js";
+import { elements } from "../state";
 
 /**
  * Displays an error message in the designated error UI element.

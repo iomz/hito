@@ -15,7 +15,8 @@ export const state = {
   categories: [] as Category[],
   imageCategories: new Map<string, string[]>(), // image path -> category IDs
   currentDirectory: "", // Current directory being viewed
-  configFilePath: "" // Custom config file path (empty = default to currentDirectory/.hito.json)
+  configFilePath: "", // Custom config file path (empty = default to currentDirectory/.hito.json)
+  resetCounter: 0 // Incremented on reset to force ImageGrid remount
 };
 
 // DOM Elements

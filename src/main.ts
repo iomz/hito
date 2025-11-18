@@ -1,15 +1,15 @@
-import { elements, state } from "./state.js";
+import { elements, state } from "./state";
 import { querySelector } from "./utils/dom.js";
 import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop.js";
 import { setupModalHandlers } from "./handlers/modal.js";
 import { setupKeyboardHandlers } from "./handlers/keyboard.js";
-import { setupHotkeySidebar } from "./ui/hotkeys.js";
-import { setupCategories } from "./ui/categories.js";
+import { setupHotkeySidebar } from "./ui/hotkeys";
+import { setupCategories } from "./ui/categories";
 import { clearImageGrid } from "./ui/grid.js";
 import { expandDropZone } from "./ui/dropZone.js";
 import { clearError } from "./ui/error.js";
 import { hideSpinner } from "./ui/spinner.js";
-import { closeModal, updateShortcutsOverlay } from "./ui/modal.js";
+import { closeModal, updateShortcutsOverlay } from "./ui/modal";
 import { cleanupObserver } from "./core/observer.js";
 import { initializeElements } from "./utils/elements.js";
 
@@ -46,7 +46,7 @@ export async function resetToHome(): Promise<void> {
   }
   
   // Close and hide sidebar on home screen
-  const { closeHotkeySidebar } = await import("./ui/hotkeys.js");
+  const { closeHotkeySidebar } = await import("./ui/hotkeys");
   closeHotkeySidebar();
   
   if (elements.hotkeySidebarToggle) {

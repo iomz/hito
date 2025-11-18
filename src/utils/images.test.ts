@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPlaceholder, createErrorPlaceholder, createImageElement, loadImageData } from './images.js';
-import { state } from '../state.js';
+import { state } from '../state';
 
 // Mock the modal module
 vi.mock('../ui/modal.js', () => ({

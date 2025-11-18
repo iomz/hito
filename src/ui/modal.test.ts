@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { state, elements } from "../state.js";
+import { state, elements } from "../state";
 import {
   openModal,
   closeModal,

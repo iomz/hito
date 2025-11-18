@@ -1,7 +1,7 @@
-import { state, elements } from "../state.js";
+import { state, elements } from "../state";
 import { BATCH_SIZE } from "../constants.js";
 import { createElement } from "../utils/dom.js";
-import { removeSentinel } from "../ui/grid.js";
+import { removeSentinel } from "../ui/grid";
 import { loadImageBatch } from "./browse.js";
 
 /**

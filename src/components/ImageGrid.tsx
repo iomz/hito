@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { state } from "../state";
 import { BATCH_SIZE } from "../constants";
 import { loadImageBatch } from "../core/browse";
@@ -9,75 +9,174 @@ export function ImageGrid() {
   const gridRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const [, forceUpdate] = useState({});
+  const isMountedRef = useRef(true);
+  // Initialize from state to avoid missing initial images
+  const [visibleCount, setVisibleCount] = useState(() => {
+    if (!Array.isArray(state.allImagePaths) || state.allImagePaths.length === 0) {
+      return 0;
+    }
+    // If currentIndex is 0, show first batch. Otherwise, show up to currentIndex
+    const initialCount = state.currentIndex > 0 
+      ? Math.min(state.currentIndex, state.allImagePaths.length)
+      : Math.min(BATCH_SIZE, state.allImagePaths.length);
+    console.log('[ImageGrid] Initial visibleCount:', initialCount, { currentIndex: state.currentIndex, imagePathsLength: state.allImagePaths.length });
+    return initialCount;
+  });
+  const [dirCount, setDirCount] = useState(() => {
+    return Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
+  });
 
-  // Track previous lengths to detect changes
-  const prevImageLengthRef = useRef(-1);
-  const prevDirLengthRef = useRef(-1);
+  // Immediately reset visibleCount to 0 when array becomes empty to prevent DOM mismatch
+  // Use useLayoutEffect to run synchronously before browser paint
+  useLayoutEffect(() => {
+    const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+    if (imagePathsLength === 0 && visibleCount > 0) {
+      console.log('[ImageGrid] Array cleared, resetting visibleCount to 0');
+      setVisibleCount(0);
+      setDirCount(0);
+    }
+  });
 
-  // Force re-render when state changes
+  // Track mounted state and poll for currentIndex changes
   useEffect(() => {
-    const interval = setInterval(() => {
+    isMountedRef.current = true;
+    
+    // Initialize tracking variables from current state
+    let lastIndex = state.currentIndex;
+    let lastImagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+    let lastDirPathsLength = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
+    let lastVisibleCount = visibleCount;
+    
+    // Poll for changes to state that affect what we render
+    const checkForUpdates = () => {
+      if (!isMountedRef.current) return;
+      
+      const currentIndex = state.currentIndex;
       const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
       const dirPathsLength = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
       
-      if (
-        prevImageLengthRef.current !== imagePathsLength ||
-        prevDirLengthRef.current !== dirPathsLength
-      ) {
-        prevImageLengthRef.current = imagePathsLength;
-        prevDirLengthRef.current = dirPathsLength;
-        forceUpdate({});
+      // Calculate what visibleCount should be
+      let newVisibleCount = 0;
+      if (imagePathsLength > 0) {
+        if (currentIndex > 0) {
+          newVisibleCount = Math.min(currentIndex, imagePathsLength);
+        } else {
+          // If currentIndex is 0 but we have images, show first batch
+          newVisibleCount = Math.min(BATCH_SIZE, imagePathsLength);
+        }
       }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, []);
+      
+      // Re-render if something changed
+      if (currentIndex !== lastIndex || imagePathsLength !== lastImagePathsLength || dirPathsLength !== lastDirPathsLength || newVisibleCount !== lastVisibleCount) {
+        console.log('[ImageGrid] State changed:', {
+          currentIndex,
+          imagePathsLength,
+          dirPathsLength,
+          newVisibleCount,
+          oldVisibleCount: lastVisibleCount
+        });
+        lastIndex = currentIndex;
+        lastImagePathsLength = imagePathsLength;
+        lastDirPathsLength = dirPathsLength;
+        lastVisibleCount = newVisibleCount;
+        setVisibleCount(newVisibleCount);
+        setDirCount(dirPathsLength);
+      }
+    };
+    
+    // Check immediately on mount
+    checkForUpdates();
+    
+    // Then poll for future changes
+    const interval = setInterval(checkForUpdates, 50); // Check more frequently
+    
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(interval);
+    };
+  }, []); // Empty deps - we're polling external state
 
   // Setup IntersectionObserver for infinite scroll
   useEffect(() => {
+    // Cleanup any existing observer first
+    if (observerRef.current) {
+      try {
+        observerRef.current.disconnect();
+      } catch (error) {
+        // Silently ignore cleanup errors
+      }
+      observerRef.current = null;
+    }
+    
     if (!Array.isArray(state.allImagePaths)) return;
     
     const imagePathsLength = state.allImagePaths.length;
     
     // Only set up observer if we have more images to load
-    if (imagePathsLength > BATCH_SIZE && sentinelRef.current) {
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting && !state.isLoadingBatch) {
-              const nextStartIndex = state.currentIndex;
-              const nextEndIndex = state.currentIndex + BATCH_SIZE;
+    if (imagePathsLength > BATCH_SIZE && sentinelRef.current && document.contains(sentinelRef.current)) {
+      try {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            if (!isMountedRef.current) return;
+            
+            entries.forEach((entry) => {
+              if (!isMountedRef.current) return;
               
-              if (nextStartIndex < imagePathsLength) {
-                state.currentIndex = nextEndIndex;
-                loadImageBatch(nextStartIndex, nextEndIndex).catch((error) => {
-                  console.error("Failed to load image batch:", error);
-                });
+              if (entry.isIntersecting && !state.isLoadingBatch && Array.isArray(state.allImagePaths)) {
+                const nextStartIndex = state.currentIndex;
+                const nextEndIndex = state.currentIndex + BATCH_SIZE;
+                
+                if (nextStartIndex < state.allImagePaths.length) {
+                  state.currentIndex = nextEndIndex;
+                  loadImageBatch(nextStartIndex, nextEndIndex).catch((error) => {
+                    console.error("Failed to load image batch:", error);
+                  });
+                }
               }
-            }
-          });
-        },
-        { rootMargin: "200px" }
-      );
+            });
+          },
+          { rootMargin: "200px" }
+        );
 
-      observerRef.current.observe(sentinelRef.current);
+        if (sentinelRef.current && document.contains(sentinelRef.current)) {
+          observer.observe(sentinelRef.current);
+          observerRef.current = observer;
+        }
+      } catch (error) {
+        console.error("Failed to setup IntersectionObserver:", error);
+      }
     }
 
     return () => {
       if (observerRef.current) {
-        observerRef.current.disconnect();
+        try {
+          observerRef.current.disconnect();
+        } catch (error) {
+          // Silently ignore cleanup errors
+        }
         observerRef.current = null;
       }
     };
   }, [state.allImagePaths?.length]);
 
-  // Get the visible range of images
+  // Get the visible range of images - use visibleCount (React state) not state.currentIndex
+  // Ensure visibleCount never exceeds array length to prevent DOM mismatch errors
+  const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+  const safeVisibleCount = Math.min(visibleCount, imagePathsLength);
   const visibleImagePaths = Array.isArray(state.allImagePaths)
-    ? state.allImagePaths.slice(0, Math.min(state.currentIndex, state.allImagePaths.length))
+    ? state.allImagePaths.slice(0, safeVisibleCount)
     : [];
 
   const directories = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths : [];
+
+  console.log('[ImageGrid] Rendering:', {
+    visibleCount,
+    safeVisibleCount,
+    imagePathsLength,
+    dirCount,
+    visibleImagePathsLength: visibleImagePaths.length,
+    directoriesLength: directories.length
+  });
 
   return (
     <div id="image-grid" className="image-grid" ref={gridRef}>

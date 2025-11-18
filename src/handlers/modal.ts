@@ -1,5 +1,5 @@
-import { elements } from "../state.js";
-import { closeModal, showPreviousImage, showNextImage } from "../ui/modal.js";
+import { elements } from "../state";
+import { closeModal, showPreviousImage, showNextImage } from "../ui/modal";
 
 /**
  * Attach click handlers for the modal controls when their DOM elements exist.

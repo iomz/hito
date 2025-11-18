@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { initializeElements } from "./utils/elements";
 import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop";
 import { setupModalHandlers } from "./handlers/modal";
@@ -6,7 +6,6 @@ import { setupKeyboardHandlers } from "./handlers/keyboard";
 import { setupHotkeySidebar } from "./ui/hotkeys";
 import { setupCategories } from "./ui/categories";
 import { updateShortcutsOverlay } from "./ui/modal";
-import { resetToHome } from "./utils/reset";
 import { elements, state } from "./state";
 import { DropZone } from "./components/DropZone";
 import { CurrentPath } from "./components/CurrentPath";
@@ -15,16 +14,34 @@ import { LoadingSpinner } from "./components/LoadingSpinner";
 import { ImageGrid } from "./components/ImageGrid";
 
 function App() {
+  console.log('[App] Component rendering...');
+  const [hasContent, setHasContent] = useState(false);
+
+  // Poll for state changes to show/hide ImageGrid
   useEffect(() => {
+    const interval = setInterval(() => {
+      const imageCount = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+      const dirCount = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
+      const shouldShow = imageCount > 0 || dirCount > 0;
+      
+      if (shouldShow !== hasContent) {
+        console.log('[App] hasContent changing to:', shouldShow, { imageCount, dirCount });
+        setHasContent(shouldShow);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [hasContent]);
+
+  useEffect(() => {
+    console.log('[App] useEffect - initializing...');
     // Initialize DOM element references first!
     initializeElements();
-    
-    // Verify elements were initialized
-    if (!elements.dropZone) {
-      console.error("Failed to initialize elements!");
-      return;
-    }
-    
+    console.log('[App] Elements initialized:', {
+      dropZone: !!elements.dropZone,
+      errorMsg: !!elements.errorMsg,
+      loadingSpinner: !!elements.loadingSpinner,
+      currentPath: !!elements.currentPath
+    });
     // Hide sidebar toggle button initially (home screen)
     if (elements.hotkeySidebarToggle) {
       elements.hotkeySidebarToggle.style.display = "none";
@@ -47,15 +64,23 @@ function App() {
     updateShortcutsOverlay();
     
     // Setup Tauri drag events
-    setupTauriDragEvents().catch((error) => {
-      console.error("Failed to setup Tauri drag events:", error);
-    });
+    console.log('[App] About to setup Tauri drag events...');
+    setupTauriDragEvents()
+      .then(() => {
+        console.log('[App] Tauri drag events setup complete');
+      })
+      .catch((error) => {
+        console.error('[App] Failed to setup Tauri drag events:', error);
+        console.error('[App] Error value:', error);
+      });
     
-    // Setup h1 click handler
+    // Setup h1 click handler - reload page to reset to home screen
     const h1Element = document.querySelector("h1");
     if (h1Element) {
       h1Element.style.cursor = "pointer";
-      h1Element.addEventListener("click", resetToHome);
+      h1Element.addEventListener("click", () => {
+        window.location.reload();
+      });
     }
     
     // Setup sidebar tabs
@@ -112,7 +137,8 @@ function App() {
         </div>
 
         <LoadingSpinner />
-        <ImageGrid />
+        {/* Always render ImageGrid; it will be hidden when there's no content */}
+        {hasContent && <ImageGrid />}
 
         <div id="hotkey-sidebar" className="hotkey-sidebar">
           <div className="hotkey-sidebar-header">

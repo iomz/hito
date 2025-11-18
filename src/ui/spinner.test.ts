@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { elements } from "../state.js";
+import { elements } from "../state";
 import { showSpinner, hideSpinner } from "./spinner.js";
 
 describe("spinner", () => {

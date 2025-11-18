@@ -1,9 +1,9 @@
-import { state, elements } from "../state.js";
+import { state, elements } from "../state";
 import { createElement } from "../utils/dom.js";
 import type { Category, HotkeyConfig } from "../types.js";
 import { confirm } from "../utils/dialog.js";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
-import { normalizePath } from "../utils/state.js";
+import { normalizePath } from "../utils/state";
 
 interface HitoFile {
   categories?: Category[];
@@ -40,20 +40,38 @@ function getConfigFileName(): string | undefined {
  * Load categories, image assignments, and hotkeys from .hito.json in the current directory.
  */
 export async function loadHitoConfig(): Promise<void> {
+  console.log("[loadHitoConfig] START", {
+    currentDirectory: state.currentDirectory,
+    configFilePath: state.configFilePath,
+  });
   const configDir = getConfigFileDirectory();
   if (!configDir) {
+    console.log("[loadHitoConfig] No configDir, aborting");
     return;
   }
 
   try {
     if (!isTauriInvokeAvailable()) {
+      console.warn("[loadHitoConfig] Tauri invoke not available");
       return;
     }
 
     const configFileName = getConfigFileName();
+    console.log("[loadHitoConfig] Loading from:", {
+      directory: configDir,
+      filename: configFileName,
+    });
     const data = await invokeTauri<HitoFile>("load_hito_config", {
       directory: configDir,
       filename: configFileName,
+    });
+
+    console.log("[loadHitoConfig] Data received:", {
+      hasCategories: !!data.categories,
+      categoriesCount: data.categories?.length ?? 0,
+      hasImageCategories: !!data.image_categories,
+      hasHotkeys: !!data.hotkeys,
+      hotkeysCount: data.hotkeys?.length ?? 0,
     });
 
     if (data.categories) {
@@ -73,7 +91,7 @@ export async function loadHitoConfig(): Promise<void> {
         action: h.action || "",
       }));
       // Render hotkey list if sidebar is available
-      const { renderHotkeyList } = await import("./hotkeys.js");
+      const { renderHotkeyList } = await import("./hotkeys");
       renderHotkeyList();
     }
   } catch (error) {
@@ -572,7 +590,7 @@ function showCategoryDialog(existingCategory?: Category): void {
       renderModalCategories();
     }
     // Refresh hotkey list to update action dropdowns
-    const { renderHotkeyList } = await import("./hotkeys.js");
+    const { renderHotkeyList } = await import("./hotkeys");
     renderHotkeyList();
     overlay.remove();
   };
@@ -641,7 +659,7 @@ async function deleteCategory(categoryId: string): Promise<void> {
     renderModalCategories();
   }
   // Refresh hotkey list to update action dropdowns
-  const { renderHotkeyList } = await import("./hotkeys.js");
+  const { renderHotkeyList } = await import("./hotkeys");
   renderHotkeyList();
 }
 

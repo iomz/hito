@@ -1,7 +1,7 @@
-import { state } from "../state.js";
+import { state } from "../state";
 import { createElement } from "./dom.js";
 import { openModal } from "../ui/modal.js";
-import { ensureImagePathsArray, getFilename } from "./state.js";
+import { ensureImagePathsArray, getFilename } from "./state";
 import { invokeTauri } from "./tauri.js";
 
 /**

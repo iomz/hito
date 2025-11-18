@@ -1,12 +1,12 @@
 import type { Event } from "@tauri-apps/api/event";
 import { DRAG_EVENTS } from "../constants.js";
 import type { DragDropEvent } from "../types.js";
-import { elements } from "../state.js";
+import { elements } from "../state";
 import { showSpinner, hideSpinner } from "../ui/spinner.js";
 import { showError, clearError } from "../ui/error.js";
-import { clearImageGrid } from "../ui/grid.js";
+import { clearImageGrid } from "../ui/grid";
 import { collapseDropZone, expandDropZone } from "../ui/dropZone.js";
-import { browseImages } from "../core/browse.js";
+import { browseImages } from "../core/browse";
 import { open } from "../utils/dialog.js";
 import { createBreadcrumb } from "../ui/breadcrumb.js";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
@@ -44,6 +44,7 @@ export function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEven
  * @param folderPath - Filesystem path of the folder to browse and load images from
  */
 export function handleFolder(folderPath: string): void {
+  console.log('[handleFolder] Called with path:', folderPath);
   if (!elements.currentPath) return;
   
   elements.currentPath.innerHTML = "";
@@ -51,6 +52,7 @@ export function handleFolder(folderPath: string): void {
   elements.currentPath.appendChild(breadcrumb);
   elements.currentPath.style.display = "block";
   collapseDropZone();
+  console.log('[handleFolder] Calling browseImages...');
   browseImages(folderPath);
 }
 
@@ -62,7 +64,15 @@ export function handleFolder(folderPath: string): void {
  * @param event - The drop payload: a Tauri event, a DragDropEvent object, or an array of file/folder path strings.
  */
 export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent | string[]): Promise<void> {
-  if (!elements.errorMsg || !elements.imageGrid || !elements.loadingSpinner) return;
+  console.log('[handleFileDrop] Called');
+  // React manages imageGrid now, so don't require it
+  if (!elements.errorMsg || !elements.loadingSpinner) {
+    console.log('[handleFileDrop] Missing elements:', {
+      errorMsg: !!elements.errorMsg,
+      loadingSpinner: !!elements.loadingSpinner
+    });
+    return;
+  }
   
   clearError();
   clearImageGrid();
@@ -195,48 +205,77 @@ export function setupHTML5DragDrop(): void {
  * @returns Nothing.
  */
 export async function setupTauriDragEvents(): Promise<void> {
-  const eventNames = Object.values(DRAG_EVENTS);
-  
-  // Use window.__TAURI__.event.listen directly (works without bundler)
-  if (!window.__TAURI__?.event?.listen) {
-    return;
-  }
-  
-  const eventListen = window.__TAURI__.event.listen;
-  
-  // Use for...of loop to properly await async operations
-  for (const eventName of eventNames) {
-    try {
-      await eventListen(eventName, (event: Event<DragDropEvent>) => {
-        if (eventName === DRAG_EVENTS.DROP) {
-          showSpinner();
-          collapseDropZone();
-          clearError();
-          clearImageGrid();
-          if (elements.dropZone) {
-            elements.dropZone.classList.remove("drag-over");
-          }
-          handleFileDrop(event).catch((err) => {
-            hideSpinner();
-            showError(`Error: ${err}`);
-          });
-        } else if (eventName === DRAG_EVENTS.ENTER || eventName === DRAG_EVENTS.OVER) {
-          if (elements.dropZone) {
-            elements.dropZone.classList.add("drag-over");
-          }
-          showSpinner();
-          clearError();
-          clearImageGrid();
-        } else if (eventName === DRAG_EVENTS.LEAVE) {
-          if (elements.dropZone) {
-            elements.dropZone.classList.remove("drag-over");
-          }
-          hideSpinner();
-        }
-      });
-    } catch (error) {
-      // Silently fail for events that don't exist
+  try {
+    console.log('[setupTauriDragEvents] Starting...');
+    const eventNames = Object.values(DRAG_EVENTS);
+    console.log('[setupTauriDragEvents] Event names:', eventNames);
+    console.log('[setupTauriDragEvents] window.__TAURI__:', window.__TAURI__);
+    console.log('[setupTauriDragEvents] window.__TAURI__?.event:', window.__TAURI__?.event);
+    console.log('[setupTauriDragEvents] window.__TAURI__?.event?.listen:', window.__TAURI__?.event?.listen);
+    
+    // Use window.__TAURI__.event.listen directly (works without bundler)
+    if (!window.__TAURI__?.event?.listen) {
+      console.warn('[setupTauriDragEvents] Tauri event API not available - returning early');
+      return;
     }
+    
+    console.log('[setupTauriDragEvents] Tauri event API available, setting up listeners...');
+    const eventListen = window.__TAURI__.event.listen;
+    
+    // Use for...of loop to properly await async operations
+    for (const eventName of eventNames) {
+      try {
+        await eventListen(eventName, (event: Event<DragDropEvent>) => {
+          try {
+            console.log('[TauriDragEvent]', eventName, 'fired', { event });
+            if (eventName === DRAG_EVENTS.DROP) {
+              console.log('[TauriDragEvent] DROP - calling handleFileDrop');
+              showSpinner();
+              collapseDropZone();
+              clearError();
+              clearImageGrid();
+              if (elements.dropZone) {
+                elements.dropZone.classList.remove("drag-over");
+              }
+              handleFileDrop(event).catch((err) => {
+                console.error('[TauriDragEvent] handleFileDrop error:', err);
+                hideSpinner();
+                showError(`Error: ${err}`);
+              });
+            } else if (eventName === DRAG_EVENTS.ENTER || eventName === DRAG_EVENTS.OVER) {
+              console.log('[TauriDragEvent]', eventName, '- showing spinner');
+              if (elements.dropZone) {
+                elements.dropZone.classList.add("drag-over");
+              }
+              showSpinner();
+              clearError();
+              clearImageGrid();
+            } else if (eventName === DRAG_EVENTS.LEAVE) {
+              console.log('[TauriDragEvent] LEAVE - hiding spinner');
+              if (elements.dropZone) {
+                elements.dropZone.classList.remove("drag-over");
+              }
+              hideSpinner();
+            }
+          } catch (handlerError) {
+            console.error('[TauriDragEvent] Error in event handler for', eventName, ':', handlerError);
+          }
+        });
+        console.log('[setupTauriDragEvents] Registered listener for:', eventName);
+      } catch (error) {
+        console.error('[setupTauriDragEvents] Failed to register listener for', eventName, ':', error);
+      }
+    }
+    console.log('[setupTauriDragEvents] Complete - registered', eventNames.length, 'event listeners');
+    
+    // Test: Try to log after a delay to verify console works
+    setTimeout(() => {
+      console.log('[setupTauriDragEvents] Test log after 1 second');
+    }, 1000);
+  } catch (error) {
+    console.error('[setupTauriDragEvents] FATAL ERROR:', error);
+    console.error('[setupTauriDragEvents] Error value:', error);
+    throw error;
   }
 }
 
