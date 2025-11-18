@@ -1,7 +1,6 @@
 import type { Event } from "@tauri-apps/api/event";
 import { DRAG_EVENTS } from "../constants.js";
 import type { DragDropEvent } from "../types.js";
-import { elements } from "../state";
 import { showSpinner, hideSpinner } from "../ui/spinner.js";
 import { showError, clearError } from "../ui/error.js";
 import { clearImageGrid } from "../ui/grid";
@@ -45,12 +44,13 @@ export function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEven
  */
 export function handleFolder(folderPath: string): void {
   console.log('[handleFolder] Called with path:', folderPath);
-  if (!elements.currentPath) return;
+  const currentPath = document.querySelector("#current-path") as HTMLElement | null;
+  if (!currentPath) return;
   
-  elements.currentPath.innerHTML = "";
+  currentPath.innerHTML = "";
   const breadcrumb = createBreadcrumb(folderPath);
-  elements.currentPath.appendChild(breadcrumb);
-  elements.currentPath.style.display = "block";
+  currentPath.appendChild(breadcrumb);
+  currentPath.style.display = "block";
   collapseDropZone();
   console.log('[handleFolder] Calling browseImages...');
   browseImages(folderPath);
@@ -66,10 +66,12 @@ export function handleFolder(folderPath: string): void {
 export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent | string[]): Promise<void> {
   console.log('[handleFileDrop] Called');
   // React manages imageGrid now, so don't require it
-  if (!elements.errorMsg || !elements.loadingSpinner) {
+  const errorMsg = document.querySelector("#error-msg") as HTMLElement | null;
+  const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
+  if (!errorMsg || !loadingSpinner) {
     console.log('[handleFileDrop] Missing elements:', {
-      errorMsg: !!elements.errorMsg,
-      loadingSpinner: !!elements.loadingSpinner
+      errorMsg: !!errorMsg,
+      loadingSpinner: !!loadingSpinner
     });
     return;
   }
@@ -124,17 +126,19 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
 /**
  * Prevent default drag-and-drop behavior for events that occur outside the configured drop zone.
  *
- * Blocks the browser's default handling of `dragover` and `drop` when the event target is not contained within `elements.dropZone`, preventing unintended navigations or file openings.
+ * Blocks the browser's default handling of `dragover` and `drop` when the event target is not contained within the drop zone, preventing unintended navigations or file openings.
  */
 export function setupDocumentDragHandlers(): void {
   document.addEventListener("dragover", (e) => {
-    if (!elements.dropZone?.contains(e.target as Node)) {
+    const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
+    if (!dropZone?.contains(e.target as Node)) {
       e.preventDefault();
     }
   });
   
   document.addEventListener("drop", (e) => {
-    if (!elements.dropZone?.contains(e.target as Node)) {
+    const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
+    if (!dropZone?.contains(e.target as Node)) {
       e.preventDefault();
     }
   });
@@ -147,19 +151,20 @@ export function setupDocumentDragHandlers(): void {
  * clears any error message and the image grid, and opens the folder picker.
  */
 export function setupDragDropHandlers(): void {
-  if (!elements.dropZone) return;
+  const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
+  if (!dropZone) return;
   
   let isDragging = false;
   
-  elements.dropZone.addEventListener("mousedown", () => {
+  dropZone.addEventListener("mousedown", () => {
     isDragging = false;
   });
   
-  elements.dropZone.addEventListener("mousemove", () => {
+  dropZone.addEventListener("mousemove", () => {
     isDragging = true;
   });
   
-  elements.dropZone.addEventListener("click", async () => {
+  dropZone.addEventListener("click", async () => {
     if (isDragging) return;
     
     showSpinner();
@@ -174,23 +179,24 @@ export function setupDragDropHandlers(): void {
  * Registers HTML5 drag-and-drop handlers on the configured drop zone to prevent default browser behavior and manage the drag-over visual state.
  */
 export function setupHTML5DragDrop(): void {
-  if (!elements.dropZone) return;
+  const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
+  if (!dropZone) return;
   
-  elements.dropZone.addEventListener("dragover", (e) => {
+  dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    elements.dropZone!.classList.add("drag-over");
+    dropZone.classList.add("drag-over");
   });
   
-  elements.dropZone.addEventListener("dragenter", (e) => {
+  dropZone.addEventListener("dragenter", (e) => {
     e.preventDefault();
     e.stopPropagation();
   });
   
-  elements.dropZone.addEventListener("dragleave", (e) => {
+  dropZone.addEventListener("dragleave", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    elements.dropZone!.classList.remove("drag-over");
+    dropZone.classList.remove("drag-over");
   });
 }
 
@@ -234,8 +240,9 @@ export async function setupTauriDragEvents(): Promise<void> {
               collapseDropZone();
               clearError();
               clearImageGrid();
-              if (elements.dropZone) {
-                elements.dropZone.classList.remove("drag-over");
+              const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
+              if (dropZone) {
+                dropZone.classList.remove("drag-over");
               }
               handleFileDrop(event).catch((err) => {
                 console.error('[TauriDragEvent] handleFileDrop error:', err);
@@ -244,16 +251,18 @@ export async function setupTauriDragEvents(): Promise<void> {
               });
             } else if (eventName === DRAG_EVENTS.ENTER || eventName === DRAG_EVENTS.OVER) {
               console.log('[TauriDragEvent]', eventName, '- showing spinner');
-              if (elements.dropZone) {
-                elements.dropZone.classList.add("drag-over");
+              const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
+              if (dropZone) {
+                dropZone.classList.add("drag-over");
               }
               showSpinner();
               clearError();
               clearImageGrid();
             } else if (eventName === DRAG_EVENTS.LEAVE) {
               console.log('[TauriDragEvent] LEAVE - hiding spinner');
-              if (elements.dropZone) {
-                elements.dropZone.classList.remove("drag-over");
+              const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
+              if (dropZone) {
+                dropZone.classList.remove("drag-over");
               }
               hideSpinner();
             }

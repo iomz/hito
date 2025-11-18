@@ -1,4 +1,4 @@
-import { elements } from "../state";
+import { state } from "../state";
 import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage } from "../ui/modal";
 import { checkAndExecuteHotkey } from "../ui/hotkeys";
 
@@ -53,11 +53,8 @@ export function setupKeyboardHandlers(): void {
     // If typing in editable element, skip hotkey checks but continue to modal shortcuts
     
     // Only handle modal-specific shortcuts when modal is open
-    if (!elements.modal) {
-      return;
-    }
-    const computedStyle = window.getComputedStyle(elements.modal);
-    if (computedStyle.display === "none" || computedStyle.visibility === "hidden") {
+    // Check state.currentModalIndex instead of DOM element display style (React manages visibility)
+    if (state.currentModalIndex < 0) {
       return;
     }
     
@@ -69,8 +66,9 @@ export function setupKeyboardHandlers(): void {
       showNextImage();
     } else if (e.key === "Escape") {
       e.preventDefault();
-      if (elements.shortcutsOverlay?.style.display === "flex") {
-        elements.shortcutsOverlay.style.display = "none";
+      // Check state.shortcutsOverlayVisible instead of DOM element display style
+      if (state.shortcutsOverlayVisible) {
+        state.shortcutsOverlayVisible = false;
       } else {
         closeModal();
       }
@@ -84,12 +82,18 @@ export function setupKeyboardHandlers(): void {
   });
   
   const handleWindowClick = (event: MouseEvent): void => {
-    if (event.target === elements.modal) {
+    // Check if click is on modal backdrop (modal element itself, not its children)
+    const modal = document.querySelector("#image-modal") as HTMLElement | null;
+    if (modal && event.target === modal) {
       closeModal();
     }
-    if (elements.shortcutsOverlay?.style.display === "flex" && 
-        event.target === elements.shortcutsOverlay) {
-      elements.shortcutsOverlay.style.display = "none";
+    // Check if click is on shortcuts overlay backdrop
+    // Note: With React, we check state instead of DOM display style
+    if (state.shortcutsOverlayVisible) {
+      const shortcutsOverlay = document.querySelector("#keyboard-shortcuts-overlay") as HTMLElement | null;
+      if (shortcutsOverlay && event.target === shortcutsOverlay) {
+        state.shortcutsOverlayVisible = false;
+      }
     }
   };
   

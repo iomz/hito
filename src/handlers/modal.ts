@@ -4,26 +4,10 @@ import { closeModal, showPreviousImage, showNextImage } from "../ui/modal";
 /**
  * Attach click handlers for the modal controls when their DOM elements exist.
  *
- * Binds the close button to close the modal, and binds the previous/next buttons to navigate the modal.
- * Prev/next button clicks stop event propagation to avoid triggering container click handlers.
+ * NOTE: With React managing the modal, this is now a no-op.
+ * The React ImageModal component handles click events directly.
  */
 export function setupModalHandlers(): void {
-  if (elements.closeBtn) {
-    elements.closeBtn.onclick = closeModal;
-  }
-  
-  if (elements.modalPrevBtn) {
-    elements.modalPrevBtn.onclick = (e) => {
-      e.stopPropagation();
-      showPreviousImage();
-    };
-  }
-  
-  if (elements.modalNextBtn) {
-    elements.modalNextBtn.onclick = (e) => {
-      e.stopPropagation();
-      showNextImage();
-    };
-  }
+  // No-op: React ImageModal component handles click events
 }
 

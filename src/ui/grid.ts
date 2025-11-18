@@ -1,6 +1,3 @@
-import { elements } from "../state";
-import { createElement } from "../utils/dom.js";
-
 /**
  * Removes all child nodes from the image grid container.
  *
@@ -33,9 +30,10 @@ export function removeSentinel(): void {
  * @param imagePath - The filesystem path of the image to remove from the grid
  */
 export function removeImageFromGrid(imagePath: string): void {
-  if (!elements.imageGrid) return;
+  const imageGrid = document.querySelector("#image-grid") as HTMLElement | null;
+  if (!imageGrid) return;
   
-  const imageItems = elements.imageGrid.querySelectorAll(".image-item");
+  const imageItems = imageGrid.querySelectorAll(".image-item");
   for (const item of imageItems) {
     const itemPath = item.getAttribute("data-image-path");
     if (itemPath === imagePath) {
