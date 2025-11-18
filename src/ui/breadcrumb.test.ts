@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createBreadcrumb } from "./breadcrumb.js";
-import { browseImages } from "../core/browse.js";
+import { createBreadcrumb } from "./breadcrumb";
+import { browseImages } from "../core/browse";
 
 // Mock the browseImages function to avoid actual navigation during tests
-vi.mock("../core/browse.js", () => ({
+vi.mock("../core/browse", () => ({
   browseImages: vi.fn(),
 }));
 

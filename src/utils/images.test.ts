@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createPlaceholder, createErrorPlaceholder, createImageElement, loadImageData } from './images.js';
+import { createPlaceholder, createErrorPlaceholder, createImageElement, loadImageData } from './images';
 import { state } from '../state';
 
 // Mock the modal module
-vi.mock('../ui/modal.js', () => ({
+vi.mock('../ui/modal', () => ({
   openModal: vi.fn(),
 }));
 
@@ -120,7 +120,7 @@ describe('image utilities', () => {
     });
 
     it('should not open modal if image not found in allImagePaths', async () => {
-      const { openModal } = await import('../ui/modal.js');
+      const { openModal } = await import('../ui/modal');
       state.allImagePaths = [{ path: '/other/image.jpg' }];
       const imagePath = '/path/to/image.jpg';
       const dataUrl = 'data:image/jpeg;base64,test';

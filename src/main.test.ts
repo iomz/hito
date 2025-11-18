@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { state, elements } from "./state.js";
+import { state, elements } from "./state";
 
 // Mock DOM
 const createMockElement = (id: string) => {

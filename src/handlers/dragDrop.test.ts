@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Event } from '@tauri-apps/api/event';
-import type { DragDropEvent } from '../types.js';
-import { extractPathsFromEvent } from './dragDrop.js';
+import type { DragDropEvent } from '../types';
+import { extractPathsFromEvent } from './dragDrop';
 
 describe('extractPathsFromEvent', () => {
   it('should return null for null input', () => {

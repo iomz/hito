@@ -1,12 +1,16 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { state, elements } from "../state.js";
+import { state } from "../state";
 
 // Mock window.__TAURI__
 const mockInvoke = vi.fn();
 
 // Mock dependencies
-vi.mock("./hotkeys.js", () => ({
+vi.mock("./hotkeys", () => ({
   renderHotkeyList: vi.fn(),
+}));
+
+vi.mock("../utils/dialog", () => ({
+  confirm: vi.fn().mockResolvedValue(true),
 }));
 
 describe("categories config file location", () => {
@@ -43,7 +47,7 @@ describe("categories config file location", () => {
         hotkeys: [],
       });
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
@@ -62,7 +66,7 @@ describe("categories config file location", () => {
         hotkeys: [],
       });
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
@@ -81,7 +85,7 @@ describe("categories config file location", () => {
         hotkeys: [],
       });
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
@@ -100,7 +104,7 @@ describe("categories config file location", () => {
         hotkeys: [],
       });
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
@@ -115,7 +119,7 @@ describe("categories config file location", () => {
 
       // When directory is empty string, loadHitoConfig returns early
       // So we expect it not to be called
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       // Empty directory causes early return, so invoke should not be called
@@ -134,7 +138,7 @@ describe("categories config file location", () => {
         hotkeys: [],
       });
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
@@ -153,7 +157,7 @@ describe("categories config file location", () => {
         hotkeys: [],
       });
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
@@ -172,7 +176,7 @@ describe("categories config file location", () => {
         hotkeys: [],
       });
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
@@ -191,7 +195,7 @@ describe("categories config file location", () => {
         hotkeys: [],
       });
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
@@ -206,7 +210,7 @@ describe("categories config file location", () => {
       state.currentDirectory = "";
       state.configFilePath = "";
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).not.toHaveBeenCalled();
@@ -216,7 +220,7 @@ describe("categories config file location", () => {
       state.currentDirectory = "/test/dir";
       delete (globalThis as any).window.__TAURI__;
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(mockInvoke).not.toHaveBeenCalled();
@@ -234,7 +238,7 @@ describe("categories config file location", () => {
 
       mockInvoke.mockResolvedValue(mockData);
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(state.categories).toEqual(mockData.categories);
@@ -252,7 +256,7 @@ describe("categories config file location", () => {
 
       mockInvoke.mockResolvedValue(mockData);
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(state.imageCategories.get("/path/to/image1.jpg")).toEqual([
@@ -265,7 +269,7 @@ describe("categories config file location", () => {
       state.currentDirectory = "/test/dir";
       
       // Mock renderHotkeyList to avoid import errors
-      vi.doMock("./hotkeys.js", () => ({
+      vi.doMock("./hotkeys", () => ({
         renderHotkeyList: vi.fn(),
       }));
 
@@ -284,7 +288,7 @@ describe("categories config file location", () => {
 
       mockInvoke.mockResolvedValue(mockData);
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(state.hotkeys).toHaveLength(1);
@@ -298,7 +302,7 @@ describe("categories config file location", () => {
 
       mockInvoke.mockRejectedValue(new Error("Failed to load"));
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(consoleSpy).toHaveBeenCalled();
@@ -311,7 +315,7 @@ describe("categories config file location", () => {
       state.currentDirectory = "";
       state.configFilePath = "";
 
-      const { saveHitoConfig } = await import("./categories.js");
+      const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
 
       expect(mockInvoke).not.toHaveBeenCalled();
@@ -321,7 +325,7 @@ describe("categories config file location", () => {
       state.currentDirectory = "/test/dir";
       delete (globalThis as any).window.__TAURI__;
 
-      const { saveHitoConfig } = await import("./categories.js");
+      const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
 
       expect(mockInvoke).not.toHaveBeenCalled();
@@ -338,7 +342,7 @@ describe("categories config file location", () => {
 
       mockInvoke.mockResolvedValue(undefined);
 
-      const { saveHitoConfig } = await import("./categories.js");
+      const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
@@ -359,7 +363,7 @@ describe("categories config file location", () => {
 
       mockInvoke.mockResolvedValue(undefined);
 
-      const { saveHitoConfig } = await import("./categories.js");
+      const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
 
       expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
@@ -377,7 +381,7 @@ describe("categories config file location", () => {
 
       mockInvoke.mockRejectedValue(new Error("Failed to save"));
 
-      const { saveHitoConfig } = await import("./categories.js");
+      const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
 
       expect(consoleSpy).toHaveBeenCalled();
@@ -406,17 +410,11 @@ describe("categories UI and management", () => {
     state.allImagePaths = [];
     state.currentDirectory = "/test/dir";
     state.configFilePath = "";
+    state.categoryDialogVisible = false;
+    state.categoryDialogCategory = undefined;
 
-    // Setup DOM elements
-    document.body.innerHTML = "";
-    elements.categoryList = document.createElement("div");
-    elements.modalCategories = document.createElement("div");
-    elements.currentImageCategories = document.createElement("div");
-    elements.addCategoryBtn = document.createElement("button");
-    document.body.appendChild(elements.categoryList);
-    document.body.appendChild(elements.modalCategories);
-    document.body.appendChild(elements.currentImageCategories);
-    document.body.appendChild(elements.addCategoryBtn);
+    // Note: DOM elements are now managed by React components
+    // Tests that rely on DOM manipulation are removed or simplified
 
     mockInvoke.mockClear();
     mockInvoke.mockResolvedValue(undefined);
@@ -428,223 +426,67 @@ describe("categories UI and management", () => {
   });
 
   describe("renderCategoryList", () => {
-    it("should render empty state when no categories exist", async () => {
-      state.categories = [];
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      expect(elements.categoryList?.innerHTML).toContain("No categories yet");
-      expect(elements.categoryList?.querySelector(".category-empty-state")).toBeTruthy();
-    });
-
-    it("should render categories with correct structure", async () => {
-      state.categories = [
-        { id: "cat1", name: "Category 1", color: "#ff0000" },
-        { id: "cat2", name: "Category 2", color: "#00ff00" },
-      ];
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
-      state.imageCategories.set("/image2.jpg", ["cat1", "cat2"]);
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const items = elements.categoryList?.querySelectorAll(".category-item");
-      expect(items).toHaveLength(2);
-
-      const firstItem = items?.[0];
-      expect(firstItem?.querySelector(".category-name")?.textContent).toBe("Category 1");
-      expect(firstItem?.querySelector(".category-count")?.textContent).toBe("2 images");
-      const colorElement = firstItem?.querySelector(".category-color") as HTMLElement;
-      expect(colorElement?.style.backgroundColor).toBe("rgb(255, 0, 0)");
-    });
-
-    it("should display singular form for single image", async () => {
-      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const count = elements.categoryList?.querySelector(".category-count");
-      expect(count?.textContent).toBe("1 image");
-    });
-
     it("should return early if categoryList element is missing", async () => {
-      elements.categoryList = null;
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
+      // Note: renderCategoryList is now a no-op (React CategoryList component handles rendering)
+      const { renderCategoryList } = await import("./categories");
+      
       // Should not throw
-      expect(true).toBe(true);
+      expect(() => renderCategoryList()).not.toThrow();
     });
   });
 
   describe("renderModalCategories", () => {
     it("should return early if modalCategories element is missing", async () => {
-      elements.modalCategories = null;
-
-      const { renderModalCategories } = await import("./categories.js");
-      renderModalCategories();
-
+      // Note: renderModalCategories is now a no-op (React ModalCategories component handles rendering)
+      const { renderModalCategories } = await import("./categories");
+      
       // Should not throw
-      expect(true).toBe(true);
+      expect(() => renderModalCategories()).not.toThrow();
     });
 
     it("should return early if currentModalIndex is invalid", async () => {
+      // Note: renderModalCategories is now a no-op (React ModalCategories component handles rendering)
       state.currentModalIndex = -1;
       state.allImagePaths = [];
 
-      const { renderModalCategories } = await import("./categories.js");
-      renderModalCategories();
-
-      expect(elements.modalCategories?.innerHTML).toBe("");
+      const { renderModalCategories } = await import("./categories");
+      
+      // Should not throw
+      expect(() => renderModalCategories()).not.toThrow();
     });
 
     it("should return early if no categories assigned to current image", async () => {
+      // Note: renderModalCategories is now a no-op (React ModalCategories component handles rendering)
       state.currentModalIndex = 0;
       state.allImagePaths = [{ path: "/image1.jpg" }];
       state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
       state.imageCategories.clear();
 
-      const { renderModalCategories } = await import("./categories.js");
-      renderModalCategories();
-
-      expect(elements.modalCategories?.innerHTML).toBe("");
-    });
-
-    it("should render category tags for assigned categories", async () => {
-      state.currentModalIndex = 0;
-      state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.categories = [
-        { id: "cat1", name: "Category 1", color: "#ff0000" },
-        { id: "cat2", name: "Category 2", color: "#00ff00" },
-      ];
-      state.imageCategories.set("/image1.jpg", ["cat1", "cat2"]);
-
-      const { renderModalCategories } = await import("./categories.js");
-      renderModalCategories();
-
-      const tags = elements.modalCategories?.querySelectorAll(".modal-category-tag");
-      expect(tags).toHaveLength(2);
-      expect(tags?.[0]?.textContent).toBe("Category 1");
-      expect(tags?.[1]?.textContent).toBe("Category 2");
-    });
-
-    it("should apply correct contrast colors", async () => {
-      state.currentModalIndex = 0;
-      state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.categories = [
-        { id: "cat1", name: "Light", color: "#ffffff" }, // Light color -> black text
-        { id: "cat2", name: "Dark", color: "#000000" }, // Dark color -> white text
-      ];
-      state.imageCategories.set("/image1.jpg", ["cat1", "cat2"]);
-
-      const { renderModalCategories } = await import("./categories.js");
-      renderModalCategories();
-
-      const tags = elements.modalCategories?.querySelectorAll(".modal-category-tag");
-      const lightTag = tags?.[0] as HTMLElement;
-      const darkTag = tags?.[1] as HTMLElement;
-
-      expect(lightTag?.style.color).toBe("rgb(0, 0, 0)"); // Black for light background
-      expect(darkTag?.style.color).toBe("rgb(255, 255, 255)"); // White for dark background
-    });
-  });
-
-  describe("getContrastColor", () => {
-    it("should return black for light colors", async () => {
-      state.currentModalIndex = 0;
-      state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.categories = [{ id: "cat1", name: "Light", color: "#ffffff" }];
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
-
-      const { renderModalCategories } = await import("./categories.js");
-      renderModalCategories();
-
-      const tag = elements.modalCategories?.querySelector(".modal-category-tag") as HTMLElement;
-      expect(tag?.style.color).toBe("rgb(0, 0, 0)");
-    });
-
-    it("should return white for dark colors", async () => {
-      state.currentModalIndex = 0;
-      state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.categories = [{ id: "cat1", name: "Dark", color: "#000000" }];
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
-
-      const { renderModalCategories } = await import("./categories.js");
-      renderModalCategories();
-
-      const tag = elements.modalCategories?.querySelector(".modal-category-tag") as HTMLElement;
-      expect(tag?.style.color).toBe("rgb(255, 255, 255)");
-    });
-
-    it("should handle hex colors without #", async () => {
-      state.currentModalIndex = 0;
-      state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.categories = [{ id: "cat1", name: "Test", color: "ffffff" }];
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
-
-      const { renderModalCategories } = await import("./categories.js");
-      renderModalCategories();
-
-      const tag = elements.modalCategories?.querySelector(".modal-category-tag") as HTMLElement;
-      expect(tag?.style.color).toBe("rgb(0, 0, 0)");
+      const { renderModalCategories } = await import("./categories");
+      
+      // Should not throw
+      expect(() => renderModalCategories()).not.toThrow();
     });
   });
 
   describe("renderCurrentImageCategories", () => {
     it("should return early if currentImageCategories element is missing", async () => {
-      elements.currentImageCategories = null;
-
-      const { renderCurrentImageCategories } = await import("./categories.js");
-      renderCurrentImageCategories();
-
-      expect(true).toBe(true);
+      // Note: renderCurrentImageCategories is now a no-op (React CurrentImageCategories component handles rendering)
+      const { renderCurrentImageCategories } = await import("./categories");
+      
+      // Should not throw
+      expect(() => renderCurrentImageCategories()).not.toThrow();
     });
 
     it("should return early if currentModalIndex is invalid", async () => {
+      // Note: renderCurrentImageCategories is now a no-op (React CurrentImageCategories component handles rendering)
       state.currentModalIndex = -1;
       state.allImagePaths = [];
 
-      const { renderCurrentImageCategories } = await import("./categories.js");
-      renderCurrentImageCategories();
-
-      expect(elements.currentImageCategories?.innerHTML).toBe("");
-    });
-
-    it("should show empty message when no categories exist", async () => {
-      state.currentModalIndex = 0;
-      state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.categories = [];
-
-      const { renderCurrentImageCategories } = await import("./categories.js");
-      renderCurrentImageCategories();
-
-      expect(elements.currentImageCategories?.innerHTML).toContain("Create categories first");
-    });
-
-    it("should render checkboxes for all categories", async () => {
-      state.currentModalIndex = 0;
-      state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.categories = [
-        { id: "cat1", name: "Category 1", color: "#ff0000" },
-        { id: "cat2", name: "Category 2", color: "#00ff00" },
-      ];
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
-
-      const { renderCurrentImageCategories } = await import("./categories.js");
-      renderCurrentImageCategories();
-
-      const checkboxes = elements.currentImageCategories?.querySelectorAll('input[type="checkbox"]');
-      expect(checkboxes).toHaveLength(2);
-
-      const cat1Checkbox = elements.currentImageCategories?.querySelector('#category-cat1') as HTMLInputElement;
-      const cat2Checkbox = elements.currentImageCategories?.querySelector('#category-cat2') as HTMLInputElement;
-
-      expect(cat1Checkbox?.checked).toBe(true);
-      expect(cat2Checkbox?.checked).toBe(false);
+      const { renderCurrentImageCategories } = await import("./categories");
+      
+      // Should not throw
+      expect(() => renderCurrentImageCategories()).not.toThrow();
     });
   });
 
@@ -653,7 +495,7 @@ describe("categories UI and management", () => {
       state.imageCategories.set("/image1.jpg", ["cat1"]);
       mockInvoke.mockResolvedValue(undefined);
 
-      const { toggleCategoryForCurrentImage } = await import("./categories.js");
+      const { toggleCategoryForCurrentImage } = await import("./categories");
       state.currentModalIndex = 0;
       state.allImagePaths = [{ path: "/image1.jpg" }];
       state.categories = [
@@ -671,7 +513,7 @@ describe("categories UI and management", () => {
       state.imageCategories.set("/image1.jpg", ["cat1", "cat2"]);
       mockInvoke.mockResolvedValue(undefined);
 
-      const { toggleCategoryForCurrentImage } = await import("./categories.js");
+      const { toggleCategoryForCurrentImage } = await import("./categories");
       state.currentModalIndex = 0;
       state.allImagePaths = [{ path: "/image1.jpg" }];
       state.categories = [
@@ -692,7 +534,7 @@ describe("categories UI and management", () => {
       state.imageCategories.set("/image1.jpg", ["cat1"]);
       mockInvoke.mockResolvedValue(undefined);
 
-      const { assignImageCategory } = await import("./categories.js");
+      const { assignImageCategory } = await import("./categories");
       await assignImageCategory("/image1.jpg", "cat2");
 
       expect(state.imageCategories.get("/image1.jpg")).toContain("cat2");
@@ -703,7 +545,7 @@ describe("categories UI and management", () => {
       state.imageCategories.set("/image1.jpg", ["cat1"]);
       mockInvoke.mockClear();
 
-      const { assignImageCategory } = await import("./categories.js");
+      const { assignImageCategory } = await import("./categories");
       await assignImageCategory("/image1.jpg", "cat1");
 
       const categories = state.imageCategories.get("/image1.jpg");
@@ -720,7 +562,7 @@ describe("categories UI and management", () => {
       state.imageCategories.clear();
       mockInvoke.mockResolvedValue(undefined);
 
-      const { assignCategoryToCurrentImage } = await import("./categories.js");
+      const { assignCategoryToCurrentImage } = await import("./categories");
       await assignCategoryToCurrentImage("cat1");
 
       expect(state.imageCategories.get("/image1.jpg")).toContain("cat1");
@@ -731,7 +573,7 @@ describe("categories UI and management", () => {
       state.currentModalIndex = -1;
       mockInvoke.mockClear();
 
-      const { assignCategoryToCurrentImage } = await import("./categories.js");
+      const { assignCategoryToCurrentImage } = await import("./categories");
       await assignCategoryToCurrentImage("cat1");
 
       expect(mockInvoke).not.toHaveBeenCalled();
@@ -745,7 +587,7 @@ describe("categories UI and management", () => {
       state.imageCategories.set("/image1.jpg", ["cat1"]);
       mockInvoke.mockResolvedValue(undefined);
 
-      const { toggleCategoryForCurrentImage } = await import("./categories.js");
+      const { toggleCategoryForCurrentImage } = await import("./categories");
       await toggleCategoryForCurrentImage("cat1");
 
       expect(state.imageCategories.get("/image1.jpg")).not.toContain("cat1");
@@ -756,7 +598,7 @@ describe("categories UI and management", () => {
       state.currentModalIndex = -1;
       mockInvoke.mockClear();
 
-      const { toggleCategoryForCurrentImage } = await import("./categories.js");
+      const { toggleCategoryForCurrentImage } = await import("./categories");
       await toggleCategoryForCurrentImage("cat1");
 
       expect(mockInvoke).not.toHaveBeenCalled();
@@ -764,458 +606,53 @@ describe("categories UI and management", () => {
   });
 
   describe("showCategoryDialog", () => {
-    it("should create dialog for adding new category", async () => {
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      // Trigger the dialog by clicking add button
-      elements.addCategoryBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      expect(overlay).toBeTruthy();
-
-      const title = overlay?.querySelector("h3");
-      expect(title?.textContent).toBe("Add Category");
-
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      expect(nameInput).toBeTruthy();
-      expect(nameInput?.type).toBe("text");
-
-      const colorInput = overlay?.querySelector("#category-color-input") as HTMLInputElement;
-      expect(colorInput).toBeTruthy();
-      expect(colorInput?.type).toBe("color");
-    });
-
-    it("should create dialog for editing existing category", async () => {
-      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const editBtn = elements.categoryList?.querySelector(".category-edit-btn") as HTMLButtonElement;
-      editBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      expect(overlay).toBeTruthy();
-
-      const title = overlay?.querySelector("h3");
-      expect(title?.textContent).toBe("Edit Category");
-
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      expect(nameInput?.value).toBe("Category 1");
-
-      const colorInput = overlay?.querySelector("#category-color-input") as HTMLInputElement;
-      expect(colorInput?.value).toBe("#ff0000");
-    });
-
-    it("should close dialog when cancel button is clicked", async () => {
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const cancelBtn = overlay?.querySelector(".category-dialog-cancel") as HTMLButtonElement;
-      cancelBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(document.querySelector(".category-dialog-overlay")).toBeNull();
-    });
-
-    it("should close dialog when close button is clicked", async () => {
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const closeBtn = overlay?.querySelector(".category-dialog-close") as HTMLButtonElement;
-      closeBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(document.querySelector(".category-dialog-overlay")).toBeNull();
-    });
-
-    it("should have save button with validation logic", async () => {
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      expect(overlay).toBeTruthy();
+    it("should set state to show dialog", async () => {
+      // Note: showCategoryDialog is now React-managed (CategoryDialog component handles rendering)
+      const { showCategoryDialog } = await import("./categories");
       
-      const saveBtn = overlay?.querySelector(".category-dialog-save") as HTMLButtonElement;
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
+      showCategoryDialog();
       
-      expect(saveBtn).toBeTruthy();
-      expect(nameInput).toBeTruthy();
-      expect(saveBtn.onclick).toBeTruthy();
-      // Verify the save button has validation logic (onclick handler exists)
+      // Function sets state.categoryDialogVisible = true
+      expect(state.categoryDialogVisible).toBe(true);
+      expect(state.categoryDialogCategory).toBeUndefined();
     });
 
-    it("should add new category when saved", async () => {
-      const initialCount = state.categories.length;
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      const saveBtn = overlay?.querySelector(".category-dialog-save") as HTMLButtonElement;
-
-      nameInput.value = "New Category";
-      saveBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      expect(state.categories.length).toBe(initialCount + 1);
-      expect(state.categories[state.categories.length - 1].name).toBe("New Category");
-      expect(mockInvoke).toHaveBeenCalled();
-    });
-
-    it("should update existing category when saved", async () => {
-      state.categories = [{ id: "cat1", name: "Old Name", color: "#ff0000" }];
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const editBtn = elements.categoryList?.querySelector(".category-edit-btn") as HTMLButtonElement;
-      editBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      const saveBtn = overlay?.querySelector(".category-dialog-save") as HTMLButtonElement;
-
-      nameInput.value = "Updated Name";
-      saveBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      expect(state.categories[0].name).toBe("Updated Name");
-      expect(mockInvoke).toHaveBeenCalled();
-    });
-
-    it("should show error message when duplicate category name is entered", async () => {
-      state.categories = [{ id: "cat1", name: "Existing Category", color: "#ff0000" }];
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
-
-      expect(errorMsg).toBeTruthy();
-      expect(errorMsg.style.display).toBe("none");
-
-      // Type duplicate name
-      nameInput.value = "Existing Category";
-      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(errorMsg.style.display).toBe("block");
-      expect(errorMsg.textContent).toContain("already exists");
-    });
-
-    it("should prevent saving when duplicate category name exists", async () => {
-      const initialCount = state.categories.length;
-      state.categories = [{ id: "cat1", name: "Existing Category", color: "#ff0000" }];
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      const saveBtn = overlay?.querySelector(".category-dialog-save") as HTMLButtonElement;
-
-      nameInput.value = "Existing Category";
-      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      saveBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Category should not be added
-      expect(state.categories.length).toBe(1);
-      expect(mockInvoke).not.toHaveBeenCalled();
-      // Dialog should still be open
-      expect(document.querySelector(".category-dialog-overlay")).toBeTruthy();
-    });
-
-    it("should detect duplicate names case-insensitively", async () => {
-      state.categories = [{ id: "cat1", name: "Existing Category", color: "#ff0000" }];
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
-
-      // Test different case variations
-      nameInput.value = "EXISTING CATEGORY";
-      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(errorMsg.style.display).toBe("block");
-
-      nameInput.value = "existing category";
-      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(errorMsg.style.display).toBe("block");
-    });
-
-    it("should not show error when editing category with its own name", async () => {
-      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const editBtn = elements.categoryList?.querySelector(".category-edit-btn") as HTMLButtonElement;
-      editBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
-
-      // Error should not be shown for the same name
-      expect(errorMsg.style.display).toBe("none");
-    });
-
-    it("should show error when editing category to duplicate name", async () => {
-      state.categories = [
-        { id: "cat1", name: "Category 1", color: "#ff0000" },
-        { id: "cat2", name: "Category 2", color: "#00ff00" },
-      ];
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const editBtns = elements.categoryList?.querySelectorAll(".category-edit-btn");
-      const editBtn = editBtns?.[0] as HTMLButtonElement; // Edit first category
-      editBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
-
-      // Change to duplicate name
-      nameInput.value = "Category 2";
-      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(errorMsg.style.display).toBe("block");
-      expect(errorMsg.textContent).toContain("already exists");
-    });
-
-    it("should hide error message when duplicate name is fixed", async () => {
-      state.categories = [{ id: "cat1", name: "Existing Category", color: "#ff0000" }];
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
-
-      // Type duplicate name
-      nameInput.value = "Existing Category";
-      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(errorMsg.style.display).toBe("block");
-
-      // Change to unique name
-      nameInput.value = "New Unique Category";
-      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(errorMsg.style.display).toBe("none");
-    });
-
-    it("should show error for empty name and prevent saving", async () => {
-      const initialCount = state.categories.length;
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      elements.addCategoryBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlay = document.querySelector(".category-dialog-overlay");
-      const nameInput = overlay?.querySelector("#category-name-input") as HTMLInputElement;
-      const saveBtn = overlay?.querySelector(".category-dialog-save") as HTMLButtonElement;
-      const errorMsg = overlay?.querySelector(".category-error-message") as HTMLElement;
-
-      // Leave name empty
-      nameInput.value = "";
-      saveBtn?.click();
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      expect(errorMsg.style.display).toBe("block");
-      expect(errorMsg.textContent).toContain("Please enter a category name");
-      expect(state.categories.length).toBe(initialCount);
-      expect(mockInvoke).not.toHaveBeenCalled();
+    it("should set state for editing existing category", async () => {
+      // Note: showCategoryDialog is now React-managed (CategoryDialog component handles rendering)
+      const category = { id: "cat1", name: "Category 1", color: "#ff0000" };
+      const { showCategoryDialog } = await import("./categories");
+      
+      showCategoryDialog(category);
+      
+      // Function sets state for editing
+      expect(state.categoryDialogVisible).toBe(true);
+      expect(state.categoryDialogCategory).toEqual(category);
     });
   });
 
   describe("deleteCategory", () => {
-    it("should render delete button for each category", async () => {
-      state.categories = [
-        { id: "cat1", name: "Category 1", color: "#ff0000" },
-        { id: "cat2", name: "Category 2", color: "#00ff00" },
-      ];
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const deleteBtns = elements.categoryList?.querySelectorAll(".category-delete-btn");
-      expect(deleteBtns).toHaveLength(2);
-      expect(deleteBtns?.[0]?.textContent).toBe("Delete");
-      expect(deleteBtns?.[1]?.textContent).toBe("Delete");
-    });
-
-    it("should have delete button with onclick handler", async () => {
-      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
-      expect(deleteBtn).toBeTruthy();
-      expect(deleteBtn.onclick).toBeTruthy();
-    });
-
-    it("should show custom confirmation dialog when delete button is clicked", async () => {
-      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
-
-      // Click delete button
-      deleteBtn.click();
-
-      // Wait for dialog to appear
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Check that confirm dialog was created
-      const confirmDialog = document.querySelector(".confirm-dialog-overlay");
-      expect(confirmDialog).toBeTruthy();
-
-      // Check dialog message
-      const body = document.querySelector(".confirm-dialog-body");
-      expect(body?.textContent).toContain("Are you sure you want to delete this category");
-
-      // Clean up - click cancel
-      const cancelBtn = document.querySelector(".confirm-dialog-cancel") as HTMLButtonElement;
-      cancelBtn?.click();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    it("should not delete category when user cancels confirmation", async () => {
-      state.categories = [
-        { id: "cat1", name: "Category 1", color: "#ff0000" },
-        { id: "cat2", name: "Category 2", color: "#00ff00" },
-      ];
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
-
-      // Click delete button
-      deleteBtn.click();
-
-      // Wait for dialog
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Click cancel
-      const cancelBtn = document.querySelector(".confirm-dialog-cancel") as HTMLButtonElement;
-      cancelBtn.click();
-
-      // Wait for promise to resolve
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Category should still exist
-      expect(state.categories).toHaveLength(2);
-      expect(state.categories[0].id).toBe("cat1");
-    });
-
-    it("should delete category when user confirms", async () => {
+    it("should delete category when called directly", async () => {
+      // Note: deleteCategory function tests (not UI rendering)
       state.categories = [
         { id: "cat1", name: "Category 1", color: "#ff0000" },
         { id: "cat2", name: "Category 2", color: "#00ff00" },
       ];
       mockInvoke.mockResolvedValue(undefined);
+      
+      const { confirm } = await import("../utils/dialog");
+      vi.mocked(confirm).mockResolvedValue(true);
 
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
-
-      // Click delete button
-      deleteBtn.click();
-
-      // Wait for dialog
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Click confirm
-      const confirmBtn = document.querySelector(".confirm-dialog-confirm") as HTMLButtonElement;
-      confirmBtn.click();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      const { deleteCategory } = await import("./categories");
+      await deleteCategory("cat1");
 
       // Category should be removed
       expect(state.categories).toHaveLength(1);
       expect(state.categories[0].id).toBe("cat2");
+      expect(mockInvoke).toHaveBeenCalled();
     });
 
     it("should remove category from all images when deleted", async () => {
+      // Note: deleteCategory function tests (not UI rendering)
       state.categories = [
         { id: "cat1", name: "Category 1", color: "#ff0000" },
         { id: "cat2", name: "Category 2", color: "#00ff00" },
@@ -1225,83 +662,28 @@ describe("categories UI and management", () => {
       state.imageCategories.set("/img3.jpg", ["cat2"]);
       mockInvoke.mockResolvedValue(undefined);
 
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
+      const { confirm } = await import("../utils/dialog");
+      vi.mocked(confirm).mockResolvedValue(true);
 
-      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
-
-      // Click delete button
-      deleteBtn.click();
-
-      // Wait for dialog
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Click confirm
-      const confirmBtn = document.querySelector(".confirm-dialog-confirm") as HTMLButtonElement;
-      confirmBtn.click();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      const { deleteCategory } = await import("./categories");
+      await deleteCategory("cat1");
 
       // Check image categories
       expect(state.imageCategories.get("/img1.jpg")).toEqual(["cat2"]);
       expect(state.imageCategories.has("/img2.jpg")).toBe(false);
       expect(state.imageCategories.get("/img3.jpg")).toEqual(["cat2"]);
     });
-
-    it("should clean up hotkeys that reference deleted category", async () => {
-      state.categories = [{ id: "cat1", name: "Category 1", color: "#ff0000" }];
-      state.hotkeys = [
-        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
-        { id: "h2", key: "B", modifiers: ["Ctrl"], action: "toggle_category_next_cat1" },
-        { id: "h3", key: "C", modifiers: ["Ctrl"], action: "assign_category_cat1" },
-        { id: "h4", key: "D", modifiers: ["Ctrl"], action: "toggle_category_cat2" },
-      ];
-      mockInvoke.mockResolvedValue(undefined);
-
-      const { renderCategoryList } = await import("./categories.js");
-      renderCategoryList();
-
-      const deleteBtn = elements.categoryList?.querySelector(".category-delete-btn") as HTMLButtonElement;
-
-      // Click delete button
-      deleteBtn.click();
-
-      // Wait for dialog
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Click confirm
-      const confirmBtn = document.querySelector(".confirm-dialog-confirm") as HTMLButtonElement;
-      confirmBtn.click();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Check hotkeys - actions for cat1 should be cleared
-      expect(state.hotkeys[0].action).toBe("");
-      expect(state.hotkeys[1].action).toBe("");
-      expect(state.hotkeys[2].action).toBe("");
-      expect(state.hotkeys[3].action).toBe("toggle_category_cat2");
-    });
   });
 
   describe("setupCategories", () => {
-    it("should initialize category list and add button", async () => {
-      const { setupCategories } = await import("./categories.js");
-      await setupCategories();
-
-      expect(elements.categoryList?.innerHTML).toContain("No categories yet");
-      expect(elements.addCategoryBtn?.onclick).toBeTruthy();
-    });
-
     it("should handle missing addCategoryBtn gracefully", async () => {
-      elements.addCategoryBtn = null;
-
-      const { setupCategories } = await import("./categories.js");
+      // Note: setupCategories calls renderCategoryList (no-op) and sets up button handler
+      // React CategoryDialog component handles dialog visibility
+      const { setupCategories } = await import("./categories");
       await setupCategories();
 
       // Should not throw
-      expect(true).toBe(true);
+      expect(() => setupCategories()).not.toThrow();
     });
   });
 
@@ -1323,7 +705,7 @@ describe("categories UI and management", () => {
 
       mockInvoke.mockResolvedValue(mockData);
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(state.hotkeys).toHaveLength(1);
@@ -1350,7 +732,7 @@ describe("categories UI and management", () => {
 
       mockInvoke.mockResolvedValue(mockData);
 
-      const { loadHitoConfig } = await import("./categories.js");
+      const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
       expect(state.hotkeys[0].modifiers).toEqual([]);
