@@ -5,21 +5,24 @@ import { createElement } from "../utils/dom.js";
  * Removes all child nodes from the image grid container.
  *
  * If the image grid element is not present, the function does nothing.
+ * 
+ * NOTE: With React managing the grid, this is now a no-op.
+ * React components will handle clearing based on state changes.
  */
 export function clearImageGrid(): void {
-  if (elements.imageGrid) {
-    elements.imageGrid.innerHTML = "";
-  }
+  // No-op: React manages the grid now
 }
 
 /**
  * Remove the DOM element with id "load-more-sentinel" if it exists.
  *
  * This clears the sentinel used to trigger loading additional image batches.
+ * 
+ * NOTE: With React managing the grid, this is now a no-op.
+ * React ImageGrid component manages the sentinel internally.
  */
 export function removeSentinel(): void {
-  const sentinel = document.getElementById("load-more-sentinel");
-  if (sentinel) sentinel.remove();
+  // No-op: React manages the sentinel now
 }
 
 /**

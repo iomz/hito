@@ -8,6 +8,11 @@ import { setupCategories } from "./ui/categories";
 import { updateShortcutsOverlay } from "./ui/modal";
 import { resetToHome } from "./utils/reset";
 import { elements, state } from "./state";
+import { DropZone } from "./components/DropZone";
+import { CurrentPath } from "./components/CurrentPath";
+import { ErrorMessage } from "./components/ErrorMessage";
+import { LoadingSpinner } from "./components/LoadingSpinner";
+import { ImageGrid } from "./components/ImageGrid";
 
 function App() {
   useEffect(() => {
@@ -101,27 +106,13 @@ function App() {
         <h1>Hito</h1>
 
         <div className="path-input-container">
-          <div id="drop-zone" className="drop-zone">
-            <div className="drop-zone-content">
-              <svg className="drop-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              <p className="drop-text">Drag and drop a folder here</p>
-              <p className="drop-hint">or click to select a folder</p>
-            </div>
-          </div>
-          <div id="current-path" className="current-path"></div>
-          <p id="error-msg" className="error"></p>
+          <DropZone />
+          <CurrentPath />
+          <ErrorMessage />
         </div>
 
-        <div id="loading-spinner" className="loading-spinner" style={{ display: "none" }}>
-          <div className="spinner"></div>
-          <p>Loading images...</p>
-        </div>
-
-        <div id="image-grid" className="image-grid"></div>
+        <LoadingSpinner />
+        <ImageGrid />
 
         <div id="hotkey-sidebar" className="hotkey-sidebar">
           <div className="hotkey-sidebar-header">
