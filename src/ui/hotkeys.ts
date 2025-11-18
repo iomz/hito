@@ -1,9 +1,9 @@
 import { state } from "../state";
-import { createElement } from "../utils/dom.js";
-import type { HotkeyConfig } from "../types.js";
+import { createElement } from "../utils/dom";
+import type { HotkeyConfig } from "../types";
 import { saveHitoConfig } from "./categories";
-import { confirm } from "../utils/dialog.js";
-import { updateShortcutsOverlay } from "./modal.js";
+import { confirm } from "../utils/dialog";
+import { updateShortcutsOverlay } from "./modal";
 
 /**
  * Width of the hotkey sidebar when open.

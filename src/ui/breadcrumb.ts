@@ -1,6 +1,6 @@
-import { createElement } from "../utils/dom.js";
-import { handleFolder } from "../handlers/dragDrop.js";
-import { normalizePath } from "../utils/state.js";
+import { createElement } from "../utils/dom";
+import { handleFolder } from "../handlers/dragDrop";
+import { normalizePath } from "../utils/state";
 
 /**
  * Create a breadcrumb list element from a file path.

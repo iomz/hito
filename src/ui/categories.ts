@@ -1,8 +1,8 @@
 import { state } from "../state";
-import { createElement } from "../utils/dom.js";
-import type { Category, HotkeyConfig } from "../types.js";
-import { confirm } from "../utils/dialog.js";
-import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
+import { createElement } from "../utils/dom";
+import type { Category, HotkeyConfig } from "../types";
+import { confirm } from "../utils/dialog";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 import { normalizePath } from "../utils/state";
 
 interface HitoFile {
@@ -40,13 +40,8 @@ function getConfigFileName(): string | undefined {
  * Load categories, image assignments, and hotkeys from .hito.json in the current directory.
  */
 export async function loadHitoConfig(): Promise<void> {
-  console.log("[loadHitoConfig] START", {
-    currentDirectory: state.currentDirectory,
-    configFilePath: state.configFilePath,
-  });
   const configDir = getConfigFileDirectory();
   if (!configDir) {
-    console.log("[loadHitoConfig] No configDir, aborting");
     return;
   }
 
@@ -57,21 +52,9 @@ export async function loadHitoConfig(): Promise<void> {
     }
 
     const configFileName = getConfigFileName();
-    console.log("[loadHitoConfig] Loading from:", {
-      directory: configDir,
-      filename: configFileName,
-    });
     const data = await invokeTauri<HitoFile>("load_hito_config", {
       directory: configDir,
       filename: configFileName,
-    });
-
-    console.log("[loadHitoConfig] Data received:", {
-      hasCategories: !!data.categories,
-      categoriesCount: data.categories?.length ?? 0,
-      hasImageCategories: !!data.image_categories,
-      hasHotkeys: !!data.hotkeys,
-      hotkeysCount: data.hotkeys?.length ?? 0,
     });
 
     if (data.categories) {

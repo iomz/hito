@@ -1,14 +1,13 @@
 import type { Event } from "@tauri-apps/api/event";
-import { DRAG_EVENTS } from "../constants.js";
-import type { DragDropEvent } from "../types.js";
-import { showSpinner, hideSpinner } from "../ui/spinner.js";
-import { showError, clearError } from "../ui/error.js";
+import { DRAG_EVENTS } from "../constants";
+import type { DragDropEvent } from "../types";
+import { showSpinner, hideSpinner } from "../ui/spinner";
+import { showError, clearError } from "../ui/error";
 import { clearImageGrid } from "../ui/grid";
-import { collapseDropZone, expandDropZone } from "../ui/dropZone.js";
+// Note: collapseDropZone/expandDropZone imports removed - React handles this now
 import { browseImages } from "../core/browse";
-import { open } from "../utils/dialog.js";
-import { createBreadcrumb } from "../ui/breadcrumb.js";
-import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
+import { open } from "../utils/dialog";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 
 /**
  * Normalize various drag-and-drop event shapes into a list of file paths.
@@ -43,16 +42,8 @@ export function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEven
  * @param folderPath - Filesystem path of the folder to browse and load images from
  */
 export function handleFolder(folderPath: string): void {
-  console.log('[handleFolder] Called with path:', folderPath);
-  const currentPath = document.querySelector("#current-path") as HTMLElement | null;
-  if (!currentPath) return;
-  
-  currentPath.innerHTML = "";
-  const breadcrumb = createBreadcrumb(folderPath);
-  currentPath.appendChild(breadcrumb);
-  currentPath.style.display = "block";
-  collapseDropZone();
-  console.log('[handleFolder] Calling browseImages...');
+  // Note: CurrentPath React component handles breadcrumb rendering based on state.currentDirectory
+  // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   browseImages(folderPath);
 }
 
@@ -64,15 +55,10 @@ export function handleFolder(folderPath: string): void {
  * @param event - The drop payload: a Tauri event, a DragDropEvent object, or an array of file/folder path strings.
  */
 export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent | string[]): Promise<void> {
-  console.log('[handleFileDrop] Called');
   // React manages imageGrid now, so don't require it
   const errorMsg = document.querySelector("#error-msg") as HTMLElement | null;
   const loadingSpinner = document.querySelector("#loading-spinner") as HTMLElement | null;
   if (!errorMsg || !loadingSpinner) {
-    console.log('[handleFileDrop] Missing elements:', {
-      errorMsg: !!errorMsg,
-      loadingSpinner: !!loadingSpinner
-    });
     return;
   }
   
@@ -168,7 +154,7 @@ export function setupDragDropHandlers(): void {
     if (isDragging) return;
     
     showSpinner();
-    collapseDropZone();
+    // Note: DropZone React component handles collapse/expand based on state.currentDirectory
     clearError();
     clearImageGrid();
     await selectFolder();
@@ -212,12 +198,7 @@ export function setupHTML5DragDrop(): void {
  */
 export async function setupTauriDragEvents(): Promise<void> {
   try {
-    console.log('[setupTauriDragEvents] Starting...');
     const eventNames = Object.values(DRAG_EVENTS);
-    console.log('[setupTauriDragEvents] Event names:', eventNames);
-    console.log('[setupTauriDragEvents] window.__TAURI__:', window.__TAURI__);
-    console.log('[setupTauriDragEvents] window.__TAURI__?.event:', window.__TAURI__?.event);
-    console.log('[setupTauriDragEvents] window.__TAURI__?.event?.listen:', window.__TAURI__?.event?.listen);
     
     // Use window.__TAURI__.event.listen directly (works without bundler)
     if (!window.__TAURI__?.event?.listen) {
@@ -225,7 +206,6 @@ export async function setupTauriDragEvents(): Promise<void> {
       return;
     }
     
-    console.log('[setupTauriDragEvents] Tauri event API available, setting up listeners...');
     const eventListen = window.__TAURI__.event.listen;
     
     // Use for...of loop to properly await async operations
@@ -233,11 +213,9 @@ export async function setupTauriDragEvents(): Promise<void> {
       try {
         await eventListen(eventName, (event: Event<DragDropEvent>) => {
           try {
-            console.log('[TauriDragEvent]', eventName, 'fired', { event });
             if (eventName === DRAG_EVENTS.DROP) {
-              console.log('[TauriDragEvent] DROP - calling handleFileDrop');
               showSpinner();
-              collapseDropZone();
+              // Note: DropZone React component handles collapse/expand based on state.currentDirectory
               clearError();
               clearImageGrid();
               const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
@@ -250,7 +228,6 @@ export async function setupTauriDragEvents(): Promise<void> {
                 showError(`Error: ${err}`);
               });
             } else if (eventName === DRAG_EVENTS.ENTER || eventName === DRAG_EVENTS.OVER) {
-              console.log('[TauriDragEvent]', eventName, '- showing spinner');
               const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
               if (dropZone) {
                 dropZone.classList.add("drag-over");
@@ -259,7 +236,6 @@ export async function setupTauriDragEvents(): Promise<void> {
               clearError();
               clearImageGrid();
             } else if (eventName === DRAG_EVENTS.LEAVE) {
-              console.log('[TauriDragEvent] LEAVE - hiding spinner');
               const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
               if (dropZone) {
                 dropZone.classList.remove("drag-over");
@@ -270,17 +246,10 @@ export async function setupTauriDragEvents(): Promise<void> {
             console.error('[TauriDragEvent] Error in event handler for', eventName, ':', handlerError);
           }
         });
-        console.log('[setupTauriDragEvents] Registered listener for:', eventName);
       } catch (error) {
         console.error('[setupTauriDragEvents] Failed to register listener for', eventName, ':', error);
       }
     }
-    console.log('[setupTauriDragEvents] Complete - registered', eventNames.length, 'event listeners');
-    
-    // Test: Try to log after a delay to verify console works
-    setTimeout(() => {
-      console.log('[setupTauriDragEvents] Test log after 1 second');
-    }, 1000);
   } catch (error) {
     console.error('[setupTauriDragEvents] FATAL ERROR:', error);
     console.error('[setupTauriDragEvents] Error value:', error);
@@ -309,12 +278,12 @@ export async function selectFolder(): Promise<void> {
       handleFolder(selected[0]);
     } else {
       hideSpinner();
-      expandDropZone();
+      // Note: DropZone React component handles collapse/expand based on state.currentDirectory
     }
   } catch (error) {
     hideSpinner();
     showError(`Error selecting folder: ${error}`);
-    expandDropZone();
+    // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   }
 }
 

@@ -4,9 +4,9 @@ import { showError } from "./error";
 import { showNotification } from "./notification";
 import { removeImageFromGrid } from "./grid";
 import { renderCurrentImageCategories, renderModalCategories } from "./categories";
-import { createElement } from "../utils/dom.js";
+import { createElement } from "../utils/dom";
 import { ensureImagePathsArray, normalizePath, getFilename } from "../utils/state";
-import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri.js";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 
 /**
  * Opens the image viewer modal for the image at the given index, ensuring the image data is available and updating modal UI.

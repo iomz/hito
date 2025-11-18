@@ -1,17 +1,13 @@
 import { state } from "../state";
 import { clearImageGrid } from "../ui/grid";
-import { expandDropZone } from "../ui/dropZone.js";
-import { clearError } from "../ui/error.js";
-import { hideSpinner } from "../ui/spinner.js";
-import { closeModal } from "../ui/modal.js";
-import { cleanupObserver } from "../core/observer.js";
+// Note: expandDropZone import removed - React handles this now
+import { clearError } from "../ui/error";
+import { hideSpinner } from "../ui/spinner";
+import { closeModal } from "../ui/modal";
+import { cleanupObserver } from "../core/observer";
 import { closeHotkeySidebar } from "../ui/hotkeys";
 
 export async function resetToHome(): Promise<void> {
-  console.log("[resetToHome] START", {
-    imageCount: Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0,
-    dirCount: Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0,
-  });
   // Close modal and sidebar first
   closeModal();
   closeHotkeySidebar();
@@ -34,14 +30,13 @@ export async function resetToHome(): Promise<void> {
   state.imageCategories.clear();
   state.hotkeys = [];
   state.resetCounter += 1; // Increment to force ImageGrid remount
-  console.log("[resetToHome] State cleared, resetCounter:", state.resetCounter);
   
   // Wait a tick for React to process state changes
   await new Promise(resolve => setTimeout(resolve, 0));
   
   // Now safely manipulate DOM for non-React managed elements
   clearImageGrid(); // No-op now, but kept for consistency
-  expandDropZone();
+  // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   
   // Clear current path
   const currentPath = document.querySelector("#current-path") as HTMLElement | null;
@@ -62,7 +57,5 @@ export async function resetToHome(): Promise<void> {
   if (hotkeySidebarToggle) {
     hotkeySidebarToggle.style.display = "none";
   }
-
-  console.log("[resetToHome] DONE");
 }
 

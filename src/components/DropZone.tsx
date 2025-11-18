@@ -1,8 +1,21 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { state } from "../state";
 
 export function DropZone() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const hasDirectory = state.currentDirectory.length > 0;
+      if (hasDirectory !== isCollapsed) {
+        setIsCollapsed(hasDirectory);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [isCollapsed]);
+
   return (
-    <div id="drop-zone" className="drop-zone">
+    <div id="drop-zone" className={`drop-zone ${isCollapsed ? "collapsed" : ""}`}>
       <div className="drop-zone-content">
         <svg
           className="drop-icon"

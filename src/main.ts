@@ -1,20 +1,19 @@
 import { state } from "./state";
-import { querySelector } from "./utils/dom.js";
-import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop.js";
-import { setupModalHandlers } from "./handlers/modal.js";
-import { setupKeyboardHandlers } from "./handlers/keyboard.js";
-import { setupHotkeySidebar } from "./ui/hotkeys";
-import { setupCategories } from "./ui/categories";
-import { clearImageGrid } from "./ui/grid.js";
-import { expandDropZone } from "./ui/dropZone.js";
-import { clearError } from "./ui/error.js";
-import { hideSpinner } from "./ui/spinner.js";
-import { closeModal, updateShortcutsOverlay } from "./ui/modal";
-import { cleanupObserver } from "./core/observer.js";
+import { querySelector } from "./utils/dom";
+import { setupDocumentDragHandlers, setupDragDropHandlers, setupHTML5DragDrop, setupTauriDragEvents } from "./handlers/dragDrop";
+import { setupModalHandlers } from "./handlers/modal";
+import { setupKeyboardHandlers } from "./handlers/keyboard";
+// Note: setupHotkeySidebar, setupCategories, updateShortcutsOverlay removed - React components handle this now
+import { clearImageGrid } from "./ui/grid";
+// Note: expandDropZone import removed - React handles this now
+import { clearError } from "./ui/error";
+import { hideSpinner } from "./ui/spinner";
+import { closeModal } from "./ui/modal";
+import { cleanupObserver } from "./core/observer";
 
 export async function resetToHome(): Promise<void> {
   clearImageGrid();
-  expandDropZone();
+  // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   clearError();
   hideSpinner();
   closeModal();
@@ -81,49 +80,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupHTML5DragDrop();
   setupModalHandlers();
   setupKeyboardHandlers();
-  setupHotkeySidebar();
-  
-  // Setup categories (non-blocking - don't prevent drag & drop if it fails)
-  setupCategories().catch((error) => {
-    console.error("Failed to setup categories:", error);
-  });
-  
-  // Initialize shortcuts overlay
-  updateShortcutsOverlay();
-  
-  // Setup sidebar tabs
-  const categoryTab = querySelector('[data-tab="categories"]');
-  const hotkeyTab = querySelector('[data-tab="hotkeys"]');
-  const fileTab = querySelector('[data-tab="file"]');
-  const categoriesPanel = querySelector("#categories-panel");
-  const hotkeysPanel = querySelector("#hotkeys-panel");
-  const filePanel = querySelector("#file-panel");
-  
-  if (categoryTab && hotkeyTab && fileTab && categoriesPanel && hotkeysPanel && filePanel) {
-    const switchToTab = (activeTab: HTMLElement, activePanel: HTMLElement) => {
-      // Remove active from all tabs and panels
-      [categoryTab, hotkeyTab, fileTab].forEach(tab => tab?.classList.remove("active"));
-      [categoriesPanel, hotkeysPanel, filePanel].forEach(panel => panel?.classList.remove("active"));
-      
-      // Add active to selected tab and panel
-      activeTab.classList.add("active");
-      activePanel.classList.add("active");
-    };
-    
-    categoryTab.onclick = () => switchToTab(categoryTab, categoriesPanel);
-    hotkeyTab.onclick = () => switchToTab(hotkeyTab, hotkeysPanel);
-    fileTab.onclick = () => switchToTab(fileTab, filePanel);
-  }
-  
-  // Setup config file path input
-  const configFilePathInput = document.querySelector("#config-file-path-input") as HTMLInputElement | null;
-  if (configFilePathInput) {
-    configFilePathInput.placeholder = ".hito.json";
-    configFilePathInput.addEventListener("input", (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      state.configFilePath = target.value.trim();
-    });
-  }
+  // Note: HotkeySidebar React component handles its own event handlers now
+  // Note: Categories setup handled by HotkeySidebar React component
+  // Note: Shortcuts overlay handled by ShortcutsOverlay React component
+  // Note: Sidebar tabs handled by HotkeySidebar React component
+  // Note: Config file input handled by ConfigFileInput React component
   
   await setupTauriDragEvents();
 });

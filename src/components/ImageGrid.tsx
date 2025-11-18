@@ -19,7 +19,6 @@ export function ImageGrid() {
     const initialCount = state.currentIndex > 0 
       ? Math.min(state.currentIndex, state.allImagePaths.length)
       : Math.min(BATCH_SIZE, state.allImagePaths.length);
-    console.log('[ImageGrid] Initial visibleCount:', initialCount, { currentIndex: state.currentIndex, imagePathsLength: state.allImagePaths.length });
     return initialCount;
   });
   const [dirCount, setDirCount] = useState(() => {
@@ -31,7 +30,6 @@ export function ImageGrid() {
   useLayoutEffect(() => {
     const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
     if (imagePathsLength === 0 && visibleCount > 0) {
-      console.log('[ImageGrid] Array cleared, resetting visibleCount to 0');
       setVisibleCount(0);
       setDirCount(0);
     }
@@ -68,13 +66,6 @@ export function ImageGrid() {
       
       // Re-render if something changed
       if (currentIndex !== lastIndex || imagePathsLength !== lastImagePathsLength || dirPathsLength !== lastDirPathsLength || newVisibleCount !== lastVisibleCount) {
-        console.log('[ImageGrid] State changed:', {
-          currentIndex,
-          imagePathsLength,
-          dirPathsLength,
-          newVisibleCount,
-          oldVisibleCount: lastVisibleCount
-        });
         lastIndex = currentIndex;
         lastImagePathsLength = imagePathsLength;
         lastDirPathsLength = dirPathsLength;
@@ -168,15 +159,6 @@ export function ImageGrid() {
     : [];
 
   const directories = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths : [];
-
-  console.log('[ImageGrid] Rendering:', {
-    visibleCount,
-    safeVisibleCount,
-    imagePathsLength,
-    dirCount,
-    visibleImagePathsLength: visibleImagePaths.length,
-    directoriesLength: directories.length
-  });
 
   return (
     <div id="image-grid" className="image-grid" ref={gridRef}>
