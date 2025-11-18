@@ -1,4 +1,4 @@
-import { state, elements } from "../state";
+import { state } from "../state";
 import { BATCH_SIZE } from "../constants";
 import { createElement } from "../utils/dom";
 import { removeSentinel } from "../ui/grid";
