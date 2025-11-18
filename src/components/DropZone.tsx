@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import { state } from "../state";
 import { handleFileDrop, selectFolder } from "../handlers/dragDrop";
+import { showNotification } from "../ui/notification";
 
 export function DropZone() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(state.currentDirectory.length > 0);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -13,9 +14,6 @@ export function DropZone() {
       const hasDirectory = state.currentDirectory.length > 0;
       setIsCollapsed(hasDirectory);
     });
-
-    // Initialize with current state
-    setIsCollapsed(state.currentDirectory.length > 0);
 
     // Listen to Tauri drag events for visual feedback
     const handleTauriDragEnter = () => setIsDragOver(true);
@@ -103,8 +101,15 @@ export function DropZone() {
     if (paths.length > 0) {
       await handleFileDrop(paths);
     } else {
-      // If we couldn't extract paths (browser limitation), show error
-      console.warn('Could not extract file paths from drop event. Use the file picker instead.');
+      // If we couldn't extract paths (browser limitation), show notification and open file picker
+      console.warn('Could not extract file paths from drop event. Opening file picker instead.');
+      showNotification('Drag-and-drop not supported. Opening file picker...');
+      try {
+        await selectFolder();
+      } catch (error) {
+        console.error('Error opening file picker:', error);
+        showNotification(`Failed to open file picker: ${error}`);
+      }
     }
   };
 

@@ -57,32 +57,29 @@ describe("hotkeys", () => {
       expect(state.isHotkeySidebarOpen).toBe(false);
     });
 
-    it("should adjust modal image when opening sidebar with modal open", async () => {
-      // Note: toggleHotkeySidebar updates modal image styles via querySelector
+    it("should not adjust modal image when opening sidebar with modal open", async () => {
+      // Note: Image position remains centered - sidebar overlays on top
       state.currentModalIndex = 0;
-
-      const { toggleHotkeySidebar, SIDEBAR_WIDTH } = await import("./hotkeys");
-      await toggleHotkeySidebar();
-
-      const modalImage = document.querySelector("#modal-image") as HTMLImageElement | null;
-      expect(modalImage?.style.marginLeft).toBe(SIDEBAR_WIDTH);
-      expect(modalImage?.style.maxWidth).toBe(`calc(90% - ${SIDEBAR_WIDTH})`);
-    });
-
-    it("should reset modal image when closing sidebar with modal open", async () => {
-      // Note: toggleHotkeySidebar updates modal image styles via querySelector
-      state.isHotkeySidebarOpen = true;
-      state.currentModalIndex = 0;
-      const { SIDEBAR_WIDTH } = await import("./hotkeys");
-      const modalImage = document.querySelector("#modal-image") as HTMLImageElement | null;
-      if (modalImage) {
-        modalImage.style.marginLeft = SIDEBAR_WIDTH;
-        modalImage.style.maxWidth = `calc(90% - ${SIDEBAR_WIDTH})`;
-      }
 
       const { toggleHotkeySidebar } = await import("./hotkeys");
       await toggleHotkeySidebar();
 
+      const modalImage = document.querySelector("#modal-image") as HTMLImageElement | null;
+      // Image styles should remain unchanged (empty or default)
+      expect(modalImage?.style.marginLeft).toBe("");
+      expect(modalImage?.style.maxWidth).toBe("");
+    });
+
+    it("should not adjust modal image when closing sidebar with modal open", async () => {
+      // Note: Image position remains centered - sidebar overlays on top
+      state.isHotkeySidebarOpen = true;
+      state.currentModalIndex = 0;
+
+      const { toggleHotkeySidebar } = await import("./hotkeys");
+      await toggleHotkeySidebar();
+
+      const modalImage = document.querySelector("#modal-image") as HTMLImageElement | null;
+      // Image styles should remain unchanged (empty or default)
       expect(modalImage?.style.marginLeft).toBe("");
       expect(modalImage?.style.maxWidth).toBe("");
     });
@@ -123,19 +120,15 @@ describe("hotkeys", () => {
       expect(state.isHotkeySidebarOpen).toBe(false);
     });
 
-    it("should reset modal image when modal is open", async () => {
-      // Note: closeHotkeySidebar updates modal image styles via querySelector
+    it("should not adjust modal image when modal is open", async () => {
+      // Note: Image position remains centered - sidebar overlays on top
       state.currentModalIndex = 0;
-      const { SIDEBAR_WIDTH } = await import("./hotkeys");
-      const modalImage = document.querySelector("#modal-image") as HTMLImageElement | null;
-      if (modalImage) {
-        modalImage.style.marginLeft = SIDEBAR_WIDTH;
-        modalImage.style.maxWidth = `calc(90% - ${SIDEBAR_WIDTH})`;
-      }
 
       const { closeHotkeySidebar } = await import("./hotkeys");
       closeHotkeySidebar();
 
+      const modalImage = document.querySelector("#modal-image") as HTMLImageElement | null;
+      // Image styles should remain unchanged (empty or default)
       expect(modalImage?.style.marginLeft).toBe("");
       expect(modalImage?.style.maxWidth).toBe("");
     });

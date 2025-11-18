@@ -6,7 +6,6 @@ import { ensureImagePathsArray, getFilename } from "../utils/state";
 import { closeModal, showPreviousImage, showNextImage } from "../ui/modal";
 import { ModalCategories } from "./ModalCategories";
 import { ShortcutsOverlay } from "./ShortcutsOverlay";
-import { SIDEBAR_WIDTH } from "../ui/hotkeys";
 
 export function ImageModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,16 +19,6 @@ export function ImageModal() {
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
-  const [isHotkeySidebarOpen, setIsHotkeySidebarOpen] = useState(false);
-
-  // Subscribe to sidebar state changes
-  useEffect(() => {
-    setIsHotkeySidebarOpen(state.isHotkeySidebarOpen);
-    const unsubscribe = state.subscribe(() => {
-      setIsHotkeySidebarOpen(state.isHotkeySidebarOpen);
-    });
-    return unsubscribe;
-  }, []);
 
   // Subscribe to modal state changes
   useEffect(() => {
@@ -43,7 +32,9 @@ export function ImageModal() {
         
         if (shouldBeOpen && modalIndex >= 0) {
           // Store previously focused element when opening
-          previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
+          if (document.activeElement) {
+            previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
+          }
           
           // Load image data
           if (!ensureImagePathsArray("ImageModal")) {
@@ -261,10 +252,6 @@ export function ImageModal() {
         className="modal-content"
         src={imageSrc}
         alt={caption}
-        style={{
-          marginLeft: isHotkeySidebarOpen ? SIDEBAR_WIDTH : "",
-          maxWidth: isHotkeySidebarOpen ? `calc(90% - ${SIDEBAR_WIDTH})` : "",
-        }}
       />
       <div id="modal-caption" className="modal-caption">
         <span id="modal-caption-text">
