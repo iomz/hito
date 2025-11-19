@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { state } from "../state";
 import type { HotkeyConfig, Category } from "../types";
+import { hideShortcutsOverlay } from "../ui/modal";
 
 // Deep equality check for HotkeyConfig arrays
 function hotkeysEqual(a: HotkeyConfig[], b: HotkeyConfig[]): boolean {
@@ -83,14 +84,24 @@ export function ShortcutsOverlay() {
   // Filter hotkeys with actions
   const activeHotkeys = hotkeys.filter(h => h.action);
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only close if clicking directly on the overlay root (backdrop), not on children
+    if (e.target === e.currentTarget) {
+      hideShortcutsOverlay();
+    }
+  };
+
   return (
     <div
       id="keyboard-shortcuts-overlay"
       className="keyboard-shortcuts-overlay"
       style={{ display: "flex" }}
-      onClick={(e) => e.stopPropagation()}
+      onClick={handleBackdropClick}
     >
-      <div className="shortcuts-content">
+      <div 
+        className="shortcuts-content"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2>Keyboard Shortcuts</h2>
         <div id="shortcuts-list">
           <div className="shortcuts-columns">

@@ -3,6 +3,10 @@ import { state } from "../state";
 import { loadImageBatch, browseImages } from "./browse";
 import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
+import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
+import { showError } from "../ui/error";
+import { hideSpinner } from "../ui/spinner";
+import { showNotification } from "../ui/notification";
 
 // Mock dependencies
 vi.mock("../utils/images", () => ({
@@ -20,10 +24,6 @@ vi.mock("../ui/error", () => ({
 vi.mock("../ui/spinner", () => ({
   showSpinner: vi.fn(),
   hideSpinner: vi.fn(),
-}));
-
-vi.mock("../core/observer", () => ({
-  cleanupObserver: vi.fn(),
 }));
 
 vi.mock("../ui/notification", () => ({
@@ -120,7 +120,6 @@ describe("browse", () => {
 
       await loadImageBatch(0, 10);
 
-      // Note: loadImageBatch is now a no-op (React handles rendering)
       // We just verify it doesn't throw and resets loading state
       expect(state.isLoadingBatch).toBe(true); // Still true since it returns early
     });
@@ -130,12 +129,10 @@ describe("browse", () => {
 
       await loadImageBatch(10, 20);
 
-      // Note: loadImageBatch is now a no-op (React handles rendering)
       expect(state.isLoadingBatch).toBe(false);
     });
 
     it("should return early if imageGrid is null", async () => {
-      // Note: loadImageBatch no longer checks for imageGrid
       // This test verifies it doesn't throw
       state.allImagePaths = [{ path: "/test/image1.png" }];
 
@@ -145,7 +142,6 @@ describe("browse", () => {
     });
 
     it("should load images successfully", async () => {
-      // Note: loadImageBatch is now a no-op (React handles rendering)
       // This test verifies the function completes without errors
       state.allImagePaths = [
         { path: "/test/image1.png" },
@@ -159,7 +155,6 @@ describe("browse", () => {
     });
 
     it("should handle image loading errors", async () => {
-      // Note: loadImageBatch is now a no-op (React handles rendering)
       // This test verifies the function completes without errors
       state.allImagePaths = [{ path: "/test/image1.png" }];
 
@@ -170,7 +165,6 @@ describe("browse", () => {
     });
 
     it("should clamp endIndex to array length", async () => {
-      // Note: loadImageBatch is now a no-op (React handles rendering)
       // This test verifies the function completes correctly
       state.allImagePaths = [{ path: "/test/image1.png" }];
 
@@ -185,13 +179,17 @@ describe("browse", () => {
     it("should return early if required elements are missing", async () => {
       const errorMsg = document.getElementById("error-msg");
       errorMsg?.remove();
+      // Mock invokeTauri to return a valid payload so browseImages can complete
+      vi.mocked(invokeTauri).mockResolvedValueOnce({
+        directories: [],
+        images: [],
+      });
       await browseImages("/test/path");
       // Should not throw
     });
 
     it("should handle invalid backend response (non-array directories)", async () => {
-      const { invoke } = window.__TAURI__!.core;
-      vi.mocked(invoke).mockResolvedValueOnce({
+      vi.mocked(invokeTauri).mockResolvedValueOnce({
         directories: "not an array",
         images: [],
       } as any);
@@ -203,8 +201,7 @@ describe("browse", () => {
     });
 
     it("should handle invalid backend response (non-array images)", async () => {
-      const { invoke } = window.__TAURI__!.core;
-      vi.mocked(invoke).mockResolvedValueOnce({
+      vi.mocked(invokeTauri).mockResolvedValueOnce({
         directories: [],
         images: "not an array",
       } as any);
@@ -216,8 +213,7 @@ describe("browse", () => {
     });
 
     it("should handle invalid backend response (null values)", async () => {
-      const { invoke } = window.__TAURI__!.core;
-      vi.mocked(invoke).mockResolvedValueOnce({
+      vi.mocked(invokeTauri).mockResolvedValueOnce({
         directories: null,
         images: null,
       } as any);
@@ -229,7 +225,6 @@ describe("browse", () => {
     });
 
     it("should process valid directory contents", async () => {
-      const { invokeTauri } = await import("../utils/tauri");
       const contents: DirectoryContents = {
         directories: [{ path: "/test/dir1" }],
         images: [{ path: "/test/image1.png" }],
@@ -244,8 +239,6 @@ describe("browse", () => {
     });
 
     it("should handle Tauri API unavailable", async () => {
-      const { showError } = await import("../ui/error");
-      const { isTauriInvokeAvailable } = await import("../utils/tauri");
       vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(false);
 
       await browseImages("/test/path");
@@ -254,9 +247,6 @@ describe("browse", () => {
     });
 
     it("should handle backend errors", async () => {
-      const { invokeTauri } = await import("../utils/tauri");
-      const { showError } = await import("../ui/error");
-      const { hideSpinner } = await import("../ui/spinner");
       vi.mocked(invokeTauri).mockRejectedValueOnce(new Error("Backend error"));
 
       await browseImages("/test/path");
@@ -266,7 +256,6 @@ describe("browse", () => {
     });
 
     it("should reset state before browsing", async () => {
-      const { invokeTauri } = await import("../utils/tauri");
       state.currentIndex = 100;
       state.isLoadingBatch = true;
       state.currentModalIndex = 5;
@@ -283,8 +272,6 @@ describe("browse", () => {
     });
 
     it("should show notification when no images or directories found", async () => {
-      const { invokeTauri } = await import("../utils/tauri");
-      const { showNotification } = await import("../ui/notification");
       vi.mocked(invokeTauri).mockResolvedValueOnce({
         directories: [],
         images: [],
@@ -298,4 +285,3 @@ describe("browse", () => {
     });
   });
 });
-

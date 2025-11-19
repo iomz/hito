@@ -10,9 +10,6 @@ export function LoadingSpinner() {
       setIsLoading(state.isLoading);
     });
 
-    // Initialize with current state
-    setIsLoading(state.isLoading);
-
     return unsubscribe;
   }, []);
 

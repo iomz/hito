@@ -19,6 +19,18 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress warnings about dynamic imports that are also statically imported
+        if (
+          warning.message &&
+          warning.message.includes("dynamic import will not move module into another chunk")
+        ) {
+          return;
+        }
+        warn(warning);
+      },
+    },
   },
 });
 

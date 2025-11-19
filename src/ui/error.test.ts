@@ -1,78 +1,54 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { showError, clearError } from "./error";
+import { state } from "../state";
 
 describe("error", () => {
   beforeEach(() => {
-    // Create error element in DOM (code uses querySelector)
-    const existing = document.getElementById("error-msg");
-    if (existing) {
-      existing.remove();
-    }
-    const errorMsg = document.createElement("div");
-    errorMsg.id = "error-msg";
-    document.body.appendChild(errorMsg);
-  });
-
-  afterEach(() => {
-    const errorMsg = document.getElementById("error-msg");
-    if (errorMsg) {
-      errorMsg.remove();
-    }
+    state.errorMessage = "";
   });
 
   describe("showError", () => {
-    it("should display error message when element exists", () => {
+    it("should update state with error message", () => {
       showError("Test error message");
 
-      const errorMsg = document.getElementById("error-msg");
-      expect(errorMsg!.textContent).toBe("Test error message");
+      expect(state.errorMessage).toBe("Test error message");
     });
 
-    it("should not throw when element is null", () => {
-      const errorMsg = document.getElementById("error-msg");
-      errorMsg?.remove();
-
+    it("should not throw", () => {
       expect(() => showError("Test error")).not.toThrow();
     });
 
     it("should handle empty string", () => {
       showError("");
 
-      const errorMsg = document.getElementById("error-msg");
-      expect(errorMsg!.textContent).toBe("");
+      expect(state.errorMessage).toBe("");
     });
 
     it("should overwrite previous error", () => {
       showError("First error");
       showError("Second error");
 
-      const errorMsg = document.getElementById("error-msg");
-      expect(errorMsg!.textContent).toBe("Second error");
+      expect(state.errorMessage).toBe("Second error");
     });
   });
 
   describe("clearError", () => {
-    it("should clear error message when element exists", () => {
-      const errorMsg = document.getElementById("error-msg");
-      errorMsg!.textContent = "Some error";
+    it("should clear error message in state", () => {
+      state.errorMessage = "Some error";
       clearError();
 
-      expect(errorMsg!.textContent).toBe("");
+      expect(state.errorMessage).toBe("");
     });
 
-    it("should not throw when element is null", () => {
-      const errorMsg = document.getElementById("error-msg");
-      errorMsg?.remove();
-
+    it("should not throw", () => {
       expect(() => clearError()).not.toThrow();
     });
 
     it("should clear already empty error", () => {
-      const errorMsg = document.getElementById("error-msg");
-      errorMsg!.textContent = "";
+      state.errorMessage = "";
       clearError();
 
-      expect(errorMsg!.textContent).toBe("");
+      expect(state.errorMessage).toBe("");
     });
   });
 });

@@ -22,10 +22,6 @@ vi.mock("./notification", () => ({
   showNotification: vi.fn(),
 }));
 
-vi.mock("./grid", () => ({
-  removeImageFromGrid: vi.fn(),
-}));
-
 
 vi.mock("./hotkeys", () => ({
   closeHotkeySidebar: vi.fn(),
@@ -74,7 +70,6 @@ describe("modal", () => {
     });
 
     it("should return early if modal elements are missing", async () => {
-      // Note: With React, modal elements are managed by React components
       // This test verifies state is set correctly
       await openModal(0);
 
@@ -97,8 +92,6 @@ describe("modal", () => {
       await openModal(0);
 
       expect(loadImageData).toHaveBeenCalledWith("/test/image1.png");
-      // Note: openModal loads the image but React component uses it directly
-      // The image data is available to the React component via loadImageData result
       expect(state.currentModalIndex).toBe(0);
     });
 
@@ -257,7 +250,6 @@ describe("modal", () => {
     });
 
     it("should return early if overlay is missing", () => {
-      // Note: With React, overlay is always available (React component manages it)
       const initialVisible = state.shortcutsOverlayVisible;
       toggleShortcutsOverlay();
       expect(state.shortcutsOverlayVisible).toBe(!initialVisible);
@@ -296,18 +288,16 @@ describe("modal", () => {
     });
 
     it("should delete image successfully", async () => {
-      const { invoke } = window.__TAURI__!.core;
-      const { removeImageFromGrid } = await import("./grid");
+      const { invokeTauri } = await import("../utils/tauri");
       const { showNotification } = await import("./notification");
       state.currentModalIndex = 1;
-      vi.mocked(invoke).mockResolvedValueOnce(undefined);
+      vi.mocked(invokeTauri).mockResolvedValueOnce(undefined);
 
       await deleteCurrentImage();
 
-      expect(invoke).toHaveBeenCalledWith("delete_image", {
+      expect(invokeTauri).toHaveBeenCalledWith("delete_image", {
         imagePath: "/test/image2.png",
       });
-      expect(removeImageFromGrid).toHaveBeenCalledWith("/test/image2.png");
       expect(state.allImagePaths.length).toBe(2);
       expect(state.allImagePaths.find((img) => img.path === "/test/image2.png")).toBeUndefined();
       expect(showNotification).toHaveBeenCalledWith("Image deleted");

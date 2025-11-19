@@ -404,8 +404,6 @@ describe("categories UI and management", () => {
     state.configFilePath = "";
     state.categoryDialogVisible = false;
     state.categoryDialogCategory = undefined;
-
-    // Note: DOM elements are now managed by React components
     // Tests that rely on DOM manipulation are removed or simplified
 
     mockInvoke.mockClear();
@@ -534,7 +532,6 @@ describe("categories UI and management", () => {
 
   describe("showCategoryDialog", () => {
     it("should set state to show dialog", async () => {
-      // Note: showCategoryDialog is now React-managed (CategoryDialog component handles rendering)
       const { showCategoryDialog } = await import("./categories");
       
       showCategoryDialog();
@@ -545,7 +542,6 @@ describe("categories UI and management", () => {
     });
 
     it("should set state for editing existing category", async () => {
-      // Note: showCategoryDialog is now React-managed (CategoryDialog component handles rendering)
       const category = { id: "cat1", name: "Category 1", color: "#ff0000" };
       const { showCategoryDialog } = await import("./categories");
       
@@ -559,7 +555,6 @@ describe("categories UI and management", () => {
 
   describe("deleteCategory", () => {
     it("should delete category when called directly", async () => {
-      // Note: deleteCategory function tests (not UI rendering)
       state.categories = [
         { id: "cat1", name: "Category 1", color: "#ff0000" },
         { id: "cat2", name: "Category 2", color: "#00ff00" },
@@ -579,7 +574,6 @@ describe("categories UI and management", () => {
     });
 
     it("should remove category from all images when deleted", async () => {
-      // Note: deleteCategory function tests (not UI rendering)
       state.categories = [
         { id: "cat1", name: "Category 1", color: "#ff0000" },
         { id: "cat2", name: "Category 2", color: "#00ff00" },

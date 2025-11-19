@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { state } from "../state";
 import { handleFileDrop, selectFolder } from "../handlers/dragDrop";
 import { showNotification } from "../ui/notification";
+import { CUSTOM_DRAG_EVENTS } from "../constants";
 
 export function DropZone() {
   const [isCollapsed, setIsCollapsed] = useState(state.currentDirectory.length > 0);
@@ -19,17 +20,17 @@ export function DropZone() {
     const handleTauriDragEnter = () => setIsDragOver(true);
     const handleTauriDragLeave = () => setIsDragOver(false);
     
-    window.addEventListener('tauri-drag-enter', handleTauriDragEnter);
-    window.addEventListener('tauri-drag-over', handleTauriDragEnter);
-    window.addEventListener('tauri-drag-leave', handleTauriDragLeave);
-    window.addEventListener('tauri-drag-drop', handleTauriDragLeave);
+    window.addEventListener(CUSTOM_DRAG_EVENTS.ENTER, handleTauriDragEnter);
+    window.addEventListener(CUSTOM_DRAG_EVENTS.OVER, handleTauriDragEnter);
+    window.addEventListener(CUSTOM_DRAG_EVENTS.LEAVE, handleTauriDragLeave);
+    window.addEventListener(CUSTOM_DRAG_EVENTS.DROP, handleTauriDragLeave);
 
     return () => {
       unsubscribe();
-      window.removeEventListener('tauri-drag-enter', handleTauriDragEnter);
-      window.removeEventListener('tauri-drag-over', handleTauriDragEnter);
-      window.removeEventListener('tauri-drag-leave', handleTauriDragLeave);
-      window.removeEventListener('tauri-drag-drop', handleTauriDragLeave);
+      window.removeEventListener(CUSTOM_DRAG_EVENTS.ENTER, handleTauriDragEnter);
+      window.removeEventListener(CUSTOM_DRAG_EVENTS.OVER, handleTauriDragEnter);
+      window.removeEventListener(CUSTOM_DRAG_EVENTS.LEAVE, handleTauriDragLeave);
+      window.removeEventListener(CUSTOM_DRAG_EVENTS.DROP, handleTauriDragLeave);
     };
   }, []);
 
@@ -40,10 +41,12 @@ export function DropZone() {
     if (dataTransfer.items && dataTransfer.items.length > 0) {
       for (let i = 0; i < dataTransfer.items.length; i++) {
         const item = dataTransfer.items[i];
-        
+
         // Check if it's a file entry
         if (item.kind === 'file') {
-          const entry = item.webkitGetAsEntry();
+          const entry =
+            // Some browsers expose webkitGetAsEntry; others don’t.
+            (item as any).webkitGetAsEntry?.() ?? null;
           if (entry) {
             // For directories, try to get the path
             if (entry.isDirectory) {

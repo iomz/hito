@@ -1,7 +1,6 @@
 import { state } from "../state";
 import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
-import { cleanupObserver } from "./observer";
 import { showNotification } from "../ui/notification";
 import { showError, clearError } from "../ui/error";
 import { hideSpinner } from "../ui/spinner";
@@ -44,12 +43,8 @@ export async function loadImageBatch(startIndex: number, endIndex: number): Prom
 }
 
 export async function browseImages(path: string): Promise<void> {
-  // React manages imageGrid and spinner now, so don't require DOM elements
-  // Clear any previous error and show loading spinner via state
   clearError();
   state.isLoading = true;
-  // Note: DropZone React component handles collapse/expand based on state.currentDirectory
-  cleanupObserver();
   
   // Reset state
   state.currentIndex = 0;
@@ -97,9 +92,6 @@ export async function browseImages(path: string): Promise<void> {
     
     // Load categories and hotkeys for this directory
     await loadHitoConfig();
-    
-    // Note: HotkeySidebar React component handles visibility based on state.currentDirectory
-    // No need to manually show/hide the sidebar toggle button
     
     // Hide spinner after everything is loaded
     state.isLoading = false;

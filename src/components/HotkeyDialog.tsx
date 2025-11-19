@@ -19,6 +19,7 @@ export function HotkeyDialog() {
   const actionSelectRef = useRef<HTMLSelectElement>(null);
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
   const rafRefs = useRef<number[]>([]);
+  const previousCategoriesRef = useRef<string>("");
 
   // Subscribe to state changes for visibility and hotkey
   useEffect(() => {
@@ -75,13 +76,10 @@ export function HotkeyDialog() {
         rafRefs.current.push(rafId);
       }
       
-      // Auto-start capture for new hotkeys using requestAnimationFrame for predictable timing
       if (!hotkey) {
         const rafId = requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            keyDisplayRef.current?.focus();
-            setIsCapturing(true);
-          });
+          keyDisplayRef.current?.focus();
+          setIsCapturing(true);
         });
         rafRefs.current.push(rafId);
       }
@@ -104,17 +102,23 @@ export function HotkeyDialog() {
     };
   }, [isVisible, editingHotkey]);
 
-  // Update action dropdown when categories change
+  // Update action dropdown when categories actually change (not when action selection changes)
   useEffect(() => {
     if (isVisible && actionSelectRef.current) {
-      const currentValue = actionSelectRef.current.value || action;
-      populateActionDropdown(actionSelectRef.current, editingHotkey?.action || currentValue || undefined);
-      // Restore the selected value after repopulating
-      if (action) {
-        actionSelectRef.current.value = action;
+      const categoriesJson = JSON.stringify(categories);
+      const categoriesChanged = categoriesJson !== previousCategoriesRef.current;
+      
+      if (categoriesChanged) {
+        previousCategoriesRef.current = categoriesJson;
+        const currentValue = actionSelectRef.current.value;
+        populateActionDropdown(actionSelectRef.current, editingHotkey?.action || currentValue || undefined);
+        // Restore the selected value after repopulating
+        if (currentValue) {
+          actionSelectRef.current.value = currentValue;
+        }
       }
     }
-  }, [categories, isVisible, editingHotkey, action]);
+  }, [categories, isVisible, editingHotkey]);
 
   // Check for duplicate hotkey
   useEffect(() => {
@@ -217,7 +221,6 @@ export function HotkeyDialog() {
       state.hotkeys.push(newHotkey);
     }
     
-    // Note: HotkeyList component handles rendering via polling
     try {
       await saveHitoConfig();
     } catch (error: unknown) {

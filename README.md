@@ -45,36 +45,53 @@ Simply drag and drop a folder to start browsing your images.
 
 ```text
 src/
-├── main.ts                    # Entry point
+├── main.tsx                   # React entry point
+├── App.tsx                    # Main React app component
 ├── types.ts                   # Type definitions
 ├── constants.ts               # Constants (BATCH_SIZE, DRAG_EVENTS)
-├── state.ts                   # State and DOM elements
+├── state.ts                   # Global state management
+│
+├── components/                # React components
+│   ├── CategoryDialog.tsx     # Category creation/editing dialog
+│   ├── CategoryList.tsx       # Category list display
+│   ├── ConfigFileInput.tsx    # Configuration file input
+│   ├── CurrentImageCategories.tsx  # Current image category display
+│   ├── CurrentPath.tsx        # Breadcrumb navigation
+│   ├── DirectoryItem.tsx      # Directory item in grid
+│   ├── DropZone.tsx           # Drag and drop zone
+│   ├── ErrorMessage.tsx       # Error message display
+│   ├── HotkeyDialog.tsx       # Hotkey creation/editing dialog
+│   ├── HotkeyList.tsx         # Hotkey list display
+│   ├── HotkeySidebar.tsx      # Configuration sidebar
+│   ├── ImageGrid.tsx          # Image grid with lazy loading
+│   ├── ImageGridItem.tsx      # Individual image item
+│   ├── ImageModal.tsx         # Full-screen image modal
+│   ├── LoadingSpinner.tsx     # Loading spinner
+│   ├── ModalCategories.tsx    # Category tags in modal
+│   ├── NotificationBar.tsx    # Notification toast
+│   └── ShortcutsOverlay.tsx   # Keyboard shortcuts overlay
 │
 ├── utils/
-│   ├── dom.ts                 # DOM utilities (querySelector, createElement)
+│   ├── dom.ts                 # DOM utilities (createElement for dynamic elements)
 │   ├── dialog.ts              # Dialog utilities (file picker, custom confirm modal)
-│   └── images.ts              # Image loading and creation utilities
+│   ├── images.ts              # Image loading and creation utilities
+│   ├── state.ts               # State utility functions
+│   └── tauri.ts               # Tauri API wrappers
 │
-├── ui/
-│   ├── breadcrumb.ts          # Breadcrumb navigation functions
-│   ├── categories.ts          # Category management and UI
-│   ├── dropZone.ts            # Drop zone UI functions
+├── ui/                        # UI utility functions (non-React)
+│   ├── categories.ts          # Category management functions
 │   ├── error.ts               # Error UI functions
-│   ├── grid.ts                # Image grid functions
-│   ├── hotkeys.ts             # Hotkey configuration and sidebar
+│   ├── hotkeys.ts             # Hotkey configuration functions
 │   ├── modal.ts               # Modal UI functions
-│   ├── notification.ts        # Notification bar functions
+│   ├── notification.ts        # Notification functions (re-exported from component)
 │   └── spinner.ts             # Spinner UI functions
 │
 ├── handlers/
 │   ├── dragDrop.ts            # Drag and drop handlers
-│   ├── keyboard.ts            # Keyboard handlers
-│   ├── modal.ts               # Modal handlers
-│   └── permissions.ts         # macOS permissions handler
+│   └── keyboard.ts            # Keyboard handlers
 │
 └── core/
-    ├── browse.ts              # Main browse functionality
-    └── observer.ts            # Intersection observer setup
+    └── browse.ts              # Main browse functionality
 ```
 
 ## Testing

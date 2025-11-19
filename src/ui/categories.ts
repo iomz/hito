@@ -1,5 +1,4 @@
 import { state } from "../state";
-import { createElement } from "../utils/dom";
 import type { Category, HotkeyConfig } from "../types";
 import { confirm } from "../utils/dialog";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
@@ -171,10 +170,6 @@ export async function toggleImageCategory(
   
   state.notify();
   await saveHitoConfig();
-  // Note: All rendering is now handled by React components:
-  // - CategoryList component handles category list rendering
-  // - CurrentImageCategories component handles current image categories rendering
-  // - ModalCategories component handles modal category tags rendering
 }
 
 /**
@@ -247,9 +242,6 @@ export function isCategoryNameDuplicate(name: string, excludeId?: string): boole
 
 /**
  * Show the add/edit category dialog.
- * 
- * NOTE: With React managing the dialog, this now sets state instead of creating DOM.
- * The React CategoryDialog component handles rendering based on this state.
  */
 export function showCategoryDialog(existingCategory?: Category): void {
   state.categoryDialogVisible = true;
