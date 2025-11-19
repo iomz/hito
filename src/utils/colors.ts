@@ -2,14 +2,15 @@
  * Calculate the appropriate contrast color (black or white) for a given hex color
  * using WCAG 2.0 relative luminance formula with gamma correction.
  * 
- * This ensures accessibility compliance with WCAG AA/AAA contrast ratio requirements.
+ * This chooses the better contrasting color (black or white) but cannot guarantee
+ * WCAG AA/AAA compliance if the background color itself is too low-contrast.
  * 
  * @param hexColor - Hex color string (e.g., "#ff0000" or "ff0000")
  * @returns "#000000" for light colors (better contrast with black) or "#ffffff" for dark colors (better contrast with white)
  */
 export function getContrastColor(hexColor: string): string {
   // Remove # if present
-  const hex = hexColor.replace("#", "");
+  const hex = hexColor.replace(/^#/, "");
 
   // Validate hex format
   if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {

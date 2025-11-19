@@ -88,10 +88,10 @@ describe("modal", () => {
       },
     };
 
-    // Setup default mock for getFilteredAndSortedImagesSync to return images matching allImagePathsAtom
+    // Setup default mock for getFilteredAndSortedImagesSync to dynamically return current allImagePathsAtom
+    // This keeps tests aligned with runtime behavior where filtered images follow state changes
     const { getFilteredAndSortedImagesSync } = await import("../utils/filteredImages");
-    const allImagePaths = store.get(allImagePathsAtom);
-    vi.mocked(getFilteredAndSortedImagesSync).mockReturnValue(allImagePaths);
+    vi.mocked(getFilteredAndSortedImagesSync).mockImplementation(() => store.get(allImagePathsAtom));
   });
 
   describe("openModal", () => {

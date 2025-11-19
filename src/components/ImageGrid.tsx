@@ -19,8 +19,8 @@ import { loadImageBatch } from "../core/browse";
 import { ImageGridItem } from "./ImageGridItem";
 import { DirectoryItem } from "./DirectoryItem";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
-import { getFilteredAndSortedImages } from "../utils/filteredImages";
-import type { ImagePath } from "../types";
+import { getFilteredAndSortedImages, getSortedDirectoriesAndImages } from "../utils/filteredImages";
+import type { ImagePath, DirectoryPath } from "../types";
 
 export function ImageGrid() {
   const gridRef = useRef<HTMLDivElement>(null);
@@ -28,6 +28,7 @@ export function ImageGrid() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isMountedRef = useRef(true);
   const prevSortFilterKeyRef = useRef<string>("");
+  const currentSortOperationRef = useRef<number>(0);
   
   // Use jotai atoms for reactive state
   const allImagePaths = useAtomValue(allImagePathsAtom);
@@ -78,6 +79,11 @@ export function ImageGrid() {
   const [sortedImages, setSortedImages] = useState<ImagePath[]>(() => 
     Array.isArray(allImagePaths) ? [...allImagePaths] : []
   );
+  
+  // Store sorted directories
+  const [sortedDirectories, setSortedDirectories] = useState<DirectoryPath[]>(() =>
+    Array.isArray(allDirectoryPaths) ? [...allDirectoryPaths] : []
+  );
 
   // Immediately reset visibleCount to 0 when array becomes empty to prevent DOM mismatch
   // Use useLayoutEffect to run synchronously before browser paint
@@ -87,6 +93,7 @@ export function ImageGrid() {
       setVisibleCount(0);
       setDirCount(0);
       setSortedImages([]);
+      setSortedDirectories([]);
     }
   }, [allImagePaths, visibleCount]);
 
@@ -128,9 +135,21 @@ export function ImageGrid() {
     };
   }, [allImagePaths, allDirectoryPaths, currentIndex, sortFilterKey, setCurrentIndex]);
 
+  // Set loading state synchronously before async work to ensure spinner appears immediately
+  useLayoutEffect(() => {
+    const images = Array.isArray(allImagePaths) ? [...allImagePaths] : [];
+    if (images.length > 0) {
+      setIsLoading(true);
+    }
+  }, [allImagePaths, sortOption, sortDirection, sortFilterKey, setIsLoading]);
+
   // Call Rust sorting when sort option or images change
   useEffect(() => {
+    // Increment sort operation counter to track current operation
+    const sortOperationId = ++currentSortOperationRef.current;
     let cancelled = false;
+
+    const images = Array.isArray(allImagePaths) ? [...allImagePaths] : [];
 
     const performRustSorting = async () => {
       if (!isTauriInvokeAvailable()) {
@@ -138,21 +157,17 @@ export function ImageGrid() {
         const sorted = await getFilteredAndSortedImages();
         if (!cancelled) {
           setSortedImages(sorted);
+          setIsLoading(false);
         }
         return;
       }
 
-      const images = Array.isArray(allImagePaths) ? [...allImagePaths] : [];
       if (images.length === 0) {
         if (!cancelled) {
           setSortedImages([]);
+          setIsLoading(false);
         }
         return;
-      }
-
-      // Show loading spinner while sorting
-      if (!cancelled) {
-        setIsLoading(true);
       }
 
       try {
@@ -198,8 +213,8 @@ export function ImageGrid() {
           setSortedImages(sorted);
         }
       } finally {
-        // Hide loading spinner after sorting completes
-        if (!cancelled) {
+        // Hide loading spinner after sorting completes, but only if this is still the current operation
+        if (!cancelled && sortOperationId === currentSortOperationRef.current) {
           setIsLoading(false);
         }
       }
@@ -209,6 +224,11 @@ export function ImageGrid() {
 
     return () => {
       cancelled = true;
+      // Only reset loading state if this operation is still current
+      // If a new sort started, let it handle the loading state
+      if (sortOperationId === currentSortOperationRef.current) {
+        setIsLoading(false);
+      }
     };
   }, [allImagePaths, sortOption, sortDirection, sortFilterKey, imageCategories, suppressCategoryRefilter, cachedImageCategoriesForRefilter, setIsLoading]);
 
@@ -216,6 +236,13 @@ export function ImageGrid() {
   const processedImages = React.useMemo(() => {
     return [...sortedImages];
   }, [sortedImages]);
+  
+  // Sort directories when sort options or directories change
+  useEffect(() => {
+    const directories = Array.isArray(allDirectoryPaths) ? [...allDirectoryPaths] : [];
+    const { directories: sortedDirs } = getSortedDirectoriesAndImages(directories);
+    setSortedDirectories(sortedDirs);
+  }, [allDirectoryPaths, sortOption, sortDirection, sortFilterKey]);
 
   // Setup IntersectionObserver for infinite scroll
   useEffect(() => {
@@ -292,8 +319,6 @@ export function ImageGrid() {
   const safeVisibleCount = Math.min(visibleCount, imagePathsLength);
   const visibleImagePaths = processedImages.slice(0, safeVisibleCount);
 
-  const directories = Array.isArray(allDirectoryPaths) ? allDirectoryPaths : [];
-
   return (
     <div id="image-grid" className="image-grid" ref={gridRef}>
       {isLoading ? (
@@ -305,8 +330,8 @@ export function ImageGrid() {
       ) : (
         /* Show image grid when not sorting */
         <>
-          {/* Render directories first */}
-          {directories.map((dir) => (
+          {/* Render directories first (always before images) */}
+          {sortedDirectories.map((dir) => (
             <DirectoryItem key={dir.path} path={dir.path} />
           ))}
 

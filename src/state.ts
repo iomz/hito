@@ -25,6 +25,24 @@ export const isLoadingAtom = atom<boolean>(false); // Whether the loading spinne
 export const errorMessageAtom = atom<string>(""); // Current error message to display (empty = no error)
 export const sortOptionAtom = atom<"name" | "dateCreated" | "lastCategorized" | "size">("name");
 export const sortDirectionAtom = atom<"ascending" | "descending">("ascending");
+
+// Shared initial filter options to avoid duplication between atom default and resetStateAtom
+const initialFilterOptions = {
+  categoryId: "",
+  namePattern: "",
+  nameOperator: "contains" as const,
+  sizeOperator: "largerThan" as const,
+  sizeValue: "",
+  sizeValue2: "",
+} satisfies {
+  categoryId: "" | "uncategorized" | string;
+  namePattern: string;
+  nameOperator: "contains" | "startsWith" | "endsWith" | "exact";
+  sizeOperator: "largerThan" | "lessThan" | "between";
+  sizeValue: string;
+  sizeValue2: string;
+};
+
 export const filterOptionsAtom = atom<{
   categoryId: "" | "uncategorized" | string;
   namePattern: string;
@@ -32,14 +50,7 @@ export const filterOptionsAtom = atom<{
   sizeOperator: "largerThan" | "lessThan" | "between";
   sizeValue: string;
   sizeValue2: string;
-}>({
-  categoryId: "",
-  namePattern: "",
-  nameOperator: "contains",
-  sizeOperator: "largerThan",
-  sizeValue: "",
-  sizeValue2: "",
-});
+}>(initialFilterOptions);
 export const selectionModeAtom = atom<boolean>(false);
 export const selectedImagesAtom = atom<Set<string>>(new Set<string>());
 export const toggleImageSelectionAtom = atom<((path: string) => void) | undefined>(undefined); // Optional function to toggle image selection (set by ImageGridSelection component)
@@ -71,14 +82,7 @@ export const resetStateAtom = atom(null, (get, set) => {
   set(errorMessageAtom, "");
   set(sortOptionAtom, "name");
   set(sortDirectionAtom, "ascending");
-  set(filterOptionsAtom, {
-    categoryId: "",
-    namePattern: "",
-    nameOperator: "contains",
-    sizeOperator: "largerThan",
-    sizeValue: "",
-    sizeValue2: "",
-  });
+  set(filterOptionsAtom, { ...initialFilterOptions });
   set(selectionModeAtom, false);
   set(selectedImagesAtom, new Set<string>());
   set(toggleImageSelectionAtom, undefined);

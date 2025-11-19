@@ -284,7 +284,7 @@ describe("browse", () => {
 
     it("should set currentIndexAtom to 0 when images array is empty (branch: images.length === 0)", async () => {
       vi.mocked(invokeTauri).mockResolvedValueOnce({
-        directories: ["/test/subdir"],
+        directories: [{ path: "/test/subdir", size: 0, created_at: undefined }],
         images: [], // Empty images array
       });
 
@@ -292,7 +292,7 @@ describe("browse", () => {
 
       // When images.length === 0, currentIndexAtom should be set to 0 (line 101)
       expect(store.get(currentIndexAtom)).toBe(0);
-      expect(store.get(allDirectoryPathsAtom)).toEqual(["/test/subdir"]);
+      expect(store.get(allDirectoryPathsAtom)).toEqual([{ path: "/test/subdir", size: 0, created_at: undefined }]);
     });
   });
 });

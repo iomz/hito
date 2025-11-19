@@ -9,7 +9,7 @@ import {
   cachedImageCategoriesForRefilterAtom,
 } from "../state";
 import { invokeTauri, isTauriInvokeAvailable } from "./tauri";
-import type { ImagePath } from "../types";
+import type { ImagePath, DirectoryPath } from "../types";
 
 /**
  * Parse size value from KB string to bytes.
@@ -249,6 +249,40 @@ export async function getFilteredAndSortedImages(): Promise<ImagePath[]> {
 }
 
 /**
+ * Apply sorting to directories array in-place based on current sort options.
+ * Excludes "lastCategorized" sorting for directories.
+ */
+function applySortingToDirectories(directories: DirectoryPath[]): void {
+  const sortOption = store.get(sortOptionAtom);
+  const sortDirection = store.get(sortDirectionAtom);
+  
+  // For "lastCategorized" or "size", directories should be sorted by name
+  // (directories don't have categories, and we don't calculate folder sizes for performance)
+  const effectiveSortOption = (sortOption === "lastCategorized" || sortOption === "size") 
+    ? "name" 
+    : sortOption;
+  
+  switch (effectiveSortOption) {
+    case "name":
+      directories.sort((a, b) => {
+        const nameA = a.path.split(/[/\\]/).pop()?.toLowerCase() || "";
+        const nameB = b.path.split(/[/\\]/).pop()?.toLowerCase() || "";
+        const result = nameA.localeCompare(nameB);
+        return sortDirection === "descending" ? -result : result;
+      });
+      break;
+    case "dateCreated":
+      directories.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const result = dateA - dateB;
+        return sortDirection === "descending" ? -result : result;
+      });
+      break;
+  }
+}
+
+/**
  * Get the filtered and sorted images synchronously (without Rust sorting).
  * Use this for immediate UI updates where async sorting would cause delays.
  */
@@ -258,7 +292,28 @@ export function getFilteredAndSortedImagesSync(): ImagePath[] {
   
   applySorting(images);
   images = applyFiltering(images);
-
+  
   return images;
+}
+
+/**
+ * Get sorted directories and filtered/sorted images combined.
+ * Directories are always placed before images and sorted according to current sort options
+ * (excluding "lastCategorized" which uses "name" instead for directories).
+ */
+export function getSortedDirectoriesAndImages(
+  directories: DirectoryPath[]
+): { directories: DirectoryPath[]; images: ImagePath[] } {
+  // Sort directories (excluding lastCategorized)
+  const sortedDirectories = [...directories];
+  applySortingToDirectories(sortedDirectories);
+  
+  // Get filtered and sorted images
+  const sortedImages = getFilteredAndSortedImagesSync();
+  
+  return {
+    directories: sortedDirectories,
+    images: sortedImages,
+  };
 }
 

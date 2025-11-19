@@ -10,6 +10,8 @@ export interface ImagePath {
 
 export interface DirectoryPath {
   path: string;
+  size?: number; // Total file size in bytes (recursive)
+  created_at?: string; // ISO 8601 datetime string
 }
 
 export interface DirectoryContents {

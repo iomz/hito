@@ -16,7 +16,7 @@ export const store = getDefaultStore();
  * @param value - The value to set for the key
  */
 export function updateAtomMap<K, V>(
-  atom: WritableAtom<Map<K, V>, [Map<K, V>], void>,
+  atom: WritableAtom<Map<K, V>, any, any>,
   key: K,
   value: V
 ): void {
@@ -36,7 +36,7 @@ export function updateAtomMap<K, V>(
  * @param key - The key to delete from the Map
  */
 export function deleteFromAtomMap<K, V>(
-  atom: WritableAtom<Map<K, V>, [Map<K, V>], void>,
+  atom: WritableAtom<Map<K, V>, any, any>,
   key: K
 ): void {
   const current = store.get(atom);

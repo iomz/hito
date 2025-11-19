@@ -13,9 +13,11 @@ struct ImagePath {
     created_at: Option<String>, // ISO 8601 datetime string
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct DirectoryPath {
     path: String,
+    size: Option<u64>, // Total file size in bytes (recursive)
+    created_at: Option<String>, // ISO 8601 datetime string
 }
 
 #[derive(serde::Serialize)]
@@ -93,8 +95,27 @@ fn list_images(path: String) -> Result<DirectoryContents, String> {
                     // Check if it's a directory
                     if file_path.is_dir() {
                         if let Some(path_str) = file_path.to_str() {
+                            // Get creation time if available
+                            let created_at = fs::metadata(&file_path)
+                                .ok()
+                                .and_then(|metadata| metadata.created().ok())
+                                .and_then(|time| {
+                                    time.duration_since(UNIX_EPOCH)
+                                        .ok()
+                                        .map(|duration| {
+                                            chrono::DateTime::<chrono::Utc>::from_timestamp(
+                                                duration.as_secs() as i64,
+                                                duration.subsec_nanos()
+                                            )
+                                                .map(|dt| dt.to_rfc3339())
+                                        })
+                                })
+                                .flatten();
+                            
                             directories.push(DirectoryPath {
                                 path: path_str.to_string(),
+                                size: None, // Don't calculate folder sizes (too slow with many files)
+                                created_at,
                             });
                         }
                     } else if file_path.is_file() {
@@ -135,6 +156,8 @@ fn list_images(path: String) -> Result<DirectoryContents, String> {
                     }
                 }
             }
+            // Directories will be sorted later in combination with images
+            // For now, just keep them in path order as a default
             directories.sort_by(|a, b| a.path.cmp(&b.path));
             images.sort_by(|a, b| a.path.cmp(&b.path));
             Ok(DirectoryContents {
@@ -504,29 +527,28 @@ fn sort_images(
         }
         "lastCategorized" => {
             sorted_images.sort_by(|a, b| {
-                let get_latest_assignment = |path: &str| -> Option<i64> {
+                let get_latest_assignment = |path: &str| -> i64 {
                     category_map.get(path)
                         .and_then(|assignments| {
-                            assignments.iter()
-                                .filter_map(|assignment| {
-                                    chrono::DateTime::parse_from_rfc3339(&assignment.assigned_at)
-                                        .ok()
-                                        .map(|dt| dt.timestamp())
-                                })
-                                .max()
+                            if assignments.is_empty() {
+                                None
+                            } else {
+                                assignments.iter()
+                                    .filter_map(|assignment| {
+                                        chrono::DateTime::parse_from_rfc3339(&assignment.assigned_at)
+                                            .ok()
+                                            .map(|dt| dt.timestamp())
+                                    })
+                                    .max()
+                            }
                         })
+                        .unwrap_or(0) // Uncategorized images get 0, matching JavaScript behavior
                 };
                 
                 let date_a = get_latest_assignment(&a.path);
                 let date_b = get_latest_assignment(&b.path);
                 
-                // Sort by date, with None values last
-                let ordering = match (date_a, date_b) {
-                    (Some(a), Some(b)) => a.cmp(&b), // Compare normally first
-                    (Some(_), None) => std::cmp::Ordering::Less,
-                    (None, Some(_)) => std::cmp::Ordering::Greater,
-                    (None, None) => std::cmp::Ordering::Equal,
-                };
+                let ordering = date_a.cmp(&date_b);
                 if is_descending {
                     ordering.reverse()
                 } else {

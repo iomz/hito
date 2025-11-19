@@ -2361,12 +2361,12 @@ describe("categories UI and management", () => {
         // First assignment
         await assignImageCategory("/image1.jpg", "cat1");
         
-        // Advance timer by 1ms to ensure different timestamp
-        vi.advanceTimersByTime(1);
+        // Advance timer by 2ms to ensure different timestamp
+        vi.advanceTimersByTime(2);
         await assignImageCategory("/image1.jpg", "cat2");
         
-        // Advance timer by another 1ms
-        vi.advanceTimersByTime(1);
+        // Advance timer by another 2ms
+        vi.advanceTimersByTime(2);
         await assignImageCategory("/image1.jpg", "cat3");
 
         const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];

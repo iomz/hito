@@ -16,7 +16,8 @@ export function Logo() {
         background: 'none', 
         border: 'none', 
         padding: 0,
-        cursor: 'pointer'
+        cursor: 'pointer',
+        boxShadow: 'none'
       }}
     >
       <h1>Hito</h1>

@@ -69,6 +69,8 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
       className={`image-item ${selectionMode ? "selection-mode" : ""} ${isSelected ? "selected" : ""}`}
       data-image-path={imagePath}
       onClick={handleClick}
+      draggable={false}
+      onDragStart={(e) => e.preventDefault()}
       style={{
         backgroundColor: isLoading ? "#f0f0f0" : "",
         display: "flex",
@@ -117,7 +119,8 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
         <img 
           src={imageData} 
           alt={imagePath.split('/').pop()?.split('.')[0] || 'Image'} 
-          loading="lazy" 
+          loading="lazy"
+          draggable={false}
         />
       )}
 
