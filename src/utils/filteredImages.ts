@@ -3,6 +3,65 @@ import { invokeTauri, isTauriInvokeAvailable } from "./tauri";
 import type { ImagePath } from "../types";
 
 /**
+ * Parse size value from KB string to bytes.
+ * Returns null if invalid or empty.
+ */
+function parseSizeKb(sizeValue: string | null | undefined): number | null {
+  if (!sizeValue || sizeValue.trim() === "") {
+    return null;
+  }
+  const parsed = Number.parseInt(sizeValue.trim(), 10);
+  if (Number.isNaN(parsed) || parsed < 0) {
+    return null;
+  }
+  // Convert KB to bytes (1 KB = 1024 bytes)
+  return parsed * 1024;
+}
+
+/**
+ * Apply size filter to images based on size operator and value(s).
+ */
+function applySizeFilter(images: ImagePath[], sizeOperator: string, sizeValue: string | null | undefined, sizeValue2: string | null | undefined): ImagePath[] {
+  const sizeValueBytes = parseSizeKb(sizeValue);
+  
+  // If invalid or null, no size filter is applied
+  if (sizeValueBytes === null) {
+    return images;
+  }
+  
+  const operator = sizeOperator || "largerThan";
+  
+  switch (operator) {
+    case "lessThan": {
+      return images.filter((img) => {
+        const imgSize = img.size || 0;
+        return imgSize < sizeValueBytes;
+      });
+    }
+    case "between": {
+      const sizeValue2Bytes = parseSizeKb(sizeValue2);
+      if (sizeValue2Bytes === null) {
+        // If sizeValue2 is invalid, don't apply filter
+        return images;
+      }
+      const minSize = Math.min(sizeValueBytes, sizeValue2Bytes);
+      const maxSize = Math.max(sizeValueBytes, sizeValue2Bytes);
+      return images.filter((img) => {
+        const imgSize = img.size || 0;
+        return imgSize >= minSize && imgSize <= maxSize;
+      });
+    }
+    default: {
+      // "largerThan" or default
+      return images.filter((img) => {
+        const imgSize = img.size || 0;
+        return imgSize > sizeValueBytes;
+      });
+    }
+  }
+}
+
+/**
  * Get the sorted and filtered list of images based on current sort and filter options.
  * This mirrors the logic in ImageGrid's processedImages useMemo.
  */
@@ -75,7 +134,7 @@ export async function getFilteredAndSortedImages(): Promise<ImagePath[]> {
           return state.sortDirection === "descending" ? -result : result;
         });
         break;
-      case "lastCategorized":
+      case "lastCategorized": {
         // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
         const imageCategoriesForSorting = state.suppressCategoryRefilter && state.cachedImageCategoriesForRefilter
           ? state.cachedImageCategoriesForRefilter
@@ -97,6 +156,7 @@ export async function getFilteredAndSortedImages(): Promise<ImagePath[]> {
           return state.sortDirection === "descending" ? -result : result;
         });
         break;
+      }
     }
     
     // Apply JavaScript filters
@@ -144,6 +204,11 @@ export async function getFilteredAndSortedImages(): Promise<ImagePath[]> {
         }
       });
     }
+
+    // Apply size filter
+    if (filters.sizeValue) {
+      images = applySizeFilter(images, filters.sizeOperator || "largerThan", filters.sizeValue, filters.sizeValue2);
+    }
   }
 
   return images;
@@ -186,28 +251,29 @@ export function getFilteredAndSortedImagesSync(): ImagePath[] {
         return state.sortDirection === "descending" ? -result : result;
       });
       break;
-    case "lastCategorized":
-      // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
-      const imageCategoriesForSortingSync = state.suppressCategoryRefilter && state.cachedImageCategoriesForRefilter
-        ? state.cachedImageCategoriesForRefilter
-        : state.imageCategories;
-      images.sort((a, b) => {
-        const getLatestAssignment = (path: string): number => {
-          const assignments = imageCategoriesForSortingSync.get(path);
-          if (!assignments || assignments.length === 0) {
-            return 0;
-          }
-          const timestamps = assignments
-            .map((a) => new Date(a.assigned_at).getTime())
-            .filter((t) => !isNaN(t));
-          return timestamps.length > 0 ? Math.max(...timestamps) : 0;
-        };
-        const dateA = getLatestAssignment(a.path);
-        const dateB = getLatestAssignment(b.path);
-        const result = dateA - dateB;
-        return state.sortDirection === "descending" ? -result : result;
-      });
-      break;
+      case "lastCategorized": {
+        // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
+        const imageCategoriesForSortingSync = state.suppressCategoryRefilter && state.cachedImageCategoriesForRefilter
+          ? state.cachedImageCategoriesForRefilter
+          : state.imageCategories;
+        images.sort((a, b) => {
+          const getLatestAssignment = (path: string): number => {
+            const assignments = imageCategoriesForSortingSync.get(path);
+            if (!assignments || assignments.length === 0) {
+              return 0;
+            }
+            const timestamps = assignments
+              .map((a) => new Date(a.assigned_at).getTime())
+              .filter((t) => !isNaN(t));
+            return timestamps.length > 0 ? Math.max(...timestamps) : 0;
+          };
+          const dateA = getLatestAssignment(a.path);
+          const dateB = getLatestAssignment(b.path);
+          const result = dateA - dateB;
+          return state.sortDirection === "descending" ? -result : result;
+        });
+        break;
+      }
   }
 
   // Apply filters
@@ -254,6 +320,11 @@ export function getFilteredAndSortedImagesSync(): ImagePath[] {
           return true;
       }
     });
+  }
+
+  // Apply size filter
+  if (filters.sizeValue) {
+    images = applySizeFilter(images, filters.sizeOperator || "largerThan", filters.sizeValue, filters.sizeValue2);
   }
 
   return images;

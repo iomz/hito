@@ -5,6 +5,7 @@ import { loadImageBatch } from "../core/browse";
 import { ImageGridItem } from "./ImageGridItem";
 import { DirectoryItem } from "./DirectoryItem";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
+import { getFilteredAndSortedImages } from "../utils/filteredImages";
 import type { ImagePath } from "../types";
 
 export function ImageGrid() {
@@ -152,22 +153,31 @@ export function ImageGrid() {
 
   // Call Rust sorting when sort option or images change
   useEffect(() => {
+    let cancelled = false;
+
     const performRustSorting = async () => {
       if (!isTauriInvokeAvailable()) {
         // Fallback to JavaScript sorting if Tauri not available
-        setSortedImages(Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : []);
+        const sorted = await getFilteredAndSortedImages();
+        if (!cancelled) {
+          setSortedImages(sorted);
+        }
         return;
       }
 
       const images = Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : [];
       if (images.length === 0) {
-        setSortedImages([]);
+        if (!cancelled) {
+          setSortedImages([]);
+        }
         return;
       }
 
       // Show loading spinner while sorting
-      state.isLoading = true;
-      state.notify();
+      if (!cancelled) {
+        state.isLoading = true;
+        state.notify();
+      }
 
       try {
         // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
@@ -201,19 +211,30 @@ export function ImageGrid() {
           filterOptions: filterOptions,
         });
 
-        setSortedImages(sorted);
+        if (!cancelled) {
+          setSortedImages(sorted);
+        }
       } catch (error) {
         console.error("Failed to sort images in Rust:", error);
-        // Fallback to original order on error
-        setSortedImages(images);
+        // Fallback to JavaScript utility on error
+        const sorted = await getFilteredAndSortedImages();
+        if (!cancelled) {
+          setSortedImages(sorted);
+        }
       } finally {
         // Hide loading spinner after sorting completes
-        state.isLoading = false;
-        state.notify();
+        if (!cancelled) {
+          state.isLoading = false;
+          state.notify();
+        }
       }
     };
 
     performRustSorting();
+
+    return () => {
+      cancelled = true;
+    };
   }, [state.allImagePaths, state.sortOption, state.sortDirection, sortFilterKey]);
 
   // Filtering is now done in Rust, so sortedImages are already filtered
