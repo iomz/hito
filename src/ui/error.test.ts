@@ -1,17 +1,18 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { showError, clearError } from "./error";
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import { errorMessageAtom } from "../state";
 
 describe("error", () => {
   beforeEach(() => {
-    state.errorMessage = "";
+    store.set(errorMessageAtom, "");
   });
 
   describe("showError", () => {
     it("should update state with error message", () => {
       showError("Test error message");
 
-      expect(state.errorMessage).toBe("Test error message");
+      expect(store.get(errorMessageAtom)).toBe("Test error message");
     });
 
     it("should not throw", () => {
@@ -21,23 +22,23 @@ describe("error", () => {
     it("should handle empty string", () => {
       showError("");
 
-      expect(state.errorMessage).toBe("");
+      expect(store.get(errorMessageAtom)).toBe("");
     });
 
     it("should overwrite previous error", () => {
       showError("First error");
       showError("Second error");
 
-      expect(state.errorMessage).toBe("Second error");
+      expect(store.get(errorMessageAtom)).toBe("Second error");
     });
   });
 
   describe("clearError", () => {
     it("should clear error message in state", () => {
-      state.errorMessage = "Some error";
+      store.set(errorMessageAtom, "Some error");
       clearError();
 
-      expect(state.errorMessage).toBe("");
+      expect(store.get(errorMessageAtom)).toBe("");
     });
 
     it("should not throw", () => {
@@ -45,10 +46,10 @@ describe("error", () => {
     });
 
     it("should clear already empty error", () => {
-      state.errorMessage = "";
+      store.set(errorMessageAtom, "");
       clearError();
 
-      expect(state.errorMessage).toBe("");
+      expect(store.get(errorMessageAtom)).toBe("");
     });
   });
 });

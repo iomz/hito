@@ -1,7 +1,8 @@
 import type { Event } from "@tauri-apps/api/event";
 import { DRAG_EVENTS, CUSTOM_DRAG_EVENTS } from "../constants";
 import type { DragDropEvent } from "../types";
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import { isLoadingAtom } from "../state";
 import { showError, clearError } from "../ui/error";
 import { browseImages } from "../core/browse";
 import { open } from "../utils/dialog";
@@ -57,8 +58,7 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
   const paths = extractPathsFromEvent(event);
   
   if (!paths || paths.length === 0) {
-    state.isLoading = false;
-    state.notify();
+    store.set(isLoadingAtom, false);
     showError("No file paths detected in drop event.");
     return;
   }
@@ -66,8 +66,7 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
   const firstPath = paths[0];
   
   if (!isTauriInvokeAvailable()) {
-    state.isLoading = false;
-    state.notify();
+    store.set(isLoadingAtom, false);
     showError("Tauri invoke API not available");
     return;
   }
@@ -81,8 +80,7 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
       const parentPath = await invokeTauri<string>("get_parent_directory", { filePath: firstPath });
       handleFolder(parentPath);
     } catch (err) {
-      state.isLoading = false;
-      state.notify();
+      store.set(isLoadingAtom, false);
       showError(`Error: ${err}. Please drop a folder or use the file picker.`);
     }
   }
@@ -142,15 +140,13 @@ export async function setupTauriDragEvents(): Promise<(() => void) | undefined> 
         const unlisten = await eventListen(eventName, (event: Event<DragDropEvent>) => {
           try {
             if (eventName === DRAG_EVENTS.DROP) {
-              state.isLoading = true;
-              state.notify();
+              store.set(isLoadingAtom, true);
               clearError();
               // Notify React component to remove drag-over state
               window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.DROP));
               handleFileDrop(event).catch((err) => {
                 console.error('[TauriDragEvent] handleFileDrop error:', err);
-                state.isLoading = false;
-                state.notify();
+                store.set(isLoadingAtom, false);
                 showError(`Error: ${err}`);
               });
             } else if (eventName === DRAG_EVENTS.ENTER) {
@@ -162,8 +158,7 @@ export async function setupTauriDragEvents(): Promise<(() => void) | undefined> 
             } else if (eventName === DRAG_EVENTS.LEAVE) {
               // Notify React component via custom event
               window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.LEAVE));
-              state.isLoading = false;
-              state.notify();
+              store.set(isLoadingAtom, false);
             }
           } catch (handlerError) {
             console.error('[TauriDragEvent] Error in event handler for', eventName, ':', handlerError);
@@ -220,12 +215,10 @@ export async function selectFolder(): Promise<void> {
     } else if (selected && Array.isArray(selected) && selected.length > 0) {
       handleFolder(selected[0]);
     } else {
-      state.isLoading = false;
-      state.notify();
+      store.set(isLoadingAtom, false);
     }
   } catch (error) {
-    state.isLoading = false;
-    state.notify();
+    store.set(isLoadingAtom, false);
     showError(`Error selecting folder: ${error}`);
   }
 }

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useAtomValue } from "jotai";
 import { loadImageData } from "../utils/images";
 import { openModal } from "../ui/modal";
-import { state } from "../state";
+import { selectionModeAtom, selectedImagesAtom, toggleImageSelectionAtom } from "../state";
 
 interface ImageGridItemProps {
   imagePath: string;
@@ -11,8 +12,11 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
   const [imageData, setImageData] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [selectionMode, setSelectionMode] = useState(state.selectionMode);
-  const [isSelected, setIsSelected] = useState(state.selectedImages.has(imagePath));
+  const selectionMode = useAtomValue(selectionModeAtom);
+  const selectedImages = useAtomValue(selectedImagesAtom);
+  const toggleImageSelection = useAtomValue(toggleImageSelectionAtom);
+  
+  const isSelected = useMemo(() => selectedImages.has(imagePath), [selectedImages, imagePath]);
 
   useEffect(() => {
     if (!imagePath || typeof imagePath !== "string") {
@@ -46,24 +50,13 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
     };
   }, [imagePath]);
 
-  useEffect(() => {
-    const updateSelection = () => {
-      setSelectionMode(state.selectionMode);
-      setIsSelected(state.selectedImages.has(imagePath));
-    };
-    
-    updateSelection();
-    const unsubscribe = state.subscribe(updateSelection);
-    return unsubscribe;
-  }, [imagePath]);
-
   const handleClick = (e: React.MouseEvent) => {
     if (hasError) return;
     
     if (selectionMode) {
       e.stopPropagation();
-      if (state.toggleImageSelection) {
-        state.toggleImageSelection(imagePath);
+      if (toggleImageSelection) {
+        toggleImageSelection(imagePath);
       }
     } else {
       // Open modal with image path (it will find the image in the filtered/sorted list)
@@ -92,8 +85,8 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
             checked={isSelected}
             onChange={(e) => {
               e.stopPropagation();
-              if (state.toggleImageSelection) {
-                state.toggleImageSelection(imagePath);
+              if (toggleImageSelection) {
+                toggleImageSelection(imagePath);
               }
             }}
             onClick={(e) => e.stopPropagation()}

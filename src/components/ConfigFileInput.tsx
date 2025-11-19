@@ -1,34 +1,14 @@
-import React, { useEffect, useState, useRef } from "react";
-import { state } from "../state";
+import React from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { configFilePathAtom } from "../state";
 
 export function ConfigFileInput() {
-  // Initialize local state from global state once
-  const [value, setValue] = useState(state.configFilePath);
-  const valueRef = useRef(value);
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    valueRef.current = value;
-  }, [value]);
-
-  useEffect(() => {
-    // Subscribe to state changes to sync when configFilePath changes externally
-    const unsubscribe = state.subscribe(() => {
-      // Only update if the change came from outside (not from our own handleChange)
-      if (state.configFilePath !== valueRef.current) {
-        setValue(state.configFilePath);
-      }
-    });
-
-    return unsubscribe;
-  }, []); // Empty deps - subscribe once and never recreate
+  const value = useAtomValue(configFilePathAtom);
+  const setConfigFilePath = useSetAtom(configFilePathAtom);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value.trim();
-    setValue(newValue);
-    valueRef.current = newValue; // Update ref immediately to prevent subscription from triggering redundant update
-    state.configFilePath = newValue;
-    state.notify(); // Notify other subscribers of the change
+    setConfigFilePath(newValue);
   };
 
   return (

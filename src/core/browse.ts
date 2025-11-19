@@ -1,4 +1,19 @@
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import {
+  allImagePathsAtom,
+  allDirectoryPathsAtom,
+  currentIndexAtom,
+  isLoadingBatchAtom,
+  loadedImagesAtom,
+  currentModalIndexAtom,
+  currentModalImagePathAtom,
+  currentDirectoryAtom,
+  configFilePathAtom,
+  categoriesAtom,
+  imageCategoriesAtom,
+  hotkeysAtom,
+  isLoadingAtom,
+} from "../state";
 import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
 import { showNotification } from "../ui/notification";
@@ -26,42 +41,43 @@ export async function loadImageBatch(startIndex: number, endIndex: number): Prom
     return;
   }
   
-  if (state.isLoadingBatch || startIndex >= state.allImagePaths.length) {
+  const allImagePaths = store.get(allImagePathsAtom);
+  const isLoadingBatch = store.get(isLoadingBatchAtom);
+  
+  if (isLoadingBatch || startIndex >= allImagePaths.length) {
     return;
   }
   
   // Set loading flag to prevent concurrent batch loads
-  state.isLoadingBatch = true;
+  store.set(isLoadingBatchAtom, true);
   
   // React components handle all actual image loading and rendering.
-  // The ImageGrid component updates state.currentIndex directly, which triggers
+  // The ImageGrid component updates currentIndexAtom directly, which triggers
   // React re-renders to show the new images.
   // Clear the flag after React has a chance to process the state update.
-  await Promise.resolve(); // Yield to allow React to process state.currentIndex update
-  state.isLoadingBatch = false;
+  await Promise.resolve(); // Yield to allow React to process currentIndexAtom update
+  store.set(isLoadingBatchAtom, false);
 }
 
 export async function browseImages(path: string): Promise<void> {
   clearError();
-  state.isLoading = true;
+  store.set(isLoadingAtom, true);
   
   // Reset state
-  state.currentIndex = 0;
-  state.isLoadingBatch = false;
-  state.loadedImages.clear();
-  state.currentModalIndex = -1;
-  state.currentModalImagePath = "";
-  state.currentDirectory = path;
+  store.set(currentIndexAtom, 0);
+  store.set(isLoadingBatchAtom, false);
+  store.set(loadedImagesAtom, new Map<string, string>());
+  store.set(currentModalIndexAtom, -1);
+  store.set(currentModalImagePathAtom, "");
+  store.set(currentDirectoryAtom, path);
   
   // Clear categories and hotkeys state before loading new config
-  state.categories = [];
-  state.imageCategories.clear();
-  state.hotkeys = [];
+  store.set(categoriesAtom, []);
+  store.set(imageCategoriesAtom, new Map());
+  store.set(hotkeysAtom, []);
   
   // Reset config file path to default when browsing new directory
-  state.configFilePath = "";
-  
-  state.notify();
+  store.set(configFilePathAtom, "");
   
   try {
     if (!isTauriInvokeAvailable()) {
@@ -75,8 +91,7 @@ export async function browseImages(path: string): Promise<void> {
     
     if (images.length === 0 && directories.length === 0) {
       showNotification("No images or directories found in this directory.");
-      state.isLoading = false;
-      state.notify();
+      store.set(isLoadingAtom, false);
       return;
     }
     
@@ -86,23 +101,20 @@ export async function browseImages(path: string): Promise<void> {
     // of loaded images), not a position/index. When images.length > 0, it's set to firstBatchEnd
     // to indicate the first batch of images should be loaded. When 0, it means no images are loaded.
     const firstBatchEnd = Math.min(BATCH_SIZE, images.length);
-    state.currentIndex = images.length > 0 ? firstBatchEnd : 0;
+    store.set(currentIndexAtom, images.length > 0 ? firstBatchEnd : 0);
     
     // Now update the arrays - this will trigger ImageGrid to mount
-    state.allDirectoryPaths = directories;
-    state.allImagePaths = images;
-    state.notify();
+    store.set(allDirectoryPathsAtom, directories);
+    store.set(allImagePathsAtom, images);
     
     // Load categories and hotkeys for this directory
     await loadHitoConfig();
     
     // Hide spinner after everything is loaded
-    state.isLoading = false;
-    state.notify();
+    store.set(isLoadingAtom, false);
   } catch (error) {
     console.error('[browseImages] ERROR:', error);
-    state.isLoading = false;
-    state.notify();
+    store.set(isLoadingAtom, false);
     showError(`Error: ${error}`);
   }
 }

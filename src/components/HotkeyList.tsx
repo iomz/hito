@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import isEqual from "fast-deep-equal";
-import { state } from "../state";
+import React from "react";
+import { useAtomValue } from "jotai";
+import { hotkeysAtom } from "../state";
 import type { HotkeyConfig } from "../types";
 
 // Format a hotkey combination for display
@@ -10,29 +10,7 @@ function formatHotkeyDisplay(config: HotkeyConfig): string {
 }
 
 export function HotkeyList() {
-  const [hotkeys, setHotkeys] = useState<HotkeyConfig[]>([]);
-  const hotkeysRef = useRef<HotkeyConfig[]>([]);
-
-  useEffect(() => {
-    // Initialize with current state before subscribing
-    const currentHotkeys = Array.isArray(state.hotkeys) ? state.hotkeys : [];
-    hotkeysRef.current = [...currentHotkeys];
-    setHotkeys([...currentHotkeys]);
-
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(() => {
-      const currentHotkeys = Array.isArray(state.hotkeys) ? state.hotkeys : [];
-      const prevHotkeys = hotkeysRef.current;
-
-      // Deep equality check using fast-deep-equal for reliable comparison
-      if (!isEqual(currentHotkeys, prevHotkeys)) {
-        hotkeysRef.current = [...currentHotkeys];
-        setHotkeys([...currentHotkeys]);
-      }
-    });
-
-    return unsubscribe;
-  }, []);
+  const hotkeys = useAtomValue(hotkeysAtom);
 
   const handleEdit = async (hotkeyId: string) => {
     const { editHotkey } = await import("../ui/hotkeys");

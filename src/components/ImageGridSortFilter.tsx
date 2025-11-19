@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { state } from "../state";
+import { useAtomValue, useSetAtom } from "jotai";
+import { sortOptionAtom, sortDirectionAtom, filterOptionsAtom, categoriesAtom } from "../state";
 
 type SortOption = "name" | "dateCreated" | "lastCategorized" | "size";
 type NameFilterOperator = "contains" | "startsWith" | "endsWith" | "exact";
@@ -15,27 +16,31 @@ interface FilterOptions {
 }
 
 export function ImageGridSortFilter() {
-  const [sortBy, setSortBy] = useState<SortOption>(state.sortOption);
-  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">(state.sortDirection);
-  const [filters, setFilters] = useState<FilterOptions>(state.filterOptions);
+  const globalSortOption = useAtomValue(sortOptionAtom);
+  const globalSortDirection = useAtomValue(sortDirectionAtom);
+  const globalFilters = useAtomValue(filterOptionsAtom);
+  const categories = useAtomValue(categoriesAtom);
+  const setSortOptionAtom = useSetAtom(sortOptionAtom);
+  const setSortDirectionAtom = useSetAtom(sortDirectionAtom);
+  const setFilterOptionsAtom = useSetAtom(filterOptionsAtom);
+  
+  const [sortBy, setSortBy] = useState<SortOption>(globalSortOption);
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">(globalSortDirection);
+  const [filters, setFilters] = useState<FilterOptions>(globalFilters);
   const filterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Synchronize local state with global state changes
   useEffect(() => {
-    const unsubscribe = state.subscribe(() => {
-      setSortBy(state.sortOption);
-      setSortDirection(state.sortDirection);
-      setFilters(state.filterOptions);
-    });
-    return unsubscribe;
-  }, []);
+    setSortBy(globalSortOption);
+    setSortDirection(globalSortDirection);
+    setFilters(globalFilters);
+  }, [globalSortOption, globalSortDirection, globalFilters]);
 
   // Apply sort to state immediately
   useEffect(() => {
-    state.sortOption = sortBy;
-    state.sortDirection = sortDirection;
-    state.notify();
-  }, [sortBy, sortDirection]);
+    setSortOptionAtom(sortBy);
+    setSortDirectionAtom(sortDirection);
+  }, [sortBy, sortDirection, setSortOptionAtom, setSortDirectionAtom]);
 
   // Debounced filter updater
   const updateFilters = useCallback((newFilters: FilterOptions) => {
@@ -46,11 +51,10 @@ export function ImageGridSortFilter() {
 
     // Set a new timeout to update filters after 250ms
     filterTimeoutRef.current = setTimeout(() => {
-      state.filterOptions = newFilters;
-      state.notify();
+      setFilterOptionsAtom(newFilters);
       filterTimeoutRef.current = null;
     }, 250);
-  }, []);
+  }, [setFilterOptionsAtom]);
 
   // Apply filters to state with debounce
   useEffect(() => {
@@ -122,7 +126,7 @@ export function ImageGridSortFilter() {
           >
             <option value="">All</option>
             <option value="uncategorized">Uncategorized</option>
-            {state.categories.map((cat) => (
+            {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
               </option>

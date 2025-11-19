@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { state } from "../state";
+import { useAtomValue, useSetAtom } from "jotai";
+import { categoryDialogVisibleAtom, categoryDialogCategoryAtom, categoriesAtom } from "../state";
 import type { Category } from "../types";
 import { saveHitoConfig, isCategoryNameDuplicate, generateCategoryColor } from "../ui/categories";
 
@@ -47,60 +48,41 @@ function generateUUID(): string {
 }
 
 export function CategoryDialog() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | undefined>(undefined);
+  const isVisible = useAtomValue(categoryDialogVisibleAtom);
+  const editingCategory = useAtomValue(categoryDialogCategoryAtom);
+  const categories = useAtomValue(categoriesAtom);
+  const setCategoryDialogVisible = useSetAtom(categoryDialogVisibleAtom);
+  const setCategoryDialogCategory = useSetAtom(categoryDialogCategoryAtom);
+  const setCategories = useSetAtom(categoriesAtom);
+  
   const [name, setName] = useState("");
   const [color, setColor] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showError, setShowError] = useState(false);
   
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const isVisibleRef = useRef(isVisible);
 
-  // Update ref when isVisible changes
+  // Update form when dialog opens/closes or editing category changes
   useEffect(() => {
-    isVisibleRef.current = isVisible;
-  }, [isVisible]);
-
-  // Subscribe to dialog state changes instead of polling
-  useEffect(() => {
-    const updateDialogState = () => {
-      const newVisible = state.categoryDialogVisible;
+    if (isVisible) {
+      // Dialog opening
+      setName(editingCategory?.name || "");
+      setColor(editingCategory?.color || generateCategoryColor());
+      setErrorMessage("");
+      setShowError(false);
       
-      if (newVisible !== isVisibleRef.current) {
-        setIsVisible(newVisible);
-        
-        if (newVisible) {
-          // Dialog opening
-          const category = state.categoryDialogCategory;
-          setEditingCategory(category);
-          setName(category?.name || "");
-          setColor(category?.color || generateCategoryColor());
-          setErrorMessage("");
-          setShowError(false);
-          
-          // Focus name input after a short delay
-          setTimeout(() => {
-            nameInputRef.current?.focus();
-          }, 100);
-        } else {
-          // Dialog closing
-          setName("");
-          setColor("");
-          setErrorMessage("");
-          setShowError(false);
-        }
-      }
-    };
-    
-    // Initialize state
-    updateDialogState();
-    
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(updateDialogState);
-    
-    return unsubscribe;
-  }, []);
+      // Focus name input after a short delay
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 100);
+    } else {
+      // Dialog closing
+      setName("");
+      setColor("");
+      setErrorMessage("");
+      setShowError(false);
+    }
+  }, [isVisible, editingCategory]);
 
   // Check for duplicate name as user types
   useEffect(() => {
@@ -119,10 +101,9 @@ export function CategoryDialog() {
   }, [name, editingCategory]);
 
   const handleCancel = useCallback(() => {
-    state.categoryDialogVisible = false;
-    state.categoryDialogCategory = undefined;
-    state.notify();
-  }, []);
+    setCategoryDialogVisible(false);
+    setCategoryDialogCategory(undefined);
+  }, [setCategoryDialogVisible, setCategoryDialogCategory]);
 
   const handleSave = useCallback(async () => {
     const trimmedName = name.trim();
@@ -144,15 +125,17 @@ export function CategoryDialog() {
 
     if (editingCategory) {
       // Update existing category
-      const index = state.categories.findIndex(
+      const updatedCategories = [...categories];
+      const index = updatedCategories.findIndex(
         (c) => c.id === editingCategory.id,
       );
       if (index >= 0) {
-        state.categories[index] = {
+        updatedCategories[index] = {
           ...editingCategory,
           name: trimmedName,
           color,
         };
+        setCategories(updatedCategories);
       }
     } else {
       // Add new category
@@ -161,16 +144,15 @@ export function CategoryDialog() {
         name: trimmedName,
         color,
       };
-      state.categories.push(newCategory);
+      setCategories([...categories, newCategory]);
     }
     
     await saveHitoConfig();
     
     // Close dialog
-    state.categoryDialogVisible = false;
-    state.categoryDialogCategory = undefined;
-    state.notify();
-  }, [name, color, editingCategory]);
+    setCategoryDialogVisible(false);
+    setCategoryDialogCategory(undefined);
+  }, [name, color, editingCategory, categories, setCategories, setCategoryDialogVisible, setCategoryDialogCategory]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {

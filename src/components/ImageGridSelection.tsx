@@ -1,64 +1,33 @@
-import React, { useEffect, useState, useRef } from "react";
-import { state } from "../state";
+import React, { useEffect, useRef } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { selectionModeAtom, selectedImagesAtom, toggleImageSelectionAtom, allImagePathsAtom } from "../state";
 
 export function ImageGridSelection() {
-  const [selectionMode, setSelectionMode] = useState(state.selectionMode);
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set(state.selectedImages));
+  const selectionMode = useAtomValue(selectionModeAtom);
+  const selectedImages = useAtomValue(selectedImagesAtom);
+  const allImagePaths = useAtomValue(allImagePathsAtom);
+  const setSelectionMode = useSetAtom(selectionModeAtom);
+  const setSelectedImages = useSetAtom(selectedImagesAtom);
+  const setToggleImageSelection = useSetAtom(toggleImageSelectionAtom);
   
-  // Use refs to track current values for subscription callback
+  // Use ref to track current selectionMode for toggle function
   const selectionModeRef = useRef(selectionMode);
-  const selectedImagesRef = useRef(selectedImages);
   
-  // Keep refs in sync with state
+  // Keep ref in sync with state
   useEffect(() => {
     selectionModeRef.current = selectionMode;
   }, [selectionMode]);
-  
-  useEffect(() => {
-    selectedImagesRef.current = selectedImages;
-  }, [selectedImages]);
 
   // Reset selection when selection mode is turned off
   useEffect(() => {
     if (!selectionMode) {
       setSelectedImages(new Set());
     }
-  }, [selectionMode]);
-
-  // Subscribe to global state changes and update local state
-  useEffect(() => {
-    const updateFromGlobalState = () => {
-      // Update selectionMode if it changed
-      if (state.selectionMode !== selectionModeRef.current) {
-        setSelectionMode(state.selectionMode);
-      }
-      
-      // Update selectedImages if it changed (compare Set contents, not references)
-      const globalSet = state.selectedImages;
-      const localSet = selectedImagesRef.current;
-      const setsAreEqual = 
-        globalSet.size === localSet.size &&
-        Array.from(globalSet).every(item => localSet.has(item));
-      
-      if (!setsAreEqual) {
-        setSelectedImages(new Set(globalSet));
-      }
-    };
-    
-    // Update immediately on mount
-    updateFromGlobalState();
-    
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(updateFromGlobalState);
-    
-    return unsubscribe;
-  }, []);
+  }, [selectionMode, setSelectedImages]);
 
   // Expose selection toggle function for ImageGridItem
-  // TODO: Refactor this pattern to use React Context or a proper state manager (e.g., Zustand, Jotai)
-  // to avoid mutating shared state objects and prevent memory leaks from component-bound functions.
   useEffect(() => {
-    state.toggleImageSelection = (imagePath: string) => {
+    const toggleFunction = (imagePath: string) => {
       // Use ref to read current selectionMode value to avoid stale closure
       if (!selectionModeRef.current) return;
       
@@ -73,32 +42,16 @@ export function ImageGridSelection() {
       });
     };
     
+    setToggleImageSelection(() => toggleFunction);
+    
     // Cleanup: remove the function to prevent memory leak
     return () => {
-      state.toggleImageSelection = undefined;
+      setToggleImageSelection(undefined);
     };
-  }, []); // Empty deps - we use selectionModeRef to read current value
-
-  // Sync to state
-  useEffect(() => {
-    // Compare Set contents, not references
-    const setsAreEqual = 
-      state.selectedImages.size === selectedImages.size &&
-      Array.from(state.selectedImages).every(item => selectedImages.has(item));
-    
-    const changed = 
-      state.selectionMode !== selectionMode ||
-      !setsAreEqual;
-    
-    if (changed) {
-      state.selectionMode = selectionMode;
-      state.selectedImages = selectedImages;
-      state.notify();
-    }
-  }, [selectionMode, selectedImages]);
+  }, [setSelectedImages, setToggleImageSelection]);
 
   const selectAll = () => {
-    const images = Array.isArray(state.allImagePaths) ? state.allImagePaths : [];
+    const images = Array.isArray(allImagePaths) ? allImagePaths : [];
     setSelectedImages(new Set(images.map((img) => img.path)));
   };
 

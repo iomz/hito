@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { state } from "../state";
+import React from "react";
+import { useAtomValue } from "jotai";
+import { currentModalImagePathAtom, categoriesAtom, imageCategoriesAtom } from "../state";
 import type { Category, CategoryAssignment } from "../types";
 
 function getContrastColor(hexColor: string): string {
@@ -19,28 +20,9 @@ function getContrastColor(hexColor: string): string {
 }
 
 export function CurrentImageCategories() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [imageCategories, setImageCategories] = useState<Map<string, CategoryAssignment[]>>(new Map());
-  const [currentImagePath, setCurrentImagePath] = useState<string>("");
-
-  // Subscribe to state changes
-  useEffect(() => {
-    // One-time initial sync
-    const modalImagePath = state.currentModalImagePath;
-    setCurrentImagePath(modalImagePath || "");
-    setCategories([...state.categories]);
-    setImageCategories(new Map(state.imageCategories));
-    
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(() => {
-      const newModalImagePath = state.currentModalImagePath;
-      setCurrentImagePath(newModalImagePath || "");
-      setCategories([...state.categories]);
-      setImageCategories(new Map(state.imageCategories));
-    });
-    
-    return unsubscribe;
-  }, []);
+  const currentImagePath = useAtomValue(currentModalImagePathAtom);
+  const categories = useAtomValue(categoriesAtom);
+  const imageCategories = useAtomValue(imageCategoriesAtom);
 
   const handleToggleCategory = async (categoryId: string) => {
     if (!currentImagePath) return;

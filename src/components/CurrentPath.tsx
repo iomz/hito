@@ -1,24 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { state } from "../state";
+import React, { useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { currentDirectoryAtom } from "../state";
 import { normalizePath } from "../utils/state";
 import { handleFolder } from "../handlers/dragDrop";
 
 export function CurrentPath() {
-  const [currentDirectory, setCurrentDirectory] = useState("");
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    // One-time initial sync
-    setCurrentDirectory(state.currentDirectory);
-    setIsVisible(state.currentDirectory.length > 0);
-    
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(() => {
-      setCurrentDirectory(state.currentDirectory);
-      setIsVisible(state.currentDirectory.length > 0);
-    });
-    return unsubscribe;
-  }, []);
+  const currentDirectory = useAtomValue(currentDirectoryAtom);
+  const isVisible = useMemo(() => currentDirectory.length > 0, [currentDirectory]);
 
   if (!isVisible || !currentDirectory) {
     return (

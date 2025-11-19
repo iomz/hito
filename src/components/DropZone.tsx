@@ -1,22 +1,19 @@
-import React, { useEffect, useState, useRef } from "react";
-import { state } from "../state";
+import React, { useEffect, useRef, useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { currentDirectoryAtom, isLoadingAtom } from "../state";
 import { handleFileDrop, selectFolder } from "../handlers/dragDrop";
 import { showNotification } from "../ui/notification";
 import { CUSTOM_DRAG_EVENTS } from "../constants";
 
 export function DropZone() {
-  const [isCollapsed, setIsCollapsed] = useState(state.currentDirectory.length > 0);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [isLoading, setIsLoading] = useState(state.isLoading);
+  const currentDirectory = useAtomValue(currentDirectoryAtom);
+  const isLoading = useAtomValue(isLoadingAtom);
+  const [isDragOver, setIsDragOver] = React.useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const isCollapsed = useMemo(() => currentDirectory.length > 0, [currentDirectory]);
 
   useEffect(() => {
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(() => {
-      const hasDirectory = state.currentDirectory.length > 0;
-      setIsCollapsed(hasDirectory);
-      setIsLoading(state.isLoading);
-    });
 
     // Listen to Tauri drag events for visual feedback
     const handleTauriDragEnter = () => setIsDragOver(true);
@@ -28,7 +25,6 @@ export function DropZone() {
     window.addEventListener(CUSTOM_DRAG_EVENTS.DROP, handleTauriDragLeave);
 
     return () => {
-      unsubscribe();
       window.removeEventListener(CUSTOM_DRAG_EVENTS.ENTER, handleTauriDragEnter);
       window.removeEventListener(CUSTOM_DRAG_EVENTS.OVER, handleTauriDragEnter);
       window.removeEventListener(CUSTOM_DRAG_EVENTS.LEAVE, handleTauriDragLeave);

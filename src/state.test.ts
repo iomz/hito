@@ -1,167 +1,143 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { state } from './state';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { store } from './utils/jotaiStore';
+import {
+  allImagePathsAtom,
+  allDirectoryPathsAtom,
+  currentIndexAtom,
+  isLoadingBatchAtom,
+  loadedImagesAtom,
+  currentModalIndexAtom,
+  currentModalImagePathAtom,
+  isDeletingImageAtom,
+  hotkeysAtom,
+  isHotkeySidebarOpenAtom,
+  categoriesAtom,
+  imageCategoriesAtom,
+  currentDirectoryAtom,
+  configFilePathAtom,
+  resetCounterAtom,
+  shortcutsOverlayVisibleAtom,
+  categoryDialogVisibleAtom,
+  categoryDialogCategoryAtom,
+  hotkeyDialogVisibleAtom,
+  hotkeyDialogHotkeyAtom,
+  isLoadingAtom,
+  errorMessageAtom,
+  resetStateAtom,
+} from './state';
 
 describe('state', () => {
   beforeEach(() => {
-    // Reset state before each test
-    state.reset();
+    // Reset state before each test using resetStateAtom
+    store.set(resetStateAtom);
   });
 
-  describe('subscribe', () => {
-    it('should add a listener and return unsubscribe function', () => {
-      const listener = vi.fn();
-      const unsubscribe = state.subscribe(listener);
-
-      expect(typeof unsubscribe).toBe('function');
-
-      // Test notification
-      state.notify();
-      expect(listener).toHaveBeenCalledTimes(1);
-
-      // Unsubscribe
-      unsubscribe();
-      state.notify();
-      expect(listener).toHaveBeenCalledTimes(1); // Should not be called again
+  describe('atoms', () => {
+    it('should have initial values', () => {
+      expect(store.get(allImagePathsAtom)).toEqual([]);
+      expect(store.get(allDirectoryPathsAtom)).toEqual([]);
+      expect(store.get(currentIndexAtom)).toBe(0);
+      expect(store.get(isLoadingBatchAtom)).toBe(false);
+      expect(store.get(loadedImagesAtom).size).toBe(0);
+      expect(store.get(currentModalIndexAtom)).toBe(-1);
+      expect(store.get(currentModalImagePathAtom)).toBe('');
+      expect(store.get(isDeletingImageAtom)).toBe(false);
+      expect(store.get(hotkeysAtom)).toEqual([]);
+      expect(store.get(isHotkeySidebarOpenAtom)).toBe(false);
+      expect(store.get(categoriesAtom)).toEqual([]);
+      expect(store.get(imageCategoriesAtom).size).toBe(0);
+      expect(store.get(currentDirectoryAtom)).toBe('');
+      expect(store.get(configFilePathAtom)).toBe('');
+      expect(store.get(shortcutsOverlayVisibleAtom)).toBe(false);
+      expect(store.get(categoryDialogVisibleAtom)).toBe(false);
+      expect(store.get(categoryDialogCategoryAtom)).toBeUndefined();
+      expect(store.get(hotkeyDialogVisibleAtom)).toBe(false);
+      expect(store.get(hotkeyDialogHotkeyAtom)).toBeUndefined();
+      expect(store.get(isLoadingAtom)).toBe(false);
+      expect(store.get(errorMessageAtom)).toBe('');
     });
 
-    it('should allow multiple listeners', () => {
-      const listener1 = vi.fn();
-      const listener2 = vi.fn();
+    it('should allow setting and getting values', () => {
+      const testImage = { path: '/test/image.png' };
+      store.set(allImagePathsAtom, [testImage]);
+      expect(store.get(allImagePathsAtom)).toEqual([testImage]);
 
-      state.subscribe(listener1);
-      state.subscribe(listener2);
+      store.set(currentIndexAtom, 5);
+      expect(store.get(currentIndexAtom)).toBe(5);
 
-      state.notify();
-
-      expect(listener1).toHaveBeenCalledTimes(1);
-      expect(listener2).toHaveBeenCalledTimes(1);
-    });
-
-    it('should allow unsubscribing multiple listeners', () => {
-      const listener1 = vi.fn();
-      const listener2 = vi.fn();
-
-      const unsubscribe1 = state.subscribe(listener1);
-      const unsubscribe2 = state.subscribe(listener2);
-
-      unsubscribe1();
-      unsubscribe2();
-
-      state.notify();
-
-      expect(listener1).not.toHaveBeenCalled();
-      expect(listener2).not.toHaveBeenCalled();
+      const testMap = new Map([['/test/image.png', 'data-url']]);
+      store.set(loadedImagesAtom, testMap);
+      expect(store.get(loadedImagesAtom).get('/test/image.png')).toBe('data-url');
     });
   });
 
-  describe('notify', () => {
-    it('should call all subscribed listeners', () => {
-      const listener1 = vi.fn();
-      const listener2 = vi.fn();
-      const listener3 = vi.fn();
-
-      state.subscribe(listener1);
-      state.subscribe(listener2);
-      state.subscribe(listener3);
-
-      state.notify();
-
-      expect(listener1).toHaveBeenCalledTimes(1);
-      expect(listener2).toHaveBeenCalledTimes(1);
-      expect(listener3).toHaveBeenCalledTimes(1);
-    });
-
-    it('should not call unsubscribed listeners', () => {
-      const listener1 = vi.fn();
-      const listener2 = vi.fn();
-
-      const unsubscribe1 = state.subscribe(listener1);
-      state.subscribe(listener2);
-
-      unsubscribe1();
-      state.notify();
-
-      expect(listener1).not.toHaveBeenCalled();
-      expect(listener2).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle no listeners gracefully', () => {
-      expect(() => state.notify()).not.toThrow();
-    });
-  });
-
-  describe('reset', () => {
+  describe('resetStateAtom', () => {
     it('should reset all state properties to initial values', () => {
       // Set some state
-      state.allImagePaths = [{ path: '/test/image.png' }];
-      state.allDirectoryPaths = [{ path: '/test' }];
-      state.currentIndex = 5;
-      state.isLoadingBatch = true;
-      state.loadedImages.set('/test/image.png', 'data-url');
-      state.currentModalIndex = 2;
-      state.isDeletingImage = true;
-      state.hotkeys = [{ id: '1', key: 'A', modifiers: [], action: 'test' }];
-      state.isHotkeySidebarOpen = true;
-      state.categories = [{ id: '1', name: 'Test', color: '#000' }];
-      state.imageCategories.set('/test/image.png', [
+      store.set(allImagePathsAtom, [{ path: '/test/image.png' }]);
+      store.set(allDirectoryPathsAtom, [{ path: '/test' }]);
+      store.set(currentIndexAtom, 5);
+      store.set(isLoadingBatchAtom, true);
+      const loadedImages = new Map([['/test/image.png', 'data-url']]);
+      store.set(loadedImagesAtom, loadedImages);
+      store.set(currentModalIndexAtom, 2);
+      store.set(currentModalImagePathAtom, '/test/image.png');
+      store.set(isDeletingImageAtom, true);
+      store.set(hotkeysAtom, [{ id: '1', key: 'A', modifiers: [], action: 'test' }]);
+      store.set(isHotkeySidebarOpenAtom, true);
+      store.set(categoriesAtom, [{ id: '1', name: 'Test', color: '#000' }]);
+      const imageCategories = new Map([['/test/image.png', [
         { category_id: 'cat1', assigned_at: new Date().toISOString() }
-      ]);
-      state.currentDirectory = '/test/dir';
-      state.configFilePath = '/test/config.json';
-      state.shortcutsOverlayVisible = true;
-      state.categoryDialogVisible = true;
-      state.categoryDialogCategory = { id: '1', name: 'Test', color: '#000' };
-      state.hotkeyDialogVisible = true;
-      state.hotkeyDialogHotkey = { id: '1', key: 'A', modifiers: [], action: 'test' };
-      state.isLoading = true;
-      state.errorMessage = 'Test error';
-      const resetCounterBefore = state.resetCounter;
+      ]]]);
+      store.set(imageCategoriesAtom, imageCategories);
+      store.set(currentDirectoryAtom, '/test/dir');
+      store.set(configFilePathAtom, '/test/config.json');
+      store.set(shortcutsOverlayVisibleAtom, true);
+      store.set(categoryDialogVisibleAtom, true);
+      store.set(categoryDialogCategoryAtom, { id: '1', name: 'Test', color: '#000' });
+      store.set(hotkeyDialogVisibleAtom, true);
+      store.set(hotkeyDialogHotkeyAtom, { id: '1', key: 'A', modifiers: [], action: 'test' });
+      store.set(isLoadingAtom, true);
+      store.set(errorMessageAtom, 'Test error');
+      const resetCounterBefore = store.get(resetCounterAtom);
 
-      state.reset();
+      store.set(resetStateAtom);
 
-      expect(state.allImagePaths).toEqual([]);
-      expect(state.allDirectoryPaths).toEqual([]);
-      expect(state.currentIndex).toBe(0);
-      expect(state.isLoadingBatch).toBe(false);
-      expect(state.loadedImages.size).toBe(0);
-      expect(state.currentModalIndex).toBe(-1);
-      expect(state.isDeletingImage).toBe(false);
-      expect(state.hotkeys).toEqual([]);
-      expect(state.isHotkeySidebarOpen).toBe(false);
-      expect(state.categories).toEqual([]);
-      expect(state.imageCategories.size).toBe(0);
-      expect(state.currentDirectory).toBe('');
-      expect(state.configFilePath).toBe('');
-      expect(state.resetCounter).toBe(resetCounterBefore + 1);
-      expect(state.shortcutsOverlayVisible).toBe(false);
-      expect(state.categoryDialogVisible).toBe(false);
-      expect(state.categoryDialogCategory).toBeUndefined();
-      expect(state.hotkeyDialogVisible).toBe(false);
-      expect(state.hotkeyDialogHotkey).toBeUndefined();
-      expect(state.isLoading).toBe(false);
-      expect(state.errorMessage).toBe('');
-    });
-
-    it('should notify listeners after reset', () => {
-      const listener = vi.fn();
-
-      state.subscribe(listener);
-      state.reset();
-
-      expect(listener).toHaveBeenCalledTimes(1);
+      expect(store.get(allImagePathsAtom)).toEqual([]);
+      expect(store.get(allDirectoryPathsAtom)).toEqual([]);
+      expect(store.get(currentIndexAtom)).toBe(0);
+      expect(store.get(isLoadingBatchAtom)).toBe(false);
+      expect(store.get(loadedImagesAtom).size).toBe(0);
+      expect(store.get(currentModalIndexAtom)).toBe(-1);
+      expect(store.get(currentModalImagePathAtom)).toBe('');
+      expect(store.get(isDeletingImageAtom)).toBe(false);
+      expect(store.get(hotkeysAtom)).toEqual([]);
+      expect(store.get(isHotkeySidebarOpenAtom)).toBe(false);
+      expect(store.get(categoriesAtom)).toEqual([]);
+      expect(store.get(imageCategoriesAtom).size).toBe(0);
+      expect(store.get(currentDirectoryAtom)).toBe('');
+      expect(store.get(configFilePathAtom)).toBe('');
+      expect(store.get(resetCounterAtom)).toBe(resetCounterBefore + 1);
+      expect(store.get(shortcutsOverlayVisibleAtom)).toBe(false);
+      expect(store.get(categoryDialogVisibleAtom)).toBe(false);
+      expect(store.get(categoryDialogCategoryAtom)).toBeUndefined();
+      expect(store.get(hotkeyDialogVisibleAtom)).toBe(false);
+      expect(store.get(hotkeyDialogHotkeyAtom)).toBeUndefined();
+      expect(store.get(isLoadingAtom)).toBe(false);
+      expect(store.get(errorMessageAtom)).toBe('');
     });
 
     it('should increment resetCounter on each reset', () => {
-      const initialCounter = state.resetCounter;
+      const initialCounter = store.get(resetCounterAtom);
 
-      state.reset();
-      expect(state.resetCounter).toBe(initialCounter + 1);
+      store.set(resetStateAtom);
+      expect(store.get(resetCounterAtom)).toBe(initialCounter + 1);
 
-      state.reset();
-      expect(state.resetCounter).toBe(initialCounter + 2);
+      store.set(resetStateAtom);
+      expect(store.get(resetCounterAtom)).toBe(initialCounter + 2);
 
-      state.reset();
-      expect(state.resetCounter).toBe(initialCounter + 3);
+      store.set(resetStateAtom);
+      expect(store.get(resetCounterAtom)).toBe(initialCounter + 3);
     });
   });
 });

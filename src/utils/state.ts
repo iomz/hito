@@ -1,15 +1,17 @@
-import { state } from "../state";
+import { store } from "./jotaiStore";
+import { allImagePathsAtom } from "../state";
 
 /**
- * Ensures state.allImagePaths is a valid array, resetting it if necessary.
+ * Ensures allImagePathsAtom is a valid array, resetting it if necessary.
  * 
  * @param context - Context string for error logging (e.g., function name)
  * @returns true if allImagePaths is valid, false otherwise
  */
 export function ensureImagePathsArray(context: string): boolean {
-  if (!Array.isArray(state.allImagePaths)) {
-    console.error(`state.allImagePaths is not an array in ${context}:`, state.allImagePaths);
-    state.allImagePaths = [];
+  const allImagePaths = store.get(allImagePathsAtom);
+  if (!Array.isArray(allImagePaths)) {
+    console.error(`allImagePathsAtom is not an array in ${context}:`, allImagePaths);
+    store.set(allImagePathsAtom, []);
     return false;
   }
   return true;

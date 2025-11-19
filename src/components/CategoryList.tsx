@@ -1,25 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { state } from "../state";
+import React from "react";
+import { useAtomValue } from "jotai";
+import { categoriesAtom, imageCategoriesAtom } from "../state";
 import type { Category, CategoryAssignment } from "../types";
 import { showCategoryDialog, deleteCategory } from "../ui/categories";
 
 export function CategoryList() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [imageCategories, setImageCategories] = useState<Map<string, CategoryAssignment[]>>(new Map());
-
-  // Subscribe to state changes instead of polling
-  useEffect(() => {
-    const unsubscribe = state.subscribe(() => {
-      setCategories(Array.isArray(state.categories) ? [...state.categories] : []);
-      setImageCategories(new Map(state.imageCategories));
-    });
-    
-    // Initialize
-    setCategories(Array.isArray(state.categories) ? [...state.categories] : []);
-    setImageCategories(new Map(state.imageCategories));
-    
-    return unsubscribe;
-  }, []);
+  const categories = useAtomValue(categoriesAtom);
+  const imageCategories = useAtomValue(imageCategoriesAtom);
 
   // Calculate image count for a category
   const getImageCount = (categoryId: string): number => {

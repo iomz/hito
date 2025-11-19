@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import { currentModalIndexAtom, currentModalImagePathAtom, shortcutsOverlayVisibleAtom } from "../state";
 
 // Mock dependencies
 vi.mock("../ui/modal", async () => {
@@ -30,9 +31,10 @@ describe("keyboard handlers", () => {
       <div id="keyboard-shortcuts-overlay"></div>
     `;
 
-    // Reset state (keyboard handler checks state.currentModalIndex instead of DOM styles)
-    state.currentModalIndex = -1;
-    state.shortcutsOverlayVisible = false;
+    // Reset state (keyboard handler checks currentModalImagePath instead of DOM styles)
+    store.set(currentModalIndexAtom, -1);
+    store.set(currentModalImagePathAtom, "");
+    store.set(shortcutsOverlayVisibleAtom, false);
 
     // Reset mocks
     vi.clearAllMocks();
@@ -82,8 +84,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowLeft" });
       document.dispatchEvent(event);
@@ -98,8 +100,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -114,14 +116,14 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open and overlay as visible (state-based checks)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
-      state.shortcutsOverlayVisible = true;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
+      store.set(shortcutsOverlayVisibleAtom, true);
 
       const event = new KeyboardEvent("keydown", { key: "Escape" });
       document.dispatchEvent(event);
 
-      expect(state.shortcutsOverlayVisible).toBe(false);
+      expect(store.get(shortcutsOverlayVisibleAtom)).toBe(false);
       expect(closeModal).not.toHaveBeenCalled();
     });
 
@@ -132,9 +134,9 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open but overlay not visible (state-based checks)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
-      state.shortcutsOverlayVisible = false;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
+      store.set(shortcutsOverlayVisibleAtom, false);
 
       const event = new KeyboardEvent("keydown", { key: "Escape" });
       document.dispatchEvent(event);
@@ -148,15 +150,15 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
-      state.shortcutsOverlayVisible = false;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
+      store.set(shortcutsOverlayVisibleAtom, false);
 
       const event = new KeyboardEvent("keydown", { key: "?" });
       document.dispatchEvent(event);
 
       // Check that state was toggled
-      expect(state.shortcutsOverlayVisible).toBe(true);
+      expect(store.get(shortcutsOverlayVisibleAtom)).toBe(true);
     });
 
     it("should toggle shortcuts overlay on Shift+/", async () => {
@@ -165,9 +167,9 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
-      state.shortcutsOverlayVisible = false;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
+      store.set(shortcutsOverlayVisibleAtom, false);
 
       const event = new KeyboardEvent("keydown", {
         key: "/",
@@ -176,7 +178,7 @@ describe("keyboard handlers", () => {
       document.dispatchEvent(event);
 
       // Check that state was toggled
-      expect(state.shortcutsOverlayVisible).toBe(true);
+      expect(store.get(shortcutsOverlayVisibleAtom)).toBe(true);
     });
 
     it("should delete current image on Delete key", async () => {
@@ -186,8 +188,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "Delete" });
       document.dispatchEvent(event);
@@ -202,8 +204,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "Backspace" });
       document.dispatchEvent(event);
@@ -218,8 +220,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { code: "Delete" });
       document.dispatchEvent(event);
@@ -234,8 +236,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { code: "Backspace" });
       document.dispatchEvent(event);
@@ -250,8 +252,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Modal is closed (state-based check)
-      state.currentModalImagePath = "";
-      state.currentModalIndex = -1;
+      store.set(currentModalImagePathAtom, "");
+      store.set(currentModalIndexAtom, -1);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -266,8 +268,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Modal is closed (state-based check)
-      state.currentModalImagePath = "";
-      state.currentModalIndex = -1;
+      store.set(currentModalImagePathAtom, "");
+      store.set(currentModalIndexAtom, -1);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -285,8 +287,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -361,8 +363,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowLeft" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -378,8 +380,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -395,8 +397,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "Escape" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -412,8 +414,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "?" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -429,8 +431,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const event = new KeyboardEvent("keydown", { key: "Delete" });
       const preventDefaultSpy = vi.spyOn(event, "preventDefault");
@@ -447,8 +449,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Modal is closed (state-based check, not DOM style)
-      state.currentModalImagePath = "";
-      state.currentModalIndex = -1;
+      store.set(currentModalImagePathAtom, "");
+      store.set(currentModalIndexAtom, -1);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -463,8 +465,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Modal is closed (state-based check, not DOM style)
-      state.currentModalImagePath = "";
-      state.currentModalIndex = -1;
+      store.set(currentModalImagePathAtom, "");
+      store.set(currentModalIndexAtom, -1);
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
       document.dispatchEvent(event);
@@ -630,8 +632,8 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
-      state.currentModalImagePath = "/test/image1.png";
-      state.currentModalIndex = 0;
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      store.set(currentModalIndexAtom, 0);
 
       const input = document.createElement("input");
       document.body.appendChild(input);

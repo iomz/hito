@@ -1,4 +1,5 @@
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import { currentModalImagePathAtom, shortcutsOverlayVisibleAtom } from "../state";
 import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage } from "../ui/modal";
 import { checkAndExecuteHotkey } from "../ui/hotkeys";
 
@@ -53,8 +54,9 @@ export function setupKeyboardHandlers(): void {
     // If typing in editable element, skip hotkey checks but continue to modal shortcuts
     
     // Only handle modal-specific shortcuts when modal is open
-    // Check state.currentModalImagePath instead of DOM element display style (React manages visibility)
-    if (!state.currentModalImagePath) {
+    // Check currentModalImagePathAtom instead of DOM element display style (React manages visibility)
+    const currentModalImagePath = store.get(currentModalImagePathAtom);
+    if (!currentModalImagePath) {
       return;
     }
     
@@ -66,8 +68,9 @@ export function setupKeyboardHandlers(): void {
       showNextImage();
     } else if (e.key === "Escape") {
       e.preventDefault();
-      // Check state.shortcutsOverlayVisible instead of DOM element display style
-      if (state.shortcutsOverlayVisible) {
+      // Check shortcutsOverlayVisibleAtom instead of DOM element display style
+      const shortcutsOverlayVisible = store.get(shortcutsOverlayVisibleAtom);
+      if (shortcutsOverlayVisible) {
         toggleShortcutsOverlay();
       } else {
         closeModal();
