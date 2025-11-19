@@ -29,6 +29,8 @@ coverage:
     - "**/main.tsx"
     - ".github/**"
     - "coverage/**"
+    # Type definitions don't have runtime code to test - TypeScript compiler validates them
+    - "src/types.ts"
     # React components (.tsx) are excluded from coverage for the following reasons:
     # 1. Most components are presentational/UI wrappers around state management
     # 2. Business logic is tested in .ts files (handlers, core, utils, ui modules)
