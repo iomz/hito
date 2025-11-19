@@ -27,6 +27,11 @@ vi.mock("./hotkeys", () => ({
   closeHotkeySidebar: vi.fn(),
 }));
 
+vi.mock("../utils/tauri", () => ({
+  invokeTauri: vi.fn(),
+  isTauriInvokeAvailable: vi.fn().mockReturnValue(true),
+}));
+
 describe("modal", () => {
   beforeEach(() => {
     // Reset state
@@ -288,14 +293,14 @@ describe("modal", () => {
     });
 
     it("should delete image successfully", async () => {
-      const { invokeTauri } = await import("../utils/tauri");
+      const tauri = await import("../utils/tauri");
       const { showNotification } = await import("./notification");
       state.currentModalIndex = 1;
-      vi.mocked(invokeTauri).mockResolvedValueOnce(undefined);
+      vi.spyOn(tauri, "invokeTauri").mockResolvedValueOnce(undefined);
 
       await deleteCurrentImage();
 
-      expect(invokeTauri).toHaveBeenCalledWith("delete_image", {
+      expect(tauri.invokeTauri).toHaveBeenCalledWith("delete_image", {
         imagePath: "/test/image2.png",
       });
       expect(state.allImagePaths.length).toBe(2);

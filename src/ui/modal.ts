@@ -31,10 +31,6 @@ export async function openModal(imageIndex: number): Promise<void> {
   if (!dataUrl) {
     try {
       dataUrl = await loadImageData(imagePath);
-      // Cache the dataUrl only if it's valid
-      if (dataUrl) {
-        state.loadedImages.set(imagePath, dataUrl);
-      }
     } catch (error) {
       showError(`Error loading image: ${error}`);
       // Reset modal index on error

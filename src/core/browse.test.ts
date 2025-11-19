@@ -5,7 +5,6 @@ import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 import { showError } from "../ui/error";
-import { hideSpinner } from "../ui/spinner";
 import { showNotification } from "../ui/notification";
 
 // Mock dependencies
@@ -21,10 +20,6 @@ vi.mock("../ui/error", () => ({
   clearError: vi.fn(),
 }));
 
-vi.mock("../ui/spinner", () => ({
-  showSpinner: vi.fn(),
-  hideSpinner: vi.fn(),
-}));
 
 vi.mock("../ui/notification", () => ({
   showNotification: vi.fn(),
@@ -252,7 +247,7 @@ describe("browse", () => {
       await browseImages("/test/path");
 
       expect(showError).toHaveBeenCalled();
-      expect(hideSpinner).toHaveBeenCalled();
+      expect(state.isLoading).toBe(false);
     });
 
     it("should reset state before browsing", async () => {

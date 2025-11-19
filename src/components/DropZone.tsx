@@ -155,10 +155,8 @@ export function DropZone() {
       return;
     }
     
-    // Extract paths from selected files
-    // With webkitdirectory, files might have a path property (Tauri might add this)
-    // or we can try to extract from webkitRelativePath
-    const paths: string[] = [];
+    // Extract a representative path from selected files
+    // With webkitdirectory, files might have a `path` property (Tauri might add this)
     let rootDirPath: string | null = null;
     
     for (let i = 0; i < files.length; i++) {

@@ -1,7 +1,7 @@
 import type { Event } from "@tauri-apps/api/event";
 import { DRAG_EVENTS, CUSTOM_DRAG_EVENTS } from "../constants";
 import type { DragDropEvent } from "../types";
-import { showSpinner, hideSpinner } from "../ui/spinner";
+import { state } from "../state";
 import { showError, clearError } from "../ui/error";
 import { browseImages } from "../core/browse";
 import { open } from "../utils/dialog";
@@ -57,16 +57,17 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
   const paths = extractPathsFromEvent(event);
   
   if (!paths || paths.length === 0) {
-    hideSpinner();
+    state.isLoading = false;
+    state.notify();
     showError("No file paths detected in drop event.");
     return;
   }
   
   const firstPath = paths[0];
-  const isSingleFile = paths.length === 1;
   
   if (!isTauriInvokeAvailable()) {
-    hideSpinner();
+    state.isLoading = false;
+    state.notify();
     showError("Tauri invoke API not available");
     return;
   }
@@ -80,7 +81,8 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
       const parentPath = await invokeTauri<string>("get_parent_directory", { filePath: firstPath });
       handleFolder(parentPath);
     } catch (err) {
-      hideSpinner();
+      state.isLoading = false;
+      state.notify();
       showError(`Error: ${err}. Please drop a folder or use the file picker.`);
     }
   }
@@ -118,16 +120,18 @@ export function setupDocumentDragHandlers(): () => void {
  * and delegate dropped paths to the file-drop handler. If TAURI event listening is unavailable or
  * an individual event fails to register, the function exits or continues silently without throwing.
  *
- * @returns Nothing.
+ * @returns A cleanup function that removes all registered listeners, or undefined if setup failed.
  */
-export async function setupTauriDragEvents(): Promise<void> {
+export async function setupTauriDragEvents(): Promise<(() => void) | undefined> {
+  const unlistenFunctions: Array<() => void> = [];
+  
   try {
     const eventNames = Object.values(DRAG_EVENTS);
     
     // Use window.__TAURI__.event.listen directly (works without bundler)
     if (!window.__TAURI__?.event?.listen) {
       console.warn('[setupTauriDragEvents] Tauri event API not available - returning early');
-      return;
+      return undefined;
     }
     
     const eventListen = window.__TAURI__.event.listen;
@@ -135,36 +139,64 @@ export async function setupTauriDragEvents(): Promise<void> {
     // Use for...of loop to properly await async operations
     for (const eventName of eventNames) {
       try {
-        await eventListen(eventName, (event: Event<DragDropEvent>) => {
+        const unlisten = await eventListen(eventName, (event: Event<DragDropEvent>) => {
           try {
             if (eventName === DRAG_EVENTS.DROP) {
-              showSpinner();
+              state.isLoading = true;
+              state.notify();
               clearError();
               // Notify React component to remove drag-over state
               window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.DROP));
               handleFileDrop(event).catch((err) => {
                 console.error('[TauriDragEvent] handleFileDrop error:', err);
-                hideSpinner();
+                state.isLoading = false;
+                state.notify();
                 showError(`Error: ${err}`);
               });
-            } else if (eventName === DRAG_EVENTS.ENTER || eventName === DRAG_EVENTS.OVER) {
+            } else if (eventName === DRAG_EVENTS.ENTER) {
               // Notify React component via custom event
               window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.ENTER));
+            } else if (eventName === DRAG_EVENTS.OVER) {
+              // Notify React component via custom event
+              window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.OVER));
             } else if (eventName === DRAG_EVENTS.LEAVE) {
               // Notify React component via custom event
               window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.LEAVE));
-              hideSpinner();
+              state.isLoading = false;
+              state.notify();
             }
           } catch (handlerError) {
             console.error('[TauriDragEvent] Error in event handler for', eventName, ':', handlerError);
           }
         });
+        // Save unlisten function immediately after awaiting
+        unlistenFunctions.push(unlisten);
       } catch (error) {
         console.error('[setupTauriDragEvents] Failed to register listener for', eventName, ':', error);
       }
     }
+    
+    // Return cleanup function that removes all listeners
+    return () => {
+      unlistenFunctions.forEach((unlisten) => {
+        try {
+          unlisten();
+        } catch (error) {
+          console.error('[setupTauriDragEvents] Error calling unlisten:', error);
+        }
+      });
+    };
   } catch (error) {
     console.error('[setupTauriDragEvents] FATAL ERROR:', error);
+    // Cleanup any listeners that were registered before the error
+    unlistenFunctions.forEach((unlisten) => {
+      try {
+        unlisten();
+      } catch (err) {
+        console.error('[setupTauriDragEvents] Error calling unlisten during cleanup:', err);
+      }
+    });
+    return undefined;
   }
 }
 
@@ -188,10 +220,12 @@ export async function selectFolder(): Promise<void> {
     } else if (selected && Array.isArray(selected) && selected.length > 0) {
       handleFolder(selected[0]);
     } else {
-      hideSpinner();
+      state.isLoading = false;
+      state.notify();
     }
   } catch (error) {
-    hideSpinner();
+    state.isLoading = false;
+    state.notify();
     showError(`Error selecting folder: ${error}`);
   }
 }

@@ -244,6 +244,7 @@ export function HotkeyDialog() {
 
   const handleKeyDownOverlay = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
+      e.stopPropagation();
       handleCancel();
     }
   };
