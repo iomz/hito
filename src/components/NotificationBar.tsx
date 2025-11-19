@@ -66,6 +66,7 @@ export function NotificationBar(): React.JSX.Element {
   return (
     <div
       id="notification-bar"
+      data-testid="notification-bar"
       className={`notification-bar ${isVisible ? "show" : ""}`}
       role="status"
       aria-live="polite"

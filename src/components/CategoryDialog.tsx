@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { state } from "../state";
 import type { Category } from "../types";
 import { saveHitoConfig, isCategoryNameDuplicate, generateCategoryColor } from "../ui/categories";
@@ -118,13 +118,13 @@ export function CategoryDialog() {
     }
   }, [name, editingCategory]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     state.categoryDialogVisible = false;
     state.categoryDialogCategory = undefined;
     state.notify();
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     const trimmedName = name.trim();
     
     if (!trimmedName) {
@@ -165,13 +165,12 @@ export function CategoryDialog() {
     }
     
     await saveHitoConfig();
-    // Note: CategoryList component handles rendering via subscription
     
     // Close dialog
     state.categoryDialogVisible = false;
     state.categoryDialogCategory = undefined;
     state.notify();
-  };
+  }, [name, color, editingCategory]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -195,7 +194,7 @@ export function CategoryDialog() {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isVisible]);
+  }, [isVisible, handleCancel]);
 
   if (!isVisible) {
     return null;

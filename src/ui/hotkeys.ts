@@ -10,18 +10,6 @@ import { confirm } from "../utils/dialog";
 export const SIDEBAR_WIDTH = "350px";
 
 /**
- * Updates the modal image layout to accommodate the sidebar state.
- * 
- * NOTE: This function is now a no-op. The sidebar overlays on top of the modal
- * (z-index 1002 > 1000), so the image position remains centered and unaffected.
- * 
- * @param isOpen - Whether the sidebar is open (unused, kept for API compatibility)
- */
-function updateModalForSidebar(isOpen: boolean): void {
-  // No-op: Sidebar overlays on top, image stays centered
-}
-
-/**
  * Toggle the hotkey sidebar visibility.
  */
 export async function toggleHotkeySidebar(): Promise<void> {
@@ -33,10 +21,8 @@ export async function toggleHotkeySidebar(): Promise<void> {
   
   if (state.isHotkeySidebarOpen) {
     hotkeySidebar.classList.add("open");
-    updateModalForSidebar(true);
   } else {
     hotkeySidebar.classList.remove("open");
-    updateModalForSidebar(false);
   }
 }
 
@@ -50,7 +36,6 @@ export function closeHotkeySidebar(): void {
   state.isHotkeySidebarOpen = false;
   state.notify();
   hotkeySidebar.classList.remove("open");
-  updateModalForSidebar(false);
 }
 
 /**
@@ -95,9 +80,6 @@ export function isHotkeyDuplicate(key: string, modifiers: string[], excludeId?: 
 
 /**
  * Populate the action dropdown with available category actions.
- * 
- * NOTE: This function is still used by the React HotkeyDialog component
- * to generate action options. It's exported for use in React.
  */
 export function populateActionDropdown(actionInput: HTMLSelectElement, existingAction?: string): void {
   // Clear existing options except the first "Select action..." option
@@ -174,9 +156,6 @@ export function populateActionDropdown(actionInput: HTMLSelectElement, existingA
 
 /**
  * Show the add/edit hotkey dialog.
- * 
- * NOTE: With React managing the dialog, this now sets state instead of creating DOM.
- * The React HotkeyDialog component handles rendering based on this state.
  */
 export function showHotkeyDialog(existingHotkey?: HotkeyConfig): void {
   state.hotkeyDialogVisible = true;

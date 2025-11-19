@@ -12,7 +12,6 @@ export const state = {
   allDirectoryPaths: [] as DirectoryPath[],
   currentIndex: 0,
   isLoadingBatch: false,
-  intersectionObserver: null as IntersectionObserver | null,
   loadedImages: new Map<string, string>(),
   currentModalIndex: -1,
   isDeletingImage: false,
@@ -42,6 +41,32 @@ export const state = {
   // Notify all listeners of state changes
   notify(): void {
     listeners.forEach((listener) => listener());
+  },
+  
+  // Reset all state to initial values
+  reset(): void {
+    this.allImagePaths = [];
+    this.allDirectoryPaths = [];
+    this.currentIndex = 0;
+    this.isLoadingBatch = false;
+    this.loadedImages.clear();
+    this.currentModalIndex = -1;
+    this.isDeletingImage = false;
+    this.hotkeys = [];
+    this.isHotkeySidebarOpen = false;
+    this.categories = [];
+    this.imageCategories.clear();
+    this.currentDirectory = "";
+    this.configFilePath = "";
+    this.resetCounter += 1; // Increment to force remounts
+    this.shortcutsOverlayVisible = false;
+    this.categoryDialogVisible = false;
+    this.categoryDialogCategory = undefined;
+    this.hotkeyDialogVisible = false;
+    this.hotkeyDialogHotkey = undefined;
+    this.isLoading = false;
+    this.errorMessage = "";
+    this.notify();
   }
 };
 

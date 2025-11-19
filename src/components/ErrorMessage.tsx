@@ -10,9 +10,6 @@ export function ErrorMessage() {
       setErrorText(state.errorMessage);
     });
 
-    // Initialize with current state
-    setErrorText(state.errorMessage);
-
     return unsubscribe;
   }, []);
 

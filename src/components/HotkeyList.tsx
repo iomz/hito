@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import isEqual from "fast-deep-equal";
 import { state } from "../state";
 import type { HotkeyConfig } from "../types";
 
@@ -23,8 +24,8 @@ export function HotkeyList() {
       const currentHotkeys = Array.isArray(state.hotkeys) ? state.hotkeys : [];
       const prevHotkeys = hotkeysRef.current;
 
-      // Deep equality check using JSON.stringify (objects have deterministic key order)
-      if (JSON.stringify(currentHotkeys) !== JSON.stringify(prevHotkeys)) {
+      // Deep equality check using fast-deep-equal for reliable comparison
+      if (!isEqual(currentHotkeys, prevHotkeys)) {
         hotkeysRef.current = [...currentHotkeys];
         setHotkeys([...currentHotkeys]);
       }

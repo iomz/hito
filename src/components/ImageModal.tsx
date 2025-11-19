@@ -19,6 +19,7 @@ export function ImageModal() {
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+  const loadRequestIdRef = useRef<number>(0);
 
   // Subscribe to modal state changes
   useEffect(() => {
@@ -31,10 +32,14 @@ export function ImageModal() {
         setCurrentIndex(modalIndex);
         
         if (shouldBeOpen && modalIndex >= 0) {
-          // Store previously focused element when opening
-          if (document.activeElement) {
+          // Store previously focused element only when opening the modal for the first time
+          if (previouslyFocusedElementRef.current === null && document.activeElement) {
             previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
           }
+          
+          // Increment load request ID to track the latest request
+          loadRequestIdRef.current += 1;
+          const currentLoadRequestId = loadRequestIdRef.current;
           
           // Load image data
           if (!ensureImagePathsArray("ImageModal")) {
@@ -69,9 +74,20 @@ export function ImageModal() {
             try {
               dataUrl = await loadImageData(imagePath);
             } catch (error) {
-              showError(`Error loading image: ${error}`);
+              // Only show error if this is still the latest request
+              if (currentLoadRequestId === loadRequestIdRef.current) {
+                // Clear any stale image state before showing error
+                setImageSrc("");
+                setCaption("");
+                showError(`Error loading image: ${error}`);
+              }
               return;
             }
+          }
+          
+          // Only update state if this is still the latest request (discard stale results)
+          if (currentLoadRequestId !== loadRequestIdRef.current) {
+            return;
           }
           
           setImageSrc(dataUrl);
@@ -84,8 +100,6 @@ export function ImageModal() {
           // Update button visibility
           setShowPrevBtn(modalIndex > 0);
           setShowNextBtn(modalIndex < state.allImagePaths.length - 1);
-          
-          // Note: ModalCategories is handled by React component
         } else {
           // Modal closed - restore focus to previously focused element
           if (previouslyFocusedElementRef.current) {

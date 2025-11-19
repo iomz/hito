@@ -1,5 +1,5 @@
 import type { Event } from "@tauri-apps/api/event";
-import { DRAG_EVENTS } from "../constants";
+import { DRAG_EVENTS, CUSTOM_DRAG_EVENTS } from "../constants";
 import type { DragDropEvent } from "../types";
 import { showSpinner, hideSpinner } from "../ui/spinner";
 import { showError, clearError } from "../ui/error";
@@ -40,8 +40,6 @@ export function extractPathsFromEvent(event: Event<DragDropEvent> | DragDropEven
  * @param folderPath - Filesystem path of the folder to browse and load images from
  */
 export function handleFolder(folderPath: string): void {
-  // Note: CurrentPath React component handles breadcrumb rendering based on state.currentDirectory
-  // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   browseImages(folderPath);
 }
 
@@ -77,25 +75,13 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
     await invokeTauri("list_images", { path: firstPath });
     handleFolder(firstPath);
   } catch (error) {
-    // If it's a single file or the path is not a directory, open parent directory
-    const errorMessage = String(error);
-    if (isSingleFile || errorMessage.includes("not a directory")) {
-      try {
-        const parentPath = await invokeTauri<string>("get_parent_directory", { filePath: firstPath });
-        handleFolder(parentPath);
-      } catch (err) {
-        hideSpinner();
-        showError(`Error: ${err}. Please drop a folder or use the file picker.`);
-      }
-    } else {
-      // For multiple paths, try parent directory as fallback
-      try {
-        const parentPath = await invokeTauri<string>("get_parent_directory", { filePath: firstPath });
-        handleFolder(parentPath);
-      } catch (err) {
-        hideSpinner();
-        showError(`Error: ${err}. Please drop a folder or use the file picker.`);
-      }
+    // Try parent directory as fallback
+    try {
+      const parentPath = await invokeTauri<string>("get_parent_directory", { filePath: firstPath });
+      handleFolder(parentPath);
+    } catch (err) {
+      hideSpinner();
+      showError(`Error: ${err}. Please drop a folder or use the file picker.`);
     }
   }
 }
@@ -105,7 +91,7 @@ export async function handleFileDrop(event: Event<DragDropEvent> | DragDropEvent
  *
  * Blocks the browser's default handling of `dragover` and `drop` when the event target is not contained within the drop zone, preventing unintended navigations or file openings.
  */
-export function setupDocumentDragHandlers(): void {
+export function setupDocumentDragHandlers(): () => void {
   const preventDefaultOutsideDropZone = (e: DragEvent) => {
     const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
     if (!dropZone?.contains(e.target as Node)) {
@@ -115,49 +101,14 @@ export function setupDocumentDragHandlers(): void {
   
   document.addEventListener("dragover", preventDefaultOutsideDropZone);
   document.addEventListener("drop", preventDefaultOutsideDropZone);
+  
+  // Return cleanup function
+  return () => {
+    document.removeEventListener("dragover", preventDefaultOutsideDropZone);
+    document.removeEventListener("drop", preventDefaultOutsideDropZone);
+  };
 }
 
-/**
- * Attach mouse handlers to the drop zone to distinguish drags from clicks and initiate folder selection on click.
- *
- * When the drop zone is clicked without prior mouse movement, this shows the loading spinner, collapses the drop zone,
- * clears any error message and the image grid, and opens the folder picker.
- */
-export function setupDragDropHandlers(): void {
-  const dropZone = document.querySelector("#drop-zone") as HTMLElement | null;
-  if (!dropZone) return;
-  
-  let isDragging = false;
-  
-  dropZone.addEventListener("mousedown", () => {
-    isDragging = false;
-  });
-  
-  dropZone.addEventListener("mousemove", () => {
-    isDragging = true;
-  });
-  
-  dropZone.addEventListener("click", async () => {
-    if (isDragging) return;
-    
-    showSpinner();
-    // Note: DropZone React component handles collapse/expand based on state.currentDirectory
-    clearError();
-    await selectFolder();
-  });
-}
-
-/**
- * Registers HTML5 drag-and-drop handlers on the configured drop zone to prevent default browser behavior and manage the drag-over visual state.
- * 
- * NOTE: This is now a no-op. The React DropZone component handles all HTML5 drag & drop events
- * (onDragEnter, onDragOver, onDragLeave, onDrop) and manages the drag-over state.
- * 
- * @deprecated React DropZone component now handles all HTML5 drag & drop events. This function will be removed in a future version.
- */
-export function setupHTML5DragDrop(): void {
-  // No-op: React DropZone component handles all HTML5 drag & drop events
-}
 
 /**
  * Registers TAURI drag-and-drop event listeners and updates the UI in response to those events.
@@ -188,10 +139,9 @@ export async function setupTauriDragEvents(): Promise<void> {
           try {
             if (eventName === DRAG_EVENTS.DROP) {
               showSpinner();
-              // Note: DropZone React component handles collapse/expand based on state.currentDirectory
               clearError();
               // Notify React component to remove drag-over state
-              window.dispatchEvent(new CustomEvent('tauri-drag-drop'));
+              window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.DROP));
               handleFileDrop(event).catch((err) => {
                 console.error('[TauriDragEvent] handleFileDrop error:', err);
                 hideSpinner();
@@ -199,10 +149,10 @@ export async function setupTauriDragEvents(): Promise<void> {
               });
             } else if (eventName === DRAG_EVENTS.ENTER || eventName === DRAG_EVENTS.OVER) {
               // Notify React component via custom event
-              window.dispatchEvent(new CustomEvent('tauri-drag-enter'));
+              window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.ENTER));
             } else if (eventName === DRAG_EVENTS.LEAVE) {
               // Notify React component via custom event
-              window.dispatchEvent(new CustomEvent('tauri-drag-leave'));
+              window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.LEAVE));
               hideSpinner();
             }
           } catch (handlerError) {
@@ -239,12 +189,10 @@ export async function selectFolder(): Promise<void> {
       handleFolder(selected[0]);
     } else {
       hideSpinner();
-      // Note: DropZone React component handles collapse/expand based on state.currentDirectory
     }
   } catch (error) {
     hideSpinner();
     showError(`Error selecting folder: ${error}`);
-    // Note: DropZone React component handles collapse/expand based on state.currentDirectory
   }
 }
 

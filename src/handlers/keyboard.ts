@@ -88,7 +88,6 @@ export function setupKeyboardHandlers(): void {
       closeModal();
     }
     // Check if click is on shortcuts overlay backdrop
-    // Note: With React, we check state instead of DOM display style
     if (state.shortcutsOverlayVisible) {
       const shortcutsOverlay = document.querySelector("#keyboard-shortcuts-overlay") as HTMLElement | null;
       if (shortcutsOverlay && event.target === shortcutsOverlay) {

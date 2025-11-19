@@ -2,9 +2,7 @@ import { state } from "../state";
 import { loadImageData } from "../utils/images";
 import { showError } from "./error";
 import { showNotification } from "./notification";
-import { removeImageFromGrid } from "./grid";
-import { createElement } from "../utils/dom";
-import { ensureImagePathsArray, normalizePath, getFilename } from "../utils/state";
+import { ensureImagePathsArray } from "../utils/state";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 
 /**
@@ -53,16 +51,12 @@ export async function openModal(imageIndex: number): Promise<void> {
   
   // Hide shortcuts overlay if visible
   hideShortcutsOverlay();
-  
-  // Note: React ImageModal component handles rendering based on state.currentModalIndex
-  // Category displays will be updated by React component's polling
 }
 
 /**
  * Hide the image viewer modal and the keyboard shortcuts overlay if present.
  */
 export function closeModal(): void {
-  // Reset modal index - React ImageModal component will detect and hide
   state.currentModalIndex = -1;
   
   // Hide shortcuts overlay if visible
@@ -80,7 +74,6 @@ export function showNextImage(): void {
   }
   if (state.currentModalIndex < state.allImagePaths.length - 1) {
     openModal(state.currentModalIndex + 1);
-    // Categories will be updated by openModal
   }
 }
 
@@ -91,17 +84,14 @@ export function showNextImage(): void {
  */
 export function showPreviousImage(): void {
   if (state.currentModalIndex > 0) {
+    // Modal content will be updated by openModal
     openModal(state.currentModalIndex - 1);
-    // Categories will be updated by openModal
   }
 }
 
 
 /**
  * Toggle the keyboard shortcuts overlay between visible and hidden.
- *
- * NOTE: With React managing the overlay, this now toggles state.shortcutsOverlayVisible.
- * The React ShortcutsOverlay component handles rendering based on this state.
  */
 export function toggleShortcutsOverlay(): void {
   state.shortcutsOverlayVisible = !state.shortcutsOverlayVisible;
@@ -110,9 +100,6 @@ export function toggleShortcutsOverlay(): void {
 
 /**
  * Hide the keyboard shortcuts overlay.
- *
- * NOTE: With React managing the overlay, this sets state.shortcutsOverlayVisible to false.
- * The React ShortcutsOverlay component handles rendering based on this state.
  */
 export function hideShortcutsOverlay(): void {
   state.shortcutsOverlayVisible = false;
@@ -167,9 +154,6 @@ export async function deleteCurrentImage(): Promise<void> {
     if (deletedIndex < state.currentIndex) {
       state.currentIndex -= 1;
     }
-    
-    // Remove from grid DOM
-    removeImageFromGrid(imagePath);
     
     // Navigate to next or previous image
     if (isOnlyImage) {

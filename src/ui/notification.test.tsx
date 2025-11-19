@@ -1,26 +1,15 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import React from "react";
-import { render, act } from "@testing-library/react";
+import { render, act, cleanup, screen } from "@testing-library/react";
 import { showNotification, hideNotification, NotificationBar } from "../components/NotificationBar";
 
 describe("notification", () => {
-  let container: HTMLDivElement;
-
   beforeEach(() => {
     vi.useFakeTimers();
-    // Set up DOM container
-    container = document.createElement("div");
-    document.body.appendChild(container);
-    // Render NotificationBar component
-    render(<NotificationBar />, { container });
+    render(<NotificationBar />);
   });
 
   afterEach(() => {
-    // Clean up DOM
-    if (container && container.parentNode) {
-      container.parentNode.removeChild(container);
-    }
-    // Reset notification state
+    cleanup();
     hideNotification();
     vi.useRealTimers();
   });
@@ -32,9 +21,8 @@ describe("notification", () => {
         showNotification(message);
       });
 
-      const notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar).not.toBeNull();
-      expect(notificationBar?.textContent).toBe(message);
+      const notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.textContent).toBe(message);
     });
 
     it("should make notification visible by adding show class", () => {
@@ -42,32 +30,31 @@ describe("notification", () => {
         showNotification("Test message");
       });
 
-      const notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar).not.toBeNull();
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      const notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.classList.contains("show")).toBe(true);
     });
 
     it("should update notification message when called multiple times", () => {
       act(() => {
         showNotification("First message");
       });
-      let notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar?.textContent).toBe("First message");
+      let notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.textContent).toBe("First message");
 
       act(() => {
         showNotification("Second message");
       });
-      notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar?.textContent).toBe("Second message");
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.textContent).toBe("Second message");
+      expect(notificationBar.classList.contains("show")).toBe(true);
     });
 
     it("should auto-hide after default duration (3000ms)", () => {
       act(() => {
         showNotification("Test message");
       });
-      const notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      const notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.classList.contains("show")).toBe(true);
 
       // Advance timers by default duration
       act(() => {
@@ -75,7 +62,7 @@ describe("notification", () => {
       });
 
       // Notification should be hidden
-      expect(notificationBar?.classList.contains("show")).toBe(false);
+      expect(notificationBar.classList.contains("show")).toBe(false);
     });
 
     it("should auto-hide after custom duration", () => {
@@ -83,53 +70,53 @@ describe("notification", () => {
       act(() => {
         showNotification("Test message", customDuration);
       });
-      const notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      const notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.classList.contains("show")).toBe(true);
 
       // Advance timers by less than duration - should still be visible
       act(() => {
         vi.advanceTimersByTime(customDuration - 1000);
       });
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      expect(notificationBar.classList.contains("show")).toBe(true);
 
       // Advance timers to complete duration - should be hidden
       act(() => {
         vi.advanceTimersByTime(1000);
       });
-      expect(notificationBar?.classList.contains("show")).toBe(false);
+      expect(notificationBar.classList.contains("show")).toBe(false);
     });
 
     it("should reset auto-hide timer when called multiple times", () => {
       act(() => {
         showNotification("First message", 5000);
       });
-      let notificationBar = document.querySelector("#notification-bar") as HTMLElement;
+      let notificationBar = screen.getByTestId("notification-bar");
 
       // Advance timers by 4000ms
       act(() => {
         vi.advanceTimersByTime(4000);
       });
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      expect(notificationBar.classList.contains("show")).toBe(true);
 
       // Show new notification - should reset timer
       act(() => {
         showNotification("Second message", 5000);
       });
-      notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar?.textContent).toBe("Second message");
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.textContent).toBe("Second message");
+      expect(notificationBar.classList.contains("show")).toBe(true);
 
       // Advance by another 4000ms (total 8000ms from first, but only 4000ms from second)
       act(() => {
         vi.advanceTimersByTime(4000);
       });
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      expect(notificationBar.classList.contains("show")).toBe(true);
 
       // Advance by remaining 1000ms to complete second notification's duration
       act(() => {
         vi.advanceTimersByTime(1000);
       });
-      expect(notificationBar?.classList.contains("show")).toBe(false);
+      expect(notificationBar.classList.contains("show")).toBe(false);
     });
   });
 
@@ -138,34 +125,34 @@ describe("notification", () => {
       act(() => {
         showNotification("Test message");
       });
-      const notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      const notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.classList.contains("show")).toBe(true);
 
       act(() => {
         hideNotification();
       });
 
-      expect(notificationBar?.classList.contains("show")).toBe(false);
+      expect(notificationBar.classList.contains("show")).toBe(false);
     });
 
     it("should cancel auto-hide timer when called", () => {
       act(() => {
         showNotification("Test message", 5000);
       });
-      const notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar?.classList.contains("show")).toBe(true);
+      const notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.classList.contains("show")).toBe(true);
 
       // Hide notification manually
       act(() => {
         hideNotification();
       });
-      expect(notificationBar?.classList.contains("show")).toBe(false);
+      expect(notificationBar.classList.contains("show")).toBe(false);
 
       // Advance timers - notification should remain hidden
       act(() => {
         vi.advanceTimersByTime(5000);
       });
-      expect(notificationBar?.classList.contains("show")).toBe(false);
+      expect(notificationBar.classList.contains("show")).toBe(false);
     });
 
     it("should not throw when called without showing notification first", () => {
@@ -174,8 +161,8 @@ describe("notification", () => {
           hideNotification();
         });
       }).not.toThrow();
-      const notificationBar = document.querySelector("#notification-bar") as HTMLElement;
-      expect(notificationBar?.classList.contains("show")).toBe(false);
+      const notificationBar = screen.getByTestId("notification-bar");
+      expect(notificationBar.classList.contains("show")).toBe(false);
     });
   });
 });

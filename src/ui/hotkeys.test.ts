@@ -39,7 +39,6 @@ describe("hotkeys", () => {
 
   describe("toggleHotkeySidebar", () => {
     it("should open sidebar when closed", async () => {
-      // Note: toggleHotkeySidebar now just toggles state (React HotkeySidebar component handles rendering)
       const { toggleHotkeySidebar } = await import("./hotkeys");
       
       await toggleHotkeySidebar();
@@ -48,7 +47,6 @@ describe("hotkeys", () => {
     });
 
     it("should close sidebar when open", async () => {
-      // Note: toggleHotkeySidebar now just toggles state (React HotkeySidebar component handles rendering)
       state.isHotkeySidebarOpen = true;
 
       const { toggleHotkeySidebar } = await import("./hotkeys");
@@ -58,7 +56,6 @@ describe("hotkeys", () => {
     });
 
     it("should not adjust modal image when opening sidebar with modal open", async () => {
-      // Note: Image position remains centered - sidebar overlays on top
       state.currentModalIndex = 0;
 
       const { toggleHotkeySidebar } = await import("./hotkeys");
@@ -71,7 +68,6 @@ describe("hotkeys", () => {
     });
 
     it("should not adjust modal image when closing sidebar with modal open", async () => {
-      // Note: Image position remains centered - sidebar overlays on top
       state.isHotkeySidebarOpen = true;
       state.currentModalIndex = 0;
 
@@ -85,7 +81,6 @@ describe("hotkeys", () => {
     });
 
     it("should render hotkey list when opening", async () => {
-      // Note: React HotkeySidebar component handles rendering
       state.hotkeys = [
         {
           id: "hotkey1",
@@ -103,7 +98,10 @@ describe("hotkeys", () => {
     });
 
     it("should handle missing sidebar element gracefully", async () => {
-      // Note: toggleHotkeySidebar checks for sidebar element and returns early if missing
+      // Remove the sidebar element to test the missing-element path
+      const hotkeysPanel = document.getElementById("hotkeys-panel");
+      hotkeysPanel?.remove();
+      
       const { toggleHotkeySidebar } = await import("./hotkeys");
       await expect(toggleHotkeySidebar()).resolves.not.toThrow();
     });
@@ -111,7 +109,6 @@ describe("hotkeys", () => {
 
   describe("closeHotkeySidebar", () => {
     it("should close sidebar", async () => {
-      // Note: closeHotkeySidebar now just updates state (React HotkeySidebar component handles rendering)
       state.isHotkeySidebarOpen = true;
 
       const { closeHotkeySidebar } = await import("./hotkeys");
@@ -121,7 +118,6 @@ describe("hotkeys", () => {
     });
 
     it("should not adjust modal image when modal is open", async () => {
-      // Note: Image position remains centered - sidebar overlays on top
       state.currentModalIndex = 0;
 
       const { closeHotkeySidebar } = await import("./hotkeys");
@@ -134,14 +130,14 @@ describe("hotkeys", () => {
     });
 
     it("should handle missing sidebar element gracefully", async () => {
-      // Note: closeHotkeySidebar checks for sidebar element and returns early if missing
+      // Remove the sidebar element to test the missing-element path
+      const hotkeysPanel = document.getElementById("hotkeys-panel");
+      hotkeysPanel?.remove();
+      
       const { closeHotkeySidebar } = await import("./hotkeys");
       expect(() => closeHotkeySidebar()).not.toThrow();
     });
   });
-
-  // Note: renderHotkeyList tests removed - function no longer exists
-  // React HotkeyList component handles rendering
 
   describe("checkAndExecuteHotkey", () => {
     beforeEach(() => {
@@ -364,7 +360,6 @@ describe("hotkeys", () => {
 
   describe("setupHotkeySidebar", () => {
     it("should handle missing elements gracefully", async () => {
-      // Note: setupHotkeySidebar sets up button handlers, but React HotkeyDialog component handles dialog visibility
       const { setupHotkeySidebar } = await import("./hotkeys");
       expect(() => setupHotkeySidebar()).not.toThrow();
     });
@@ -372,7 +367,6 @@ describe("hotkeys", () => {
 
   describe("showHotkeyDialog", () => {
     it("should set state to show dialog", async () => {
-      // Note: showHotkeyDialog is now React-managed (HotkeyDialog component handles rendering)
       const { showHotkeyDialog } = await import("./hotkeys");
       
       showHotkeyDialog();
@@ -383,7 +377,6 @@ describe("hotkeys", () => {
     });
 
     it("should set state for editing existing hotkey", async () => {
-      // Note: showHotkeyDialog is now React-managed (HotkeyDialog component handles rendering)
       const hotkey: HotkeyConfig = {
         id: "h1",
         key: "K",
@@ -402,7 +395,6 @@ describe("hotkeys", () => {
 
   describe("deleteHotkey", () => {
     it("should delete hotkey when called directly", async () => {
-      // Note: deleteHotkey function tests (not UI rendering)
       state.hotkeys = [
         { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
         { id: "h2", key: "B", modifiers: ["Ctrl"], action: "toggle_category_cat2" },
@@ -422,7 +414,6 @@ describe("hotkeys", () => {
 
   describe("populateActionDropdown", () => {
     it("should populate dropdown when called with select element", async () => {
-      // Note: populateActionDropdown still exists and works, but React HotkeyDialog uses it
       const select = document.createElement("select");
       // Add a placeholder option
       const placeholder = document.createElement("option");
