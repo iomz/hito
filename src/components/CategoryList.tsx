@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { state } from "../state";
-import type { Category } from "../types";
+import type { Category, CategoryAssignment } from "../types";
 import { showCategoryDialog, deleteCategory } from "../ui/categories";
 
 export function CategoryList() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [imageCategories, setImageCategories] = useState<Map<string, string[]>>(new Map());
+  const [imageCategories, setImageCategories] = useState<Map<string, CategoryAssignment[]>>(new Map());
 
   // Subscribe to state changes instead of polling
   useEffect(() => {
@@ -24,7 +24,9 @@ export function CategoryList() {
   // Calculate image count for a category
   const getImageCount = (categoryId: string): number => {
     return Array.from(imageCategories.values()).filter(
-      (ids) => ids.includes(categoryId)
+      (assignments) => assignments.some(
+        (assignment) => assignment.category_id === categoryId
+      )
     ).length;
   };
 

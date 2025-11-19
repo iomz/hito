@@ -46,10 +46,8 @@ export function createImageElement(imagePath: string, dataUrl: string): HTMLImag
     if (!ensureImagePathsArray("createImageElement")) {
       return;
     }
-    const imageIndex = state.allImagePaths.findIndex(img => img.path === imagePath);
-    if (imageIndex >= 0) {
-      openModal(imageIndex);
-    }
+    // Open modal with image path (it will find the image in the filtered/sorted list)
+    openModal(imagePath);
   };
   
   return img;

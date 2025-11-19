@@ -10,6 +10,18 @@ vi.mock("../utils/dialog", () => ({
   confirm: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock("./modal", () => ({
+  openModal: vi.fn(),
+  closeModal: vi.fn(),
+  showNextImage: vi.fn(),
+  showPreviousImage: vi.fn(),
+}));
+
+vi.mock("../utils/filteredImages", () => ({
+  getFilteredAndSortedImagesSync: vi.fn(),
+  getFilteredImages: vi.fn(),
+}));
+
 describe("categories config file location", () => {
   beforeEach(() => {
     // Setup window mock
@@ -246,7 +258,13 @@ describe("categories config file location", () => {
       const mockData = {
         categories: [],
         image_categories: [
-          ["/path/to/image1.jpg", ["cat1", "cat2"]],
+          [
+            "/path/to/image1.jpg",
+            [
+              { category_id: "cat1", assigned_at: new Date().toISOString() },
+              { category_id: "cat2", assigned_at: new Date().toISOString() }
+            ]
+          ],
         ],
         hotkeys: [],
       };
@@ -256,10 +274,9 @@ describe("categories config file location", () => {
       const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
-      expect(state.imageCategories.get("/path/to/image1.jpg")).toEqual([
-        "cat1",
-        "cat2",
-      ]);
+      const assignments = state.imageCategories.get("/path/to/image1.jpg") || [];
+      const categoryIds = assignments.map((a) => a.category_id);
+      expect(categoryIds).toEqual(["cat1", "cat2"]);
     });
 
     it("should load hotkeys from config", async () => {
@@ -329,7 +346,9 @@ describe("categories config file location", () => {
       state.categories = [
         { id: "cat1", name: "Category 1", color: "#ff0000" },
       ];
-      state.imageCategories.set("/path/to/image.jpg", ["cat1"]);
+      state.imageCategories.set("/path/to/image.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
       state.hotkeys = [];
 
       mockInvoke.mockResolvedValue(undefined);
@@ -337,13 +356,18 @@ describe("categories config file location", () => {
       const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
 
+      const assignments = state.imageCategories.get("/path/to/image.jpg") || [];
       expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
         directory: "/test/dir",
         categories: state.categories,
-        imageCategories: [["/path/to/image.jpg", ["cat1"]]],
+        imageCategories: [["/path/to/image.jpg", assignments]],
         hotkeys: [],
         filename: undefined,
       });
+      // Verify the assignment has the correct structure
+      expect(assignments).toHaveLength(1);
+      expect(assignments[0].category_id).toBe("cat1");
+      expect(assignments[0].assigned_at).toBeDefined();
     });
 
     it("should save with custom filename", async () => {
@@ -371,12 +395,25 @@ describe("categories config file location", () => {
       state.currentDirectory = "/test/dir";
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      mockInvoke.mockRejectedValue(new Error("Failed to save"));
+      // Set up some data so saveHitoConfig doesn't return early
+      state.categories = [];
+      state.imageCategories.clear();
+      state.hotkeys = [];
+
+      const error = new Error("Failed to save");
+      mockInvoke.mockRejectedValue(error);
 
       const { saveHitoConfig } = await import("./categories");
-      await saveHitoConfig();
+      
+      // saveHitoConfig catches errors, logs them, and re-throws
+      try {
+        await saveHitoConfig();
+      } catch (e) {
+        // Expected - saveHitoConfig re-throws errors
+      }
 
       expect(consoleSpy).toHaveBeenCalled();
+      expect(mockInvoke).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
   });
@@ -399,12 +436,24 @@ describe("categories UI and management", () => {
     state.categories = [];
     state.imageCategories.clear();
     state.currentModalIndex = -1;
+    state.currentModalImagePath = "";
     state.allImagePaths = [];
     state.currentDirectory = "/test/dir";
     state.configFilePath = "";
     state.categoryDialogVisible = false;
     state.categoryDialogCategory = undefined;
-    // Tests that rely on DOM manipulation are removed or simplified
+    state.filterOptions = {
+      categoryId: "",
+      namePattern: "",
+      nameOperator: "contains",
+      sizeOperator: "largerThan",
+      sizeValue: "",
+      sizeValue2: "",
+    };
+    state.sortOption = "name";
+    state.sortDirection = "ascending";
+    state.suppressCategoryRefilter = false;
+    state.cachedImageCategoriesForRefilter = null;
 
     mockInvoke.mockClear();
     mockInvoke.mockResolvedValue(undefined);
@@ -417,11 +466,13 @@ describe("categories UI and management", () => {
 
   describe("toggleImageCategory", () => {
     it("should add category when not present", async () => {
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
+      state.imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
       mockInvoke.mockResolvedValue(undefined);
 
       const { toggleCategoryForCurrentImage } = await import("./categories");
-      state.currentModalIndex = 0;
+      state.currentModalImagePath = "/image1.jpg";
       state.allImagePaths = [{ path: "/image1.jpg" }];
       state.categories = [
         { id: "cat1", name: "Category 1", color: "#ff0000" },
@@ -430,16 +481,20 @@ describe("categories UI and management", () => {
 
       await toggleCategoryForCurrentImage("cat2");
 
-      expect(state.imageCategories.get("/image1.jpg")).toContain("cat2");
+      const assignments1 = state.imageCategories.get("/image1.jpg") || [];
+      expect(assignments1.some((a) => a.category_id === "cat2")).toBe(true);
       expect(mockInvoke).toHaveBeenCalled();
     });
 
     it("should remove category when present", async () => {
-      state.imageCategories.set("/image1.jpg", ["cat1", "cat2"]);
+      state.imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() },
+        { category_id: "cat2", assigned_at: new Date().toISOString() }
+      ]);
       mockInvoke.mockResolvedValue(undefined);
 
       const { toggleCategoryForCurrentImage } = await import("./categories");
-      state.currentModalIndex = 0;
+      state.currentModalImagePath = "/image1.jpg";
       state.allImagePaths = [{ path: "/image1.jpg" }];
       state.categories = [
         { id: "cat1", name: "Category 1", color: "#ff0000" },
@@ -448,33 +503,40 @@ describe("categories UI and management", () => {
 
       await toggleCategoryForCurrentImage("cat1");
 
-      expect(state.imageCategories.get("/image1.jpg")).not.toContain("cat1");
-      expect(state.imageCategories.get("/image1.jpg")).toContain("cat2");
+      const assignments1 = state.imageCategories.get("/image1.jpg") || [];
+      expect(assignments1.some((a) => a.category_id === "cat1")).toBe(false);
+      expect(assignments1.some((a) => a.category_id === "cat2")).toBe(true);
       expect(mockInvoke).toHaveBeenCalled();
     });
   });
 
   describe("assignImageCategory", () => {
     it("should add category when not present", async () => {
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
+      state.imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
       mockInvoke.mockResolvedValue(undefined);
 
       const { assignImageCategory } = await import("./categories");
       await assignImageCategory("/image1.jpg", "cat2");
 
-      expect(state.imageCategories.get("/image1.jpg")).toContain("cat2");
+      const assignments1 = state.imageCategories.get("/image1.jpg") || [];
+      expect(assignments1.some((a) => a.category_id === "cat2")).toBe(true);
       expect(mockInvoke).toHaveBeenCalled();
     });
 
     it("should not add category when already present", async () => {
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
+      state.imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
       mockInvoke.mockClear();
 
       const { assignImageCategory } = await import("./categories");
       await assignImageCategory("/image1.jpg", "cat1");
 
       const categories = state.imageCategories.get("/image1.jpg");
-      expect(categories).toEqual(["cat1"]);
+      expect(categories).toHaveLength(1);
+      expect(categories?.[0].category_id).toBe("cat1");
       // assignImageCategory only saves if category was added, not if already present
       expect(mockInvoke).not.toHaveBeenCalled();
     });
@@ -482,7 +544,7 @@ describe("categories UI and management", () => {
 
   describe("assignCategoryToCurrentImage", () => {
     it("should assign category to current image", async () => {
-      state.currentModalIndex = 0;
+      state.currentModalImagePath = "/image1.jpg";
       state.allImagePaths = [{ path: "/image1.jpg" }];
       state.imageCategories.clear();
       mockInvoke.mockResolvedValue(undefined);
@@ -490,12 +552,13 @@ describe("categories UI and management", () => {
       const { assignCategoryToCurrentImage } = await import("./categories");
       await assignCategoryToCurrentImage("cat1");
 
-      expect(state.imageCategories.get("/image1.jpg")).toContain("cat1");
+      const assignments = state.imageCategories.get("/image1.jpg") || [];
+      expect(assignments.some((a) => a.category_id === "cat1")).toBe(true);
       expect(mockInvoke).toHaveBeenCalled();
     });
 
-    it("should return early if currentModalIndex is invalid", async () => {
-      state.currentModalIndex = -1;
+    it("should return early if currentModalImagePath is empty", async () => {
+      state.currentModalImagePath = "";
       mockInvoke.mockClear();
 
       const { assignCategoryToCurrentImage } = await import("./categories");
@@ -503,24 +566,211 @@ describe("categories UI and management", () => {
 
       expect(mockInvoke).not.toHaveBeenCalled();
     });
+
+    describe("with category filter active", () => {
+      it("should cache imageCategories snapshot and set suppressCategoryRefilter when assigning category in modal", async () => {
+        // Setup: filter by "uncategorized", viewing an uncategorized image
+        state.filterOptions.categoryId = "uncategorized";
+        state.currentModalImagePath = "/uncategorized.jpg";
+        state.allImagePaths = [
+          { path: "/uncategorized.jpg" },
+          { path: "/categorized.jpg" },
+        ];
+        state.imageCategories.set("/categorized.jpg", [
+          { category_id: "cat1", assigned_at: new Date().toISOString() }
+        ]);
+        // /uncategorized.jpg has no categories
+
+        const { assignCategoryToCurrentImage } = await import("./categories");
+        const { getFilteredAndSortedImagesSync } = await import("../utils/filteredImages");
+        
+        // Mock getFilteredAndSortedImagesSync to track calls
+        const mockFiltered = vi.fn().mockReturnValue([
+          { path: "/uncategorized.jpg" },
+        ]);
+        vi.mocked(getFilteredAndSortedImagesSync).mockImplementation(mockFiltered);
+
+        await assignCategoryToCurrentImage("cat1");
+
+        // Should cache snapshot before change
+        expect(state.cachedImageCategoriesForRefilter).not.toBeNull();
+        expect(state.cachedImageCategoriesForRefilter?.has("/uncategorized.jpg")).toBe(false);
+        expect(state.suppressCategoryRefilter).toBe(true);
+        
+        // Category should be assigned in state
+        const assignments = state.imageCategories.get("/uncategorized.jpg") || [];
+        expect(assignments.some((a) => a.category_id === "cat1")).toBe(true);
+        
+        // Should save config
+        expect(mockInvoke).toHaveBeenCalled();
+      });
+
+      it("should NOT navigate away when assigning category that would remove image from filter", async () => {
+        // Setup: filter by "uncategorized", viewing an uncategorized image
+        state.filterOptions.categoryId = "uncategorized";
+        state.currentModalImagePath = "/uncategorized.jpg";
+        state.allImagePaths = [
+          { path: "/uncategorized.jpg" },
+          { path: "/categorized.jpg" },
+        ];
+        state.imageCategories.set("/categorized.jpg", [
+          { category_id: "cat1", assigned_at: new Date().toISOString() }
+        ]);
+        // /uncategorized.jpg has no categories
+
+        const { assignCategoryToCurrentImage } = await import("./categories");
+        
+        // Track state before assignment
+        const modalPathBefore = state.currentModalImagePath;
+        
+        await assignCategoryToCurrentImage("cat1");
+
+        // Should still be viewing the same image (no navigation occurred)
+        expect(state.currentModalImagePath).toBe(modalPathBefore);
+        expect(state.currentModalImagePath).toBe("/uncategorized.jpg");
+        
+        // Suppress flag should be set to defer refiltering
+        expect(state.suppressCategoryRefilter).toBe(true);
+        expect(state.cachedImageCategoriesForRefilter).not.toBeNull();
+      });
+
+      it("should use cached snapshot for filtering while suppressCategoryRefilter is true", async () => {
+        // Setup: filter by "cat1", viewing an image with cat1
+        state.filterOptions.categoryId = "cat1";
+        state.currentModalImagePath = "/image1.jpg";
+        state.allImagePaths = [
+          { path: "/image1.jpg" },
+          { path: "/image2.jpg" },
+        ];
+        state.imageCategories.set("/image1.jpg", [
+          { category_id: "cat1", assigned_at: new Date().toISOString() }
+        ]);
+        state.imageCategories.set("/image2.jpg", [
+          { category_id: "cat1", assigned_at: new Date().toISOString() }
+        ]);
+
+        const { assignCategoryToCurrentImage } = await import("./categories");
+        const { getFilteredAndSortedImagesSync } = await import("../utils/filteredImages");
+        
+        // Mock getFilteredAndSortedImagesSync - it should use cached snapshot
+        const mockFiltered = vi.fn().mockReturnValue([
+          { path: "/image1.jpg" },
+          { path: "/image2.jpg" },
+        ]);
+        vi.mocked(getFilteredAndSortedImagesSync).mockImplementation(mockFiltered);
+
+        // Assign cat2 to image1 (but image1 should still appear in filtered list due to cached snapshot)
+        await assignCategoryToCurrentImage("cat2");
+
+        // Verify cached snapshot was created
+        expect(state.cachedImageCategoriesForRefilter).not.toBeNull();
+        const cachedSnapshot = state.cachedImageCategoriesForRefilter!;
+        
+        // Cached snapshot should NOT have cat2 for image1
+        const cachedAssignments = cachedSnapshot.get("/image1.jpg") || [];
+        expect(cachedAssignments.some((a) => a.category_id === "cat2")).toBe(false);
+        
+        // But current state should have cat2
+        const currentAssignments = state.imageCategories.get("/image1.jpg") || [];
+        expect(currentAssignments.some((a) => a.category_id === "cat2")).toBe(true);
+      });
+
+      it("should clear suppress flag and cached snapshot on navigation", async () => {
+        // Setup: filter active, suppress flag set
+        state.filterOptions.categoryId = "uncategorized";
+        state.currentModalImagePath = "/image1.jpg";
+        state.allImagePaths = [
+          { path: "/image1.jpg" },
+          { path: "/image2.jpg" },
+        ];
+        state.suppressCategoryRefilter = true;
+        state.cachedImageCategoriesForRefilter = new Map([
+          ["/image1.jpg", []],
+        ]);
+
+        // Import showNextImage directly (not through mock)
+        // The mock is defined at the top but we can import the actual module
+        vi.unmock("./modal");
+        const { showNextImage } = await import("./modal");
+        const { getFilteredAndSortedImagesSync } = await import("../utils/filteredImages");
+        
+        // Mock getFilteredAndSortedImagesSync to return filtered list
+        vi.mocked(getFilteredAndSortedImagesSync).mockReturnValue([
+          { path: "/image1.jpg" },
+          { path: "/image2.jpg" },
+        ]);
+
+        // Call the actual showNextImage function
+        showNextImage();
+
+        // Should clear suppress flag and cache
+        expect(state.suppressCategoryRefilter).toBe(false);
+        expect(state.cachedImageCategoriesForRefilter).toBeNull();
+        
+        // Re-mock for other tests
+        vi.doMock("./modal", () => ({
+          openModal: vi.fn(),
+          closeModal: vi.fn(),
+          showNextImage: vi.fn(),
+          showPreviousImage: vi.fn(),
+        }));
+      });
+
+      it("should NOT update grid filter immediately when assigning in modal", async () => {
+        // This test verifies that ImageGrid's sortFilterKey is not updated
+        // Setup: filter by "uncategorized", viewing an uncategorized image
+        state.filterOptions.categoryId = "uncategorized";
+        state.currentModalImagePath = "/uncategorized.jpg";
+        state.allImagePaths = [
+          { path: "/uncategorized.jpg" },
+        ];
+        // /uncategorized.jpg has no categories initially
+
+        const { assignCategoryToCurrentImage } = await import("./categories");
+        
+        // Track if state.notify was called (which would trigger ImageGrid updates)
+        const originalNotify = state.notify;
+        let notifyCallCount = 0;
+        state.notify = () => {
+          notifyCallCount++;
+          originalNotify.call(state);
+        };
+
+        await assignCategoryToCurrentImage("cat1");
+
+        // State should be updated (category assigned)
+        const assignments = state.imageCategories.get("/uncategorized.jpg") || [];
+        expect(assignments.some((a) => a.category_id === "cat1")).toBe(true);
+        
+        // suppressCategoryRefilter should be set to prevent grid update
+        expect(state.suppressCategoryRefilter).toBe(true);
+        expect(state.cachedImageCategoriesForRefilter).not.toBeNull();
+        
+        // Restore original notify
+        state.notify = originalNotify;
+      });
+    });
   });
 
   describe("toggleCategoryForCurrentImage", () => {
     it("should toggle category for current image", async () => {
-      state.currentModalIndex = 0;
+      state.currentModalImagePath = "/image1.jpg";
       state.allImagePaths = [{ path: "/image1.jpg" }];
-      state.imageCategories.set("/image1.jpg", ["cat1"]);
+      state.imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
       mockInvoke.mockResolvedValue(undefined);
 
       const { toggleCategoryForCurrentImage } = await import("./categories");
       await toggleCategoryForCurrentImage("cat1");
 
-      expect(state.imageCategories.get("/image1.jpg")).not.toContain("cat1");
+      const assignments = state.imageCategories.get("/image1.jpg") || [];
+      expect(assignments.some((a) => a.category_id === "cat1")).toBe(false);
       expect(mockInvoke).toHaveBeenCalled();
     });
 
-    it("should return early if currentModalIndex is invalid", async () => {
-      state.currentModalIndex = -1;
+    it("should return early if currentModalImagePath is empty", async () => {
+      state.currentModalImagePath = "";
       mockInvoke.mockClear();
 
       const { toggleCategoryForCurrentImage } = await import("./categories");
@@ -578,9 +828,16 @@ describe("categories UI and management", () => {
         { id: "cat1", name: "Category 1", color: "#ff0000" },
         { id: "cat2", name: "Category 2", color: "#00ff00" },
       ];
-      state.imageCategories.set("/img1.jpg", ["cat1", "cat2"]);
-      state.imageCategories.set("/img2.jpg", ["cat1"]);
-      state.imageCategories.set("/img3.jpg", ["cat2"]);
+      state.imageCategories.set("/img1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() },
+        { category_id: "cat2", assigned_at: new Date().toISOString() }
+      ]);
+      state.imageCategories.set("/img2.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      state.imageCategories.set("/img3.jpg", [
+        { category_id: "cat2", assigned_at: new Date().toISOString() }
+      ]);
       mockInvoke.mockResolvedValue(undefined);
 
       const { confirm } = await import("../utils/dialog");
@@ -590,9 +847,13 @@ describe("categories UI and management", () => {
       await deleteCategory("cat1");
 
       // Check image categories
-      expect(state.imageCategories.get("/img1.jpg")).toEqual(["cat2"]);
+      const assignments1 = state.imageCategories.get("/img1.jpg") || [];
+      const categoryIds1 = assignments1.map((a) => a.category_id);
+      expect(categoryIds1).toEqual(["cat2"]);
       expect(state.imageCategories.has("/img2.jpg")).toBe(false);
-      expect(state.imageCategories.get("/img3.jpg")).toEqual(["cat2"]);
+      const assignments3 = state.imageCategories.get("/img3.jpg") || [];
+      const categoryIds3 = assignments3.map((a) => a.category_id);
+      expect(categoryIds3).toEqual(["cat2"]);
     });
 
     it("should clean up hotkeys that reference the deleted category", async () => {
@@ -733,4 +994,3 @@ describe("categories UI and management", () => {
     });
   });
 });
-

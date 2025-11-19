@@ -1,4 +1,4 @@
-import type { ImagePath, DirectoryPath, HotkeyConfig, Category } from "./types";
+import type { ImagePath, DirectoryPath, HotkeyConfig, Category, CategoryAssignment } from "./types";
 
 // State change listener type
 type StateChangeListener = () => void;
@@ -13,12 +13,13 @@ export const state = {
   currentIndex: 0,
   isLoadingBatch: false,
   loadedImages: new Map<string, string>(),
-  currentModalIndex: -1,
+  currentModalIndex: -1, // Deprecated: use currentModalImagePath
+  currentModalImagePath: "" as string, // Current image path being viewed in modal (empty = closed)
   isDeletingImage: false,
   hotkeys: [] as HotkeyConfig[],
   isHotkeySidebarOpen: false,
   categories: [] as Category[],
-  imageCategories: new Map<string, string[]>(), // image path -> category IDs
+  imageCategories: new Map<string, CategoryAssignment[]>(), // image path -> category assignments with datetime
   currentDirectory: "", // Current directory being viewed
   configFilePath: "", // Custom config file path (empty = default to currentDirectory/.hito.json)
   resetCounter: 0, // Incremented on reset to force ImageGrid remount
@@ -29,6 +30,20 @@ export const state = {
   hotkeyDialogHotkey: undefined as HotkeyConfig | undefined, // Hotkey being edited (undefined = new hotkey)
   isLoading: false, // Whether the loading spinner should be visible
   errorMessage: "", // Current error message to display (empty = no error)
+  sortOption: "name" as "name" | "dateCreated" | "lastCategorized" | "size",
+  sortDirection: "ascending" as "ascending" | "descending",
+  filterOptions: {
+    categoryId: "" as string | "uncategorized" | "",
+    namePattern: "",
+    nameOperator: "contains" as "contains" | "startsWith" | "endsWith" | "exact",
+    sizeOperator: "largerThan" as "largerThan" | "lessThan" | "between",
+    sizeValue: "",
+    sizeValue2: "",
+  },
+  selectionMode: false,
+  selectedImages: new Set<string>(),
+  suppressCategoryRefilter: false, // When true, don't trigger re-filtering on category changes (used during modal assignment)
+  cachedImageCategoriesForRefilter: null as Map<string, CategoryAssignment[]> | null, // Cached snapshot of imageCategories when suppressCategoryRefilter is set
   
   // Subscribe to state changes
   subscribe(listener: StateChangeListener): () => void {
@@ -51,6 +66,7 @@ export const state = {
     this.isLoadingBatch = false;
     this.loadedImages.clear();
     this.currentModalIndex = -1;
+    this.currentModalImagePath = "";
     this.isDeletingImage = false;
     this.hotkeys = [];
     this.isHotkeySidebarOpen = false;
@@ -66,6 +82,20 @@ export const state = {
     this.hotkeyDialogHotkey = undefined;
     this.isLoading = false;
     this.errorMessage = "";
+    this.sortOption = "name";
+    this.sortDirection = "ascending";
+    this.filterOptions = {
+      categoryId: "",
+      namePattern: "",
+      nameOperator: "contains",
+      sizeOperator: "largerThan",
+      sizeValue: "",
+      sizeValue2: "",
+    };
+    this.selectionMode = false;
+    this.selectedImages.clear();
+    this.suppressCategoryRefilter = false;
+    this.cachedImageCategoriesForRefilter = null;
     this.notify();
   }
 };

@@ -50,6 +50,7 @@ export async function browseImages(path: string): Promise<void> {
   state.isLoadingBatch = false;
   state.loadedImages.clear();
   state.currentModalIndex = -1;
+  state.currentModalImagePath = "";
   state.currentDirectory = path;
   
   // Clear categories and hotkeys state before loading new config

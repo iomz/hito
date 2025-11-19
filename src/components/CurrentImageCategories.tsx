@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { state } from "../state";
-import type { Category } from "../types";
+import type { Category, CategoryAssignment } from "../types";
 
 function getContrastColor(hexColor: string): string {
   // Remove # if present
@@ -19,48 +19,23 @@ function getContrastColor(hexColor: string): string {
 }
 
 export function CurrentImageCategories() {
-  const [currentModalIndex, setCurrentModalIndex] = useState(-1);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [imageCategories, setImageCategories] = useState<Map<string, string[]>>(new Map());
+  const [imageCategories, setImageCategories] = useState<Map<string, CategoryAssignment[]>>(new Map());
   const [currentImagePath, setCurrentImagePath] = useState<string>("");
 
   // Subscribe to state changes
   useEffect(() => {
     // One-time initial sync
-    const modalIndex = state.currentModalIndex;
-    const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
-    
-    setCurrentModalIndex(modalIndex);
-    
-    if (modalIndex >= 0 && modalIndex < imagePathsLength) {
-      const imagePath = state.allImagePaths[modalIndex].path;
-      setCurrentImagePath(imagePath);
-    } else {
-      setCurrentImagePath("");
-    }
-    
+    const modalImagePath = state.currentModalImagePath;
+    setCurrentImagePath(modalImagePath || "");
     setCategories([...state.categories]);
     setImageCategories(new Map(state.imageCategories));
     
     // Subscribe to state changes
     const unsubscribe = state.subscribe(() => {
-      const newModalIndex = state.currentModalIndex;
-      const newImagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
-      
-      // Update modal index
-      setCurrentModalIndex(newModalIndex);
-      
-      if (newModalIndex >= 0 && newModalIndex < newImagePathsLength) {
-        const imagePath = state.allImagePaths[newModalIndex].path;
-        setCurrentImagePath(imagePath);
-      } else {
-        setCurrentImagePath("");
-      }
-      
-      // Update categories
+      const newModalImagePath = state.currentModalImagePath;
+      setCurrentImagePath(newModalImagePath || "");
       setCategories([...state.categories]);
-      
-      // Update image categories
       setImageCategories(new Map(state.imageCategories));
     });
     
@@ -79,11 +54,12 @@ export function CurrentImageCategories() {
   };
 
   // Don't render if modal is not open
-  if (currentModalIndex < 0 || !currentImagePath) {
+  if (!currentImagePath) {
     return null;
   }
 
-  const categoryIds = imageCategories.get(currentImagePath) || [];
+  const assignments = imageCategories.get(currentImagePath) || [];
+  const categoryIds = assignments.map((assignment) => assignment.category_id);
 
   return (
     <div id="current-image-categories" className="current-image-categories">

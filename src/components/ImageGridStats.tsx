@@ -11,13 +11,13 @@ export function ImageGridStats() {
       const total = images.length;
       
       // Count images with at least one category
-      let withCategory = 0;
-      images.forEach((imagePathObj) => {
-        const categories = state.imageCategories.get(imagePathObj.path);
-        if (categories && categories.length > 0) {
-          withCategory++;
-        }
-      });
+            let withCategory = 0;
+            images.forEach((imagePathObj) => {
+              const assignments = state.imageCategories.get(imagePathObj.path);
+              if (assignments && assignments.length > 0) {
+                withCategory++;
+              }
+            });
       
       setTotalImages(total);
       setImagesWithCategory(withCategory);

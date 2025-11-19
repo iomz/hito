@@ -6,6 +6,7 @@ import { DropZone } from "./components/DropZone";
 import { CurrentPath } from "./components/CurrentPath";
 import { ErrorMessage } from "./components/ErrorMessage";
 import { ImageGrid } from "./components/ImageGrid";
+import { ImageGridHeader } from "./components/ImageGridHeader";
 import { ImageGridStats } from "./components/ImageGridStats";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { NotificationBar } from "./components/NotificationBar";
@@ -83,12 +84,13 @@ function App() {
         <div className={`path-input-container ${hasContent && !isDragOver ? "collapsed" : ""}`}>
           <DropZone />
           <CurrentPath />
+          <ImageGridStats />
           <ErrorMessage />
         </div>
         {/* Conditionally render ImageGrid when content is available */}
         {hasContent && (
           <>
-            <ImageGridStats />
+            <ImageGridHeader />
             <ImageGrid />
           </>
         )}
