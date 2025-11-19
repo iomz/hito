@@ -248,7 +248,7 @@ describe("keyboard handlers", () => {
       expect(showNextImage).not.toHaveBeenCalled();
     });
 
-    it("should not handle modal shortcuts when modal element is missing", async () => {
+    it("should not handle modal shortcuts when modal is closed via state", async () => {
       const { setupKeyboardHandlers } = await import("./keyboard");
       const { showNextImage } = await import("../ui/modal");
 
@@ -422,7 +422,7 @@ describe("keyboard handlers", () => {
       expect(preventDefaultSpy).toHaveBeenCalled();
     });
 
-    it("should handle modal visibility check using computed style", async () => {
+    it("should not handle modal shortcuts when modal state is empty (state-based check)", async () => {
       const { setupKeyboardHandlers } = await import("./keyboard");
       const { showNextImage } = await import("../ui/modal");
 
@@ -437,7 +437,7 @@ describe("keyboard handlers", () => {
       expect(showNextImage).not.toHaveBeenCalled();
     });
 
-    it("should handle modal visibility check using visibility hidden", async () => {
+    it("should not handle modal shortcuts when modal state indicates closed (state-based check)", async () => {
       const { setupKeyboardHandlers } = await import("./keyboard");
       const { showNextImage } = await import("../ui/modal");
 
@@ -584,25 +584,25 @@ describe("keyboard handlers", () => {
 
       setupKeyboardHandlers();
 
-      // Create an input element and set nodeName (but not tagName) to test nodeName branch
-      const input = document.createElement("input");
-      input.type = "text";
-      // Remove tagName to force nodeName check (line 34)
-      Object.defineProperty(input, "tagName", { value: undefined, writable: true });
-      // Ensure nodeName is set
-      expect(input.nodeName).toBe("INPUT");
-
-      document.body.appendChild(input);
-      input.focus();
+      // Create a lightweight fake target object with nodeName but no tagName to test nodeName branch
+      // This avoids mutating DOM element properties which could be brittle
+      const fakeInputTarget = {
+        nodeName: "INPUT",
+        // tagName is intentionally omitted to force nodeName check
+      };
 
       const event = new KeyboardEvent("keydown", { key: "j", bubbles: true });
-      // Dispatch on input so target is the input element
-      input.dispatchEvent(event);
+      // Set fake target on event to test nodeName branch (line 33)
+      Object.defineProperty(event, "target", {
+        value: fakeInputTarget,
+        enumerable: true,
+        configurable: true,
+      });
 
-      // Should not execute hotkey when typing in input (nodeName branch, line 34)
+      document.dispatchEvent(event);
+
+      // Should not execute hotkey when typing in input (nodeName branch, line 33)
       expect(checkAndExecuteHotkey).not.toHaveBeenCalled();
-
-      document.body.removeChild(input);
     });
 
     it("should still check hotkeys when typing in regular elements", async () => {
