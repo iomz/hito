@@ -4,7 +4,6 @@ import {
   hotkeysAtom,
   categoriesAtom,
   isHotkeySidebarOpenAtom,
-  currentModalIndexAtom,
   hotkeyDialogVisibleAtom,
   hotkeyDialogHotkeyAtom,
   resetStateAtom,
@@ -40,7 +39,6 @@ describe("hotkeys", () => {
     store.set(hotkeysAtom, []);
     store.set(categoriesAtom, []);
     store.set(isHotkeySidebarOpenAtom, false);
-    store.set(currentModalIndexAtom, -1);
     store.set(hotkeyDialogVisibleAtom, false);
     store.set(hotkeyDialogHotkeyAtom, undefined);
   });
@@ -68,7 +66,6 @@ describe("hotkeys", () => {
     });
 
     it("should not adjust modal image when opening sidebar with modal open", async () => {
-      store.set(currentModalIndexAtom, 0);
 
       const { toggleHotkeySidebar } = await import("./hotkeys");
       await toggleHotkeySidebar();
@@ -81,7 +78,6 @@ describe("hotkeys", () => {
 
     it("should not adjust modal image when closing sidebar with modal open", async () => {
       store.set(isHotkeySidebarOpenAtom, true);
-      store.set(currentModalIndexAtom, 0);
 
       const { toggleHotkeySidebar } = await import("./hotkeys");
       await toggleHotkeySidebar();
@@ -130,7 +126,6 @@ describe("hotkeys", () => {
     });
 
     it("should not adjust modal image when modal is open", async () => {
-      store.set(currentModalIndexAtom, 0);
 
       const { closeHotkeySidebar } = await import("./hotkeys");
       closeHotkeySidebar();

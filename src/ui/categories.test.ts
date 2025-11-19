@@ -6,7 +6,6 @@ import {
   categoriesAtom,
   imageCategoriesAtom,
   hotkeysAtom,
-  currentModalIndexAtom,
   currentModalImagePathAtom,
   allImagePathsAtom,
   categoryDialogVisibleAtom,
@@ -459,7 +458,6 @@ describe("categories UI and management", () => {
       store.set(categoriesAtom, []);
     store.set(resetStateAtom);
     store.set(imageCategoriesAtom, new Map());
-    store.set(currentModalIndexAtom, -1);
     store.set(currentModalImagePathAtom, "");
     store.set(allImagePathsAtom, []);
     store.set(currentDirectoryAtom, "/test/dir");
@@ -1559,6 +1557,23 @@ describe("categories UI and management", () => {
       expect(assignments[0].category_id).toBe("cat1");
     });
 
+    it("should delete entry when removing last category", async () => {
+      const imageCategories = store.get(imageCategoriesAtom);
+      const updatedImageCategories = new Map(imageCategories);
+      updatedImageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() },
+      ]);
+      store.set(imageCategoriesAtom, updatedImageCategories);
+
+      const { toggleImageCategory } = await import("./categories");
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      // Entry should be deleted when last category is removed, consistent with deleteCategory
+      expect(store.get(imageCategoriesAtom).has("/image1.jpg")).toBe(false);
+      const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];
+      expect(assignments).toHaveLength(0);
+    });
+
     it("should not navigate when no filter is active and modal is not open", async () => {
       const filterOptions = store.get(filterOptionsAtom);
       store.set(filterOptionsAtom, { ...filterOptions, categoryId: "" });
@@ -2337,39 +2352,49 @@ describe("categories UI and management", () => {
     });
 
     it("should have unique timestamps for rapid assignments", async () => {
-      const { assignImageCategory } = await import("./categories");
+      // Use fake timers to ensure deterministic timestamp generation
+      vi.useFakeTimers();
       
-      // Add delays to ensure different timestamps (using 2ms to account for timer resolution)
-      await assignImageCategory("/image1.jpg", "cat1");
-      await new Promise(resolve => setTimeout(resolve, 2));
-      await assignImageCategory("/image1.jpg", "cat2");
-      await new Promise(resolve => setTimeout(resolve, 2));
-      await assignImageCategory("/image1.jpg", "cat3");
+      try {
+        const { assignImageCategory } = await import("./categories");
+        
+        // First assignment
+        await assignImageCategory("/image1.jpg", "cat1");
+        
+        // Advance timer by 1ms to ensure different timestamp
+        vi.advanceTimersByTime(1);
+        await assignImageCategory("/image1.jpg", "cat2");
+        
+        // Advance timer by another 1ms
+        vi.advanceTimersByTime(1);
+        await assignImageCategory("/image1.jpg", "cat3");
 
-      const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];
-      expect(assignments).toHaveLength(3);
-      
-      const timestamps = assignments.map((a: any) => a.assigned_at);
-      
-      // Verify all timestamps are valid ISO strings
-      timestamps.forEach(timestamp => {
-        expect(() => new Date(timestamp)).not.toThrow();
-        expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-      });
-      
-      // Timestamps should be non-decreasing (each >= previous)
-      // This is more realistic than requiring strict uniqueness
-      for (let i = 1; i < timestamps.length; i++) {
-        const prev = new Date(timestamps[i - 1]).getTime();
-        const curr = new Date(timestamps[i]).getTime();
-        expect(curr).toBeGreaterThanOrEqual(prev);
+        const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];
+        expect(assignments).toHaveLength(3);
+        
+        const timestamps = assignments.map((a: any) => a.assigned_at);
+        
+        // Verify all timestamps are valid ISO strings
+        timestamps.forEach(timestamp => {
+          expect(() => new Date(timestamp)).not.toThrow();
+          expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+        });
+        
+        // Timestamps should be non-decreasing (each >= previous)
+        // This is more realistic than requiring strict uniqueness
+        for (let i = 1; i < timestamps.length; i++) {
+          const prev = new Date(timestamps[i - 1]).getTime();
+          const curr = new Date(timestamps[i]).getTime();
+          expect(curr).toBeGreaterThanOrEqual(prev);
+        }
+        
+        // With fake timers advancing by 1ms, timestamps should be unique
+        const uniqueTimestamps = new Set(timestamps).size;
+        expect(uniqueTimestamps).toBe(3);
+      } finally {
+        // Always restore real timers
+        vi.useRealTimers();
       }
-      
-      // If timestamps are unique, that's great, but we don't require it
-      // since rapid operations might occur within the same millisecond
-      const uniqueTimestamps = new Set(timestamps).size;
-      expect(uniqueTimestamps).toBeGreaterThanOrEqual(1);
-      expect(uniqueTimestamps).toBeLessThanOrEqual(3);
     });
   });
 });

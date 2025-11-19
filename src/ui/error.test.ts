@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { showError, clearError } from "./error";
 import { store } from "../utils/jotaiStore";
-import { errorMessageAtom } from "../state";
+import { errorMessageAtom, resetStateAtom } from "../state";
 
 describe("error", () => {
   beforeEach(() => {
-    store.set(errorMessageAtom, "");
+    store.set(resetStateAtom);
   });
 
   describe("showError", () => {

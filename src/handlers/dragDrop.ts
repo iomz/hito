@@ -122,6 +122,8 @@ export function setupDocumentDragHandlers(): () => void {
  */
 export async function setupTauriDragEvents(): Promise<(() => void) | undefined> {
   const unlistenFunctions: Array<() => void> = [];
+  // Track whether a drop operation is in progress to prevent LEAVE from clearing loading prematurely
+  let dropInProgress = false;
   
   try {
     const eventNames = Object.values(DRAG_EVENTS);
@@ -140,15 +142,22 @@ export async function setupTauriDragEvents(): Promise<(() => void) | undefined> 
         const unlisten = await eventListen(eventName, (event: Event<DragDropEvent>) => {
           try {
             if (eventName === DRAG_EVENTS.DROP) {
+              dropInProgress = true;
               store.set(isLoadingAtom, true);
               clearError();
               // Notify React component to remove drag-over state
               window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.DROP));
-              handleFileDrop(event).catch((err) => {
-                console.error('[TauriDragEvent] handleFileDrop error:', err);
-                store.set(isLoadingAtom, false);
-                showError(`Error: ${err}`);
-              });
+              handleFileDrop(event)
+                .finally(() => {
+                  // Clear flag after handleFileDrop settles (whether it succeeds or fails)
+                  // browseImages will manage isLoadingAtom from here
+                  dropInProgress = false;
+                })
+                .catch((err) => {
+                  console.error('[TauriDragEvent] handleFileDrop error:', err);
+                  store.set(isLoadingAtom, false);
+                  showError(`Error: ${err}`);
+                });
             } else if (eventName === DRAG_EVENTS.ENTER) {
               // Notify React component via custom event
               window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.ENTER));
@@ -158,7 +167,11 @@ export async function setupTauriDragEvents(): Promise<(() => void) | undefined> 
             } else if (eventName === DRAG_EVENTS.LEAVE) {
               // Notify React component via custom event
               window.dispatchEvent(new CustomEvent(CUSTOM_DRAG_EVENTS.LEAVE));
-              store.set(isLoadingAtom, false);
+              // Only clear loading if no drop is in progress
+              // If a drop is in progress, browseImages will manage the loading state
+              if (!dropInProgress) {
+                store.set(isLoadingAtom, false);
+              }
             }
           } catch (handlerError) {
             console.error('[TauriDragEvent] Error in event handler for', eventName, ':', handlerError);

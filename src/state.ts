@@ -7,7 +7,6 @@ export const allDirectoryPathsAtom = atom<DirectoryPath[]>([]);
 export const currentIndexAtom = atom<number>(0);
 export const isLoadingBatchAtom = atom<boolean>(false);
 export const loadedImagesAtom = atom<Map<string, string>>(new Map<string, string>());
-export const currentModalIndexAtom = atom<number>(-1); // Deprecated: use currentModalImagePath
 export const currentModalImagePathAtom = atom<string>(""); // Current image path being viewed in modal (empty = closed)
 export const isDeletingImageAtom = atom<boolean>(false);
 export const hotkeysAtom = atom<HotkeyConfig[]>([]);
@@ -54,7 +53,6 @@ export const resetStateAtom = atom(null, (get, set) => {
   set(currentIndexAtom, 0);
   set(isLoadingBatchAtom, false);
   set(loadedImagesAtom, new Map<string, string>());
-  set(currentModalIndexAtom, -1);
   set(currentModalImagePathAtom, "");
   set(isDeletingImageAtom, false);
   set(hotkeysAtom, []);

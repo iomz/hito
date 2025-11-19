@@ -1,36 +1,7 @@
 import React from "react";
 import { useAtomValue } from "jotai";
 import { shortcutsOverlayVisibleAtom, hotkeysAtom, categoriesAtom } from "../state";
-import type { HotkeyConfig, Category } from "../types";
 import { hideShortcutsOverlay } from "../ui/modal";
-
-// Deep equality check for HotkeyConfig arrays
-function hotkeysEqual(a: HotkeyConfig[], b: HotkeyConfig[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((hotkey, i) => {
-    const other = b[i];
-    return (
-      hotkey.id === other.id &&
-      hotkey.key === other.key &&
-      hotkey.action === other.action &&
-      hotkey.modifiers.length === other.modifiers.length &&
-      hotkey.modifiers.every((mod, j) => mod === other.modifiers[j])
-    );
-  });
-}
-
-// Deep equality check for Category arrays
-function categoriesEqual(a: Category[], b: Category[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((category, i) => {
-    const other = b[i];
-    return (
-      category.id === other.id &&
-      category.name === other.name &&
-      category.color === other.color
-    );
-  });
-}
 
 export function ShortcutsOverlay() {
   const isVisible = useAtomValue(shortcutsOverlayVisibleAtom);

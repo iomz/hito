@@ -60,9 +60,18 @@ export function ImageGrid() {
   });
   
   // Compute sortFilterKey from atoms
+  // This key is used to detect when sort/filter/category changes require pagination reset
   const sortFilterKey = useMemo(() => {
-    const categoriesHash = JSON.stringify(Array.from(imageCategories.entries()).sort());
+    // Sort entries by key (image path) explicitly for deterministic ordering
+    // This avoids engine-dependent string comparison quirks
+    const sortedEntries = Array.from(imageCategories.entries()).sort(([pathA], [pathB]) => 
+      pathA.localeCompare(pathB)
+    );
+    const categoriesHash = JSON.stringify(sortedEntries);
     return `${sortOption}|${sortDirection}|${JSON.stringify(filterOptions)}|${categoriesHash}`;
+    // Note: If imageCategories grows very large, consider optimizing by hashing only
+    // stable identifiers (e.g., [path, assignments.length, lastAssignedAt]) instead of
+    // the full structure to reduce JSON.stringify overhead
   }, [sortOption, sortDirection, filterOptions, imageCategories]);
   
   // Store sorted images after Rust sorting
@@ -246,7 +255,7 @@ export function ImageGrid() {
                 if (nextStartIndex < processedImagesLength) {
                   setCurrentIndex(nextEndIndex);
                   // Note: loadImageBatch is just for state management, actual loading is handled by React
-                  loadImageBatch(nextStartIndex, nextEndIndex).catch((error) => {
+                  loadImageBatch(nextStartIndex).catch((error) => {
                     console.error("Failed to load image batch:", error);
                   });
                 }

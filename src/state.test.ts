@@ -6,7 +6,6 @@ import {
   currentIndexAtom,
   isLoadingBatchAtom,
   loadedImagesAtom,
-  currentModalIndexAtom,
   currentModalImagePathAtom,
   isDeletingImageAtom,
   hotkeysAtom,
@@ -23,6 +22,14 @@ import {
   hotkeyDialogHotkeyAtom,
   isLoadingAtom,
   errorMessageAtom,
+  sortOptionAtom,
+  sortDirectionAtom,
+  filterOptionsAtom,
+  selectionModeAtom,
+  selectedImagesAtom,
+  toggleImageSelectionAtom,
+  suppressCategoryRefilterAtom,
+  cachedImageCategoriesForRefilterAtom,
   resetStateAtom,
 } from './state';
 
@@ -39,7 +46,6 @@ describe('state', () => {
       expect(store.get(currentIndexAtom)).toBe(0);
       expect(store.get(isLoadingBatchAtom)).toBe(false);
       expect(store.get(loadedImagesAtom).size).toBe(0);
-      expect(store.get(currentModalIndexAtom)).toBe(-1);
       expect(store.get(currentModalImagePathAtom)).toBe('');
       expect(store.get(isDeletingImageAtom)).toBe(false);
       expect(store.get(hotkeysAtom)).toEqual([]);
@@ -55,6 +61,21 @@ describe('state', () => {
       expect(store.get(hotkeyDialogHotkeyAtom)).toBeUndefined();
       expect(store.get(isLoadingAtom)).toBe(false);
       expect(store.get(errorMessageAtom)).toBe('');
+      expect(store.get(sortOptionAtom)).toBe('name');
+      expect(store.get(sortDirectionAtom)).toBe('ascending');
+      expect(store.get(filterOptionsAtom)).toEqual({
+        categoryId: '',
+        namePattern: '',
+        nameOperator: 'contains',
+        sizeOperator: 'largerThan',
+        sizeValue: '',
+        sizeValue2: '',
+      });
+      expect(store.get(selectionModeAtom)).toBe(false);
+      expect(store.get(selectedImagesAtom).size).toBe(0);
+      expect(store.get(toggleImageSelectionAtom)).toBeUndefined();
+      expect(store.get(suppressCategoryRefilterAtom)).toBe(false);
+      expect(store.get(cachedImageCategoriesForRefilterAtom)).toBeNull();
     });
 
     it('should allow setting and getting values', () => {
@@ -80,7 +101,6 @@ describe('state', () => {
       store.set(isLoadingBatchAtom, true);
       const loadedImages = new Map([['/test/image.png', 'data-url']]);
       store.set(loadedImagesAtom, loadedImages);
-      store.set(currentModalIndexAtom, 2);
       store.set(currentModalImagePathAtom, '/test/image.png');
       store.set(isDeletingImageAtom, true);
       store.set(hotkeysAtom, [{ id: '1', key: 'A', modifiers: [], action: 'test' }]);
@@ -99,6 +119,21 @@ describe('state', () => {
       store.set(hotkeyDialogHotkeyAtom, { id: '1', key: 'A', modifiers: [], action: 'test' });
       store.set(isLoadingAtom, true);
       store.set(errorMessageAtom, 'Test error');
+      store.set(sortOptionAtom, 'dateCreated');
+      store.set(sortDirectionAtom, 'descending');
+      store.set(filterOptionsAtom, {
+        categoryId: 'cat1',
+        namePattern: 'test',
+        nameOperator: 'startsWith',
+        sizeOperator: 'between',
+        sizeValue: '100',
+        sizeValue2: '200',
+      });
+      store.set(selectionModeAtom, true);
+      store.set(selectedImagesAtom, new Set(['/test/image1.png', '/test/image2.png']));
+      store.set(toggleImageSelectionAtom, () => {});
+      store.set(suppressCategoryRefilterAtom, true);
+      store.set(cachedImageCategoriesForRefilterAtom, new Map([['/test/image.png', []]]));
       const resetCounterBefore = store.get(resetCounterAtom);
 
       store.set(resetStateAtom);
@@ -108,7 +143,6 @@ describe('state', () => {
       expect(store.get(currentIndexAtom)).toBe(0);
       expect(store.get(isLoadingBatchAtom)).toBe(false);
       expect(store.get(loadedImagesAtom).size).toBe(0);
-      expect(store.get(currentModalIndexAtom)).toBe(-1);
       expect(store.get(currentModalImagePathAtom)).toBe('');
       expect(store.get(isDeletingImageAtom)).toBe(false);
       expect(store.get(hotkeysAtom)).toEqual([]);
@@ -125,6 +159,21 @@ describe('state', () => {
       expect(store.get(hotkeyDialogHotkeyAtom)).toBeUndefined();
       expect(store.get(isLoadingAtom)).toBe(false);
       expect(store.get(errorMessageAtom)).toBe('');
+      expect(store.get(sortOptionAtom)).toBe('name');
+      expect(store.get(sortDirectionAtom)).toBe('ascending');
+      expect(store.get(filterOptionsAtom)).toEqual({
+        categoryId: '',
+        namePattern: '',
+        nameOperator: 'contains',
+        sizeOperator: 'largerThan',
+        sizeValue: '',
+        sizeValue2: '',
+      });
+      expect(store.get(selectionModeAtom)).toBe(false);
+      expect(store.get(selectedImagesAtom).size).toBe(0);
+      expect(store.get(toggleImageSelectionAtom)).toBeUndefined();
+      expect(store.get(suppressCategoryRefilterAtom)).toBe(false);
+      expect(store.get(cachedImageCategoriesForRefilterAtom)).toBeNull();
     });
 
     it('should increment resetCounter on each reset', () => {
