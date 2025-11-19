@@ -62,7 +62,7 @@ export function CurrentPath() {
       <nav className="breadcrumb">
         {breadcrumbItems.map((item, index) => (
           <React.Fragment key={index}>
-            <span className="breadcrumb-separator">/</span>
+            <span className="breadcrumb-separator">›</span>
             <span className={`breadcrumb-item ${item.isLast ? "breadcrumb-item-active" : ""}`}>
               {item.isLast ? (
                 item.segment

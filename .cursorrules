@@ -49,3 +49,9 @@ Closes #123
 - **Use soft tabs (spaces)** for indentation, never hard tabs
 - Follow existing indentation style in the codebase (typically 2 spaces for TypeScript/React files)
 - Maintain consistent indentation throughout the project
+
+## Build Verification
+
+- After making changes to the code, run `pnpm run build` to verify that the build passes
+- Fix any build errors before considering the task complete
+- This ensures TypeScript type checking and build compilation succeed

@@ -5,16 +5,20 @@ import { state } from "./state";
 import { DropZone } from "./components/DropZone";
 import { CurrentPath } from "./components/CurrentPath";
 import { ErrorMessage } from "./components/ErrorMessage";
-import { LoadingSpinner } from "./components/LoadingSpinner";
 import { ImageGrid } from "./components/ImageGrid";
+import { ImageGridStats } from "./components/ImageGridStats";
+import { ScrollToTop } from "./components/ScrollToTop";
 import { NotificationBar } from "./components/NotificationBar";
 import { ImageModal } from "./components/ImageModal";
 import { CategoryDialog } from "./components/CategoryDialog";
 import { HotkeyDialog } from "./components/HotkeyDialog";
 import { HotkeySidebar } from "./components/HotkeySidebar";
+import { Logo } from "./components/Logo";
+import { CUSTOM_DRAG_EVENTS } from "./constants";
 
 function App() {
   const [hasContent, setHasContent] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Subscribe to state changes to reactively show/hide ImageGrid
   useEffect(() => {
@@ -39,6 +43,15 @@ function App() {
     setupDocumentDragHandlers();
     setupKeyboardHandlers();
     
+    // Listen to Tauri drag events to uncollapse path-input-container when dragging
+    const handleTauriDragEnter = () => setIsDragOver(true);
+    const handleTauriDragLeave = () => setIsDragOver(false);
+    
+    window.addEventListener(CUSTOM_DRAG_EVENTS.ENTER, handleTauriDragEnter);
+    window.addEventListener(CUSTOM_DRAG_EVENTS.OVER, handleTauriDragEnter);
+    window.addEventListener(CUSTOM_DRAG_EVENTS.LEAVE, handleTauriDragLeave);
+    window.addEventListener(CUSTOM_DRAG_EVENTS.DROP, handleTauriDragLeave);
+    
     // Setup Tauri drag events and store cleanup function
     let cleanupTauriDragEvents: (() => void) | undefined;
     setupTauriDragEvents()
@@ -51,35 +64,38 @@ function App() {
     
     // Return cleanup function that will be called on unmount
     return () => {
+      window.removeEventListener(CUSTOM_DRAG_EVENTS.ENTER, handleTauriDragEnter);
+      window.removeEventListener(CUSTOM_DRAG_EVENTS.OVER, handleTauriDragEnter);
+      window.removeEventListener(CUSTOM_DRAG_EVENTS.LEAVE, handleTauriDragLeave);
+      window.removeEventListener(CUSTOM_DRAG_EVENTS.DROP, handleTauriDragLeave);
       if (cleanupTauriDragEvents) {
         cleanupTauriDragEvents();
       }
     };
   }, []);
 
-  const handleH1Click = () => {
-    state.reset();
-  };
-
   return (
     <>
       <NotificationBar />
       <HotkeySidebar />
       <main className="container">
-        <h1 style={{ cursor: "pointer" }} onClick={handleH1Click}>
-          Hito
-        </h1>
-        <div className={`path-input-container ${hasContent ? "collapsed" : ""}`}>
+        <Logo />
+        <div className={`path-input-container ${hasContent && !isDragOver ? "collapsed" : ""}`}>
           <DropZone />
           <CurrentPath />
           <ErrorMessage />
         </div>
-        <LoadingSpinner />
         {/* Conditionally render ImageGrid when content is available */}
-        {hasContent && <ImageGrid />}
+        {hasContent && (
+          <>
+            <ImageGridStats />
+            <ImageGrid />
+          </>
+        )}
         <ImageModal />
         <CategoryDialog />
         <HotkeyDialog />
+        {hasContent && <ScrollToTop />}
       </main>
     </>
   );
