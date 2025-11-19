@@ -33,7 +33,7 @@ export const state = {
   sortOption: "name" as "name" | "dateCreated" | "lastCategorized" | "size",
   sortDirection: "ascending" as "ascending" | "descending",
   filterOptions: {
-    categoryId: "" as string | "uncategorized" | "",
+    categoryId: "" as "" | "uncategorized" | string,
     namePattern: "",
     nameOperator: "contains" as "contains" | "startsWith" | "endsWith" | "exact",
     sizeOperator: "largerThan" as "largerThan" | "lessThan" | "between",
@@ -42,6 +42,7 @@ export const state = {
   },
   selectionMode: false,
   selectedImages: new Set<string>(),
+  toggleImageSelection: undefined as ((path: string) => void) | undefined, // Optional function to toggle image selection (set by ImageGridSelection component)
   suppressCategoryRefilter: false, // When true, don't trigger re-filtering on category changes (used during modal assignment)
   cachedImageCategoriesForRefilter: null as Map<string, CategoryAssignment[]> | null, // Cached snapshot of imageCategories when suppressCategoryRefilter is set
   
@@ -94,6 +95,7 @@ export const state = {
     };
     this.selectionMode = false;
     this.selectedImages.clear();
+    this.toggleImageSelection = undefined;
     this.suppressCategoryRefilter = false;
     this.cachedImageCategoriesForRefilter = null;
     this.notify();
