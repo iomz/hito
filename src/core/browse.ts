@@ -5,7 +5,6 @@ import {
   currentIndexAtom,
   isLoadingBatchAtom,
   loadedImagesAtom,
-  currentModalIndexAtom,
   currentModalImagePathAtom,
   currentDirectoryAtom,
   configFilePathAtom,
@@ -34,9 +33,8 @@ import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
  * but it should be understood that this is a state management function, not an image loading function.
  * 
  * @param startIndex - Start index of the batch; used to guard against out-of-range requests
- * @param endIndex - End index of the batch (unused, kept for API compatibility)
  */
-export async function loadImageBatch(startIndex: number, endIndex: number): Promise<void> {
+export async function loadImageBatch(startIndex: number): Promise<void> {
   if (!ensureImagePathsArray("loadImageBatch")) {
     return;
   }
@@ -67,7 +65,6 @@ export async function browseImages(path: string): Promise<void> {
   store.set(currentIndexAtom, 0);
   store.set(isLoadingBatchAtom, false);
   store.set(loadedImagesAtom, new Map<string, string>());
-  store.set(currentModalIndexAtom, -1);
   store.set(currentModalImagePathAtom, "");
   store.set(currentDirectoryAtom, path);
   

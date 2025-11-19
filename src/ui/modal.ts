@@ -1,7 +1,6 @@
-import { store } from "../utils/jotaiStore";
+import { store, deleteFromAtomMap } from "../utils/jotaiStore";
 import {
   currentModalImagePathAtom,
-  currentModalIndexAtom,
   loadedImagesAtom,
   suppressCategoryRefilterAtom,
   cachedImageCategoriesForRefilterAtom,
@@ -40,24 +39,18 @@ export async function openModal(imagePath: string): Promise<void> {
   
   const requestedPath = imagePath;
   store.set(currentModalImagePathAtom, imagePath);
-  // Keep currentModalIndex for backward compatibility, but calculate from filtered list
-  store.set(currentModalIndexAtom, imageIndex);
   
   // Pre-load image data if not already loaded (React component will use it)
   const loadedImages = store.get(loadedImagesAtom);
   let dataUrl = loadedImages.get(imagePath);
   if (!dataUrl) {
     try {
+      // loadImageData will update the cache atomically, so we don't need to update it here
       dataUrl = await loadImageData(imagePath);
-      // Update loadedImages atom
-      const updatedLoadedImages = new Map(loadedImages);
-      updatedLoadedImages.set(imagePath, dataUrl);
-      store.set(loadedImagesAtom, updatedLoadedImages);
     } catch (error) {
       showError(`Error loading image: ${error}`);
       // Reset modal on error
       store.set(currentModalImagePathAtom, "");
-      store.set(currentModalIndexAtom, -1);
       return;
     }
   }
@@ -94,7 +87,6 @@ export async function openModalByIndex(imageIndex: number): Promise<void> {
  */
 export function closeModal(): void {
   store.set(currentModalImagePathAtom, "");
-  store.set(currentModalIndexAtom, -1);
   
   // Clear suppress flag and cached snapshot to trigger deferred re-filtering from category assignments
   const hadSuppress = store.get(suppressCategoryRefilterAtom);
@@ -230,10 +222,7 @@ export async function deleteCurrentImage(): Promise<void> {
     await invokeTauri("delete_image", { imagePath });
     
     // Remove from loaded images cache
-    const loadedImages = store.get(loadedImagesAtom);
-    const updatedLoadedImages = new Map(loadedImages);
-    updatedLoadedImages.delete(imagePath);
-    store.set(loadedImagesAtom, updatedLoadedImages);
+    deleteFromAtomMap(loadedImagesAtom, imagePath);
     
     // Remove from image list (use allImagePathsIndex, not deletedIndex)
     if (allImagePathsIndex >= 0) {
@@ -267,10 +256,12 @@ export async function deleteCurrentImage(): Promise<void> {
       }
     } else {
       // Otherwise, go to the next image (same index now points to the next one)
-      if (deletedIndex < updatedFilteredImages.length) {
+      // Only access array if deletedIndex is valid (>= 0) and within bounds
+      if (deletedIndex >= 0 && deletedIndex < updatedFilteredImages.length) {
         openModal(updatedFilteredImages[deletedIndex].path);
       } else if (updatedFilteredImages.length > 0) {
-        // If deleted image was beyond the list, go to the last image
+        // If deleted image was not in filtered list (deletedIndex < 0) or beyond the list,
+        // go to the last image
         openModal(updatedFilteredImages[updatedFilteredImages.length - 1].path);
       } else {
         closeModal();

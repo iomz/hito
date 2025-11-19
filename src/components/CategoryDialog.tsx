@@ -147,11 +147,18 @@ export function CategoryDialog() {
       setCategories([...categories, newCategory]);
     }
     
-    await saveHitoConfig();
-    
-    // Close dialog
-    setCategoryDialogVisible(false);
-    setCategoryDialogCategory(undefined);
+    try {
+      await saveHitoConfig();
+      
+      // Close dialog only if save succeeds
+      setCategoryDialogVisible(false);
+      setCategoryDialogCategory(undefined);
+    } catch (error) {
+      // Show error to user and keep dialog open so they can retry or cancel
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setErrorMessage(`Failed to save category: ${errorMessage}`);
+      setShowError(true);
+    }
   }, [name, color, editingCategory, categories, setCategories, setCategoryDialogVisible, setCategoryDialogCategory]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {

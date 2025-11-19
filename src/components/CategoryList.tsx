@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { categoriesAtom, imageCategoriesAtom } from "../state";
 import type { Category, CategoryAssignment } from "../types";
@@ -8,13 +8,30 @@ export function CategoryList() {
   const categories = useAtomValue(categoriesAtom);
   const imageCategories = useAtomValue(imageCategoriesAtom);
 
-  // Calculate image count for a category
+  // Pre-compute image counts for all categories in a single pass (O(m) instead of O(n × m))
+  // This map stores categoryId -> number of images with that category
+  const categoryImageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    
+    // Single pass through all image assignments
+    for (const assignments of imageCategories.values()) {
+      // Track unique category IDs per image to avoid double-counting
+      const categoryIdsInImage = new Set<string>();
+      for (const assignment of assignments) {
+        categoryIdsInImage.add(assignment.category_id);
+      }
+      // Increment count for each unique category in this image
+      for (const categoryId of categoryIdsInImage) {
+        counts.set(categoryId, (counts.get(categoryId) || 0) + 1);
+      }
+    }
+    
+    return counts;
+  }, [imageCategories]);
+
+  // Get image count for a category (O(1) lookup)
   const getImageCount = (categoryId: string): number => {
-    return Array.from(imageCategories.values()).filter(
-      (assignments) => assignments.some(
-        (assignment) => assignment.category_id === categoryId
-      )
-    ).length;
+    return categoryImageCounts.get(categoryId) || 0;
   };
 
   const handleEdit = (category: Category) => {

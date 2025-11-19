@@ -11,7 +11,7 @@ import {
 } from './dragDrop';
 import { DRAG_EVENTS, CUSTOM_DRAG_EVENTS } from '../constants';
 import { store } from '../utils/jotaiStore';
-import { isLoadingAtom } from '../state';
+import { isLoadingAtom, resetStateAtom } from '../state';
 
 // Mock dependencies
 vi.mock('../core/browse', () => ({
@@ -172,7 +172,7 @@ describe('handleFolder', () => {
 describe('handleFileDrop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    store.set(isLoadingAtom, false);
+    store.set(resetStateAtom);
   });
 
   it('should clear error and handle successful folder drop', async () => {
@@ -485,7 +485,7 @@ describe('setupDocumentDragHandlers', () => {
 describe('setupTauriDragEvents', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    store.set(isLoadingAtom, false);
+    store.set(resetStateAtom);
     (window as any).__TAURI__ = {
       event: {
         listen: vi.fn().mockResolvedValue(() => {}),
@@ -495,7 +495,7 @@ describe('setupTauriDragEvents', () => {
 
   afterEach(() => {
     delete (window as any).__TAURI__;
-    store.set(isLoadingAtom, false);
+    store.set(resetStateAtom);
   });
 
   it('should return early when Tauri event API is not available', async () => {
@@ -635,10 +635,13 @@ describe('setupTauriDragEvents', () => {
 
     if (dropHandler) {
       (dropHandler as (event: Event<DragDropEvent>) => void)(event);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      // Wait for isLoadingAtom to be set to true instead of fixed timeout
+      await vi.waitFor(() => {
+        expect(store.get(isLoadingAtom)).toBe(true);
+      }, { timeout: 1000 });
     }
 
-      expect(store.get(isLoadingAtom)).toBe(true);
+    expect(store.get(isLoadingAtom)).toBe(true);
     expect(clearError).toHaveBeenCalled();
     expect(customEventSpy).toHaveBeenCalledWith(expect.objectContaining({ type: CUSTOM_DRAG_EVENTS.DROP }));
   });
@@ -771,8 +774,10 @@ describe('setupTauriDragEvents', () => {
 
     if (dropHandler) {
       (dropHandler as (event: Event<DragDropEvent>) => void)(event);
-      // Wait for async error handling - handleFileDrop's catch block runs asynchronously
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      // Wait for async error handling - wait for showError to be called
+      await vi.waitFor(() => {
+        expect(showError).toHaveBeenCalled();
+      }, { timeout: 1000 });
     }
 
     // Verify error handling occurred - the .catch() in setupTauriDragEvents should have run
@@ -921,7 +926,10 @@ describe('setupTauriDragEvents', () => {
 
     if (dropHandler) {
       (dropHandler as (event: Event<DragDropEvent>) => void)(event);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // Wait for showError to be called instead of fixed timeout
+      await vi.waitFor(() => {
+        expect(showError).toHaveBeenCalled();
+      }, { timeout: 1000 });
     }
 
     expect(store.get(isLoadingAtom)).toBe(false);
@@ -953,7 +961,10 @@ describe('setupTauriDragEvents', () => {
 
     if (dropHandler) {
       (dropHandler as (event: Event<DragDropEvent>) => void)(event);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // Wait for showError to be called instead of fixed timeout
+      await vi.waitFor(() => {
+        expect(showError).toHaveBeenCalled();
+      }, { timeout: 1000 });
     }
 
     expect(store.get(isLoadingAtom)).toBe(false);
@@ -991,9 +1002,16 @@ describe('setupTauriDragEvents', () => {
 
     if (dropHandler) {
       (dropHandler as (event: Event<DragDropEvent>) => void)(event1);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Wait for first browseImages call instead of fixed timeout
+      await vi.waitFor(() => {
+        expect(browseImages).toHaveBeenCalledWith('/path1');
+      }, { timeout: 1000 });
+      
       (dropHandler as (event: Event<DragDropEvent>) => void)(event2);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Wait for second browseImages call instead of fixed timeout
+      await vi.waitFor(() => {
+        expect(browseImages).toHaveBeenCalledWith('/path2');
+      }, { timeout: 1000 });
     }
 
     expect(browseImages).toHaveBeenCalledWith('/path1');
@@ -1065,7 +1083,7 @@ describe('setupTauriDragEvents', () => {
 describe('selectFolder', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    store.set(isLoadingAtom, false);
+    store.set(resetStateAtom);
   });
 
   it('should call handleFolder when folder is selected as string', async () => {
@@ -1178,7 +1196,7 @@ describe('selectFolder', () => {
 describe('handleFileDrop edge cases', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    store.set(isLoadingAtom, false);
+    store.set(resetStateAtom);
   });
 
   it('should handle very long path strings', async () => {

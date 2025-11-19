@@ -1,4 +1,4 @@
-import { store } from "./jotaiStore";
+import { updateAtomMap } from "./jotaiStore";
 import { loadedImagesAtom } from "../state";
 import { createElement } from "./dom";
 import { openModal } from "../ui/modal";
@@ -18,10 +18,7 @@ export async function loadImageData(imagePath: string): Promise<string> {
     if (!dataUrl || typeof dataUrl !== 'string') {
       throw new Error(`Invalid data URL returned for ${imagePath}`);
     }
-    const loadedImages = store.get(loadedImagesAtom);
-    const updatedLoadedImages = new Map(loadedImages);
-    updatedLoadedImages.set(imagePath, dataUrl);
-    store.set(loadedImagesAtom, updatedLoadedImages);
+    updateAtomMap(loadedImagesAtom, imagePath, dataUrl);
     return dataUrl;
   } catch (error) {
     throw new Error(`Failed to load image: ${error}`);

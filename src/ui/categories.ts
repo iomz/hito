@@ -395,10 +395,13 @@ export async function toggleImageCategory(
   const updatedImageCategories = new Map(imageCategories);
   if (existingIndex >= 0) {
     // Remove category
-    updatedImageCategories.set(
-      imagePath,
-      currentAssignments.filter((_, index) => index !== existingIndex),
-    );
+    const updatedAssignments = currentAssignments.filter((_, index) => index !== existingIndex);
+    if (updatedAssignments.length === 0) {
+      // Delete entry when last assignment is removed, consistent with deleteCategory
+      updatedImageCategories.delete(imagePath);
+    } else {
+      updatedImageCategories.set(imagePath, updatedAssignments);
+    }
   } else {
     // Add category with current datetime
     updatedImageCategories.set(imagePath, [

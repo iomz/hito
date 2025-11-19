@@ -6,7 +6,6 @@ import {
   currentIndexAtom,
   isLoadingBatchAtom,
   loadedImagesAtom,
-  currentModalIndexAtom,
   currentModalImagePathAtom,
   currentDirectoryAtom,
   configFilePathAtom,
@@ -95,7 +94,7 @@ describe("browse", () => {
       // Set invalid value - ensureImagePathsArray will handle this
       store.set(allImagePathsAtom, null as any);
 
-      await loadImageBatch(0, 10);
+      await loadImageBatch(0);
 
       expect(consoleSpy).toHaveBeenCalled();
       expect(store.get(allImagePathsAtom)).toEqual([]);
@@ -106,7 +105,7 @@ describe("browse", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       store.set(allImagePathsAtom, "not an array" as any);
 
-      await loadImageBatch(0, 10);
+      await loadImageBatch(0);
 
       expect(consoleSpy).toHaveBeenCalled();
       expect(store.get(allImagePathsAtom)).toEqual([]);
@@ -117,7 +116,7 @@ describe("browse", () => {
       store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
       store.set(isLoadingBatchAtom, true);
 
-      await loadImageBatch(0, 10);
+      await loadImageBatch(0);
 
       // We just verify it doesn't throw and resets loading state
       expect(store.get(isLoadingBatchAtom)).toBe(true); // Still true since it returns early
@@ -126,7 +125,7 @@ describe("browse", () => {
     it("should return early if startIndex >= allImagePaths.length", async () => {
       store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
 
-      await loadImageBatch(10, 20);
+      await loadImageBatch(10);
 
       expect(store.get(isLoadingBatchAtom)).toBe(false);
     });
@@ -135,7 +134,7 @@ describe("browse", () => {
       // This test verifies it doesn't throw
       store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
 
-      await loadImageBatch(0, 10);
+      await loadImageBatch(0);
 
       expect(store.get(isLoadingBatchAtom)).toBe(false);
     });
@@ -147,7 +146,7 @@ describe("browse", () => {
         { path: "/test/image2.png" },
       ]);
 
-      await loadImageBatch(0, 2);
+      await loadImageBatch(0);
 
       // Function is no-op, React component handles rendering
       expect(store.get(isLoadingBatchAtom)).toBe(false);
@@ -157,17 +156,17 @@ describe("browse", () => {
       // This test verifies the function completes without errors
       store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
 
-      await loadImageBatch(0, 1);
+      await loadImageBatch(0);
 
       // Function is no-op, React component handles error states
       expect(store.get(isLoadingBatchAtom)).toBe(false);
     });
 
-    it("should clamp endIndex to array length", async () => {
-      // This test verifies the function completes correctly
+    it("should handle out-of-range startIndex", async () => {
+      // This test verifies the function completes correctly for out-of-range indices
       store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
 
-      await loadImageBatch(0, 100);
+      await loadImageBatch(100);
 
       // Function is no-op, React component handles rendering
       expect(store.get(isLoadingBatchAtom)).toBe(false);
@@ -257,7 +256,6 @@ describe("browse", () => {
     it("should reset state before browsing", async () => {
       store.set(currentIndexAtom, 100);
       store.set(isLoadingBatchAtom, true);
-      store.set(currentModalIndexAtom, 5);
       vi.mocked(invokeTauri).mockResolvedValueOnce({
         directories: [],
         images: [],
@@ -267,7 +265,6 @@ describe("browse", () => {
 
       expect(store.get(currentIndexAtom)).toBe(0); // Reset to 0 when empty
       expect(store.get(isLoadingBatchAtom)).toBe(false);
-      expect(store.get(currentModalIndexAtom)).toBe(-1);
     });
 
     it("should show notification when no images or directories found", async () => {

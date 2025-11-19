@@ -188,27 +188,29 @@ export function HotkeyDialog() {
     const selectedAction = actionSelectRef.current?.value || `action_${Date.now()}`;
     
     if (editingHotkey) {
-      // Update existing hotkey
-      const updatedHotkeys = [...hotkeys];
-      const index = updatedHotkeys.findIndex(h => h.id === editingHotkey.id);
-      if (index >= 0) {
-        updatedHotkeys[index] = {
-          ...editingHotkey,
-          key: capturedKey,
-          modifiers: [...capturedModifiers],
-          action: selectedAction
-        };
-        setHotkeys(updatedHotkeys);
-      }
+      // Update existing hotkey using functional update to avoid stale snapshots
+      setHotkeys((prev) => {
+        const copy = [...prev];
+        const index = copy.findIndex(h => h.id === editingHotkey.id);
+        if (index >= 0) {
+          copy[index] = {
+            ...editingHotkey,
+            key: capturedKey,
+            modifiers: [...capturedModifiers],
+            action: selectedAction
+          };
+        }
+        return copy;
+      });
     } else {
-      // Add new hotkey
+      // Add new hotkey using functional update to avoid stale snapshots
       const newHotkey: HotkeyConfig = {
         id: `hotkey_${Date.now()}`,
         key: capturedKey,
         modifiers: [...capturedModifiers],
         action: selectedAction
       };
-      setHotkeys([...hotkeys, newHotkey]);
+      setHotkeys((prev) => [...prev, newHotkey]);
     }
     
     try {
