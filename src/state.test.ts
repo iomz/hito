@@ -103,7 +103,9 @@ describe('state', () => {
       state.hotkeys = [{ id: '1', key: 'A', modifiers: [], action: 'test' }];
       state.isHotkeySidebarOpen = true;
       state.categories = [{ id: '1', name: 'Test', color: '#000' }];
-      state.imageCategories.set('/test/image.png', ['cat1']);
+      state.imageCategories.set('/test/image.png', [
+        { category_id: 'cat1', assigned_at: new Date().toISOString() }
+      ]);
       state.currentDirectory = '/test/dir';
       state.configFilePath = '/test/config.json';
       state.shortcutsOverlayVisible = true;

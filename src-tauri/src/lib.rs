@@ -1,12 +1,15 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct ImagePath {
     path: String,
+    size: Option<u64>, // File size in bytes
+    created_at: Option<String>, // ISO 8601 datetime string
 }
 
 #[derive(serde::Serialize)]
@@ -98,17 +101,32 @@ fn list_images(path: String) -> Result<DirectoryContents, String> {
                         if let Some(extension) = file_path.extension() {
                             let ext_str = extension.to_string_lossy().to_lowercase();
                             if image_extensions.contains(&ext_str.as_str()) {
-                                // Check file size - skip images smaller than 15KB
                                 if let Ok(metadata) = fs::metadata(&file_path) {
                                     let file_size = metadata.len();
-                                    const MIN_SIZE: u64 = 15 * 1024; // 15KB in bytes
                                     
-                                    if file_size >= MIN_SIZE {
-                                        if let Some(path_str) = file_path.to_str() {
-                                            images.push(ImagePath {
-                                                path: path_str.to_string(),
-                                            });
-                                        }
+                                    if let Some(path_str) = file_path.to_str() {
+                                        // Get creation time if available
+                                        let created_at = metadata
+                                            .created()
+                                            .ok()
+                                            .and_then(|time| {
+                                                time.duration_since(UNIX_EPOCH)
+                                                    .ok()
+                                                    .map(|duration| {
+                                                        chrono::DateTime::<chrono::Utc>::from_timestamp(
+                                                            duration.as_secs() as i64,
+                                                            duration.subsec_nanos()
+                                                        )
+                                                            .map(|dt| dt.to_rfc3339())
+                                                    })
+                                            })
+                                            .flatten();
+                                        
+                                        images.push(ImagePath {
+                                            path: path_str.to_string(),
+                                            size: Some(file_size),
+                                            created_at,
+                                        });
                                     }
                                 }
                             }
@@ -226,10 +244,26 @@ struct HotkeyData {
     action: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct CategoryAssignment {
+    category_id: String,
+    assigned_at: String, // ISO 8601 datetime string
+}
+
+#[derive(Serialize, Deserialize)]
+struct FilterOptions {
+    category_id: Option<String>, // None or empty string = no filter, "uncategorized" = special filter
+    name_pattern: Option<String>,
+    name_operator: Option<String>, // "contains", "startsWith", "endsWith", "exact"
+    size_operator: Option<String>, // "largerThan", "lessThan", "between"
+    size_value: Option<String>,
+    size_value2: Option<String>,
+}
+
 #[derive(Serialize, Deserialize)]
 struct HitoFile {
     categories: Vec<CategoryData>,
-    image_categories: Vec<(String, Vec<String>)>,
+    image_categories: Vec<(String, Vec<CategoryAssignment>)>,
     hotkeys: Vec<HotkeyData>,
 }
 
@@ -272,7 +306,7 @@ fn load_hito_config(directory: String, filename: Option<String>) -> Result<HitoF
 fn save_hito_config(
     directory: String,
     categories: Vec<CategoryData>,
-    image_categories: Vec<(String, Vec<String>)>,
+    image_categories: Vec<(String, Vec<CategoryAssignment>)>,
     hotkeys: Vec<HotkeyData>,
     filename: Option<String>,
 ) -> Result<(), String> {
@@ -291,6 +325,220 @@ fn save_hito_config(
         .map_err(|e| format!("Failed to write .hito.json file: {}", e))?;
     
     Ok(())
+}
+
+/// Filter and sort images based on the specified filter and sort options.
+///
+/// # Parameters
+/// * `images` - Vector of images with metadata to filter and sort
+/// * `sort_option` - Sort option: "name", "dateCreated", "lastCategorized", or "size"
+/// * `sort_direction` - Sort direction: "ascending" or "descending"
+/// * `image_categories` - Map of image path to category assignments (for filtering and lastCategorized sorting)
+/// * `filter_options` - Optional filter options (if None, no filtering is applied)
+///
+/// # Returns
+/// Filtered and sorted vector of images
+#[tauri::command]
+fn sort_images(
+    images: Vec<ImagePath>,
+    sort_option: String,
+    sort_direction: String,
+    image_categories: Vec<(String, Vec<CategoryAssignment>)>,
+    filter_options: Option<FilterOptions>,
+) -> Result<Vec<ImagePath>, String> {
+    // Convert image_categories to a HashMap for faster lookup
+    let category_map: std::collections::HashMap<String, Vec<CategoryAssignment>> = 
+        image_categories.into_iter().collect();
+    
+    // Filter first (more efficient than sorting then filtering)
+    let mut filtered_images: Vec<ImagePath> = images;
+    
+    if let Some(filters) = filter_options {
+        // Apply category filter
+        if let Some(category_id) = filters.category_id {
+            if !category_id.is_empty() {
+                if category_id == "uncategorized" {
+                    // Filter for images with no categories
+                    filtered_images.retain(|img| {
+                        category_map.get(&img.path).map_or(true, |assignments| assignments.is_empty())
+                    });
+                } else {
+                    // Filter for images with the specified category
+                    filtered_images.retain(|img| {
+                        category_map.get(&img.path).map_or(false, |assignments| {
+                            assignments.iter().any(|a| a.category_id == category_id)
+                        })
+                    });
+                }
+            }
+        }
+        
+        // Apply name filter
+        if let Some(name_pattern) = filters.name_pattern {
+            if !name_pattern.is_empty() {
+                let pattern = name_pattern.to_lowercase();
+                let operator = filters.name_operator.as_deref().unwrap_or("contains");
+                
+                filtered_images.retain(|img| {
+                    let file_name = Path::new(&img.path)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.to_lowercase())
+                        .unwrap_or_default();
+                    
+                    match operator {
+                        "startsWith" => file_name.starts_with(&pattern),
+                        "endsWith" => file_name.ends_with(&pattern),
+                        "exact" => file_name == pattern,
+                        _ => file_name.contains(&pattern), // "contains" or default
+                    }
+                });
+            }
+        }
+        
+        // Apply size filter
+        if let Some(size_value_str) = &filters.size_value {
+            if !size_value_str.is_empty() {
+                // Parse size value as KB and convert to bytes (1 KB = 1024 bytes)
+                if let Ok(size_value_kb) = size_value_str.parse::<u64>() {
+                    let size_value_bytes = size_value_kb * 1024;
+                    let operator = filters.size_operator.as_deref().unwrap_or("largerThan");
+                    
+                    match operator {
+                        "lessThan" => {
+                            filtered_images.retain(|img| {
+                                let img_size = img.size.unwrap_or(0);
+                                img_size < size_value_bytes
+                            });
+                        }
+                        "between" => {
+                            // For "between", we need size_value2
+                            if let Some(size_value2_str) = &filters.size_value2 {
+                                if !size_value2_str.is_empty() {
+                                    if let Ok(size_value2_kb) = size_value2_str.parse::<u64>() {
+                                        let size_value2_bytes = size_value2_kb * 1024;
+                                        let min_size = size_value_bytes.min(size_value2_bytes);
+                                        let max_size = size_value_bytes.max(size_value2_bytes);
+                                        filtered_images.retain(|img| {
+                                            let img_size = img.size.unwrap_or(0);
+                                            img_size >= min_size && img_size <= max_size
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            // "largerThan" or default
+                            filtered_images.retain(|img| {
+                                let img_size = img.size.unwrap_or(0);
+                                img_size > size_value_bytes
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    let mut sorted_images = filtered_images;
+    
+    // Determine if we should reverse the sort order
+    let is_descending = sort_direction == "descending";
+    
+    match sort_option.as_str() {
+        "name" => {
+            sorted_images.sort_by(|a, b| {
+                let name_a = Path::new(&a.path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_lowercase();
+                let name_b = Path::new(&b.path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_lowercase();
+                let ordering = name_a.cmp(&name_b);
+                if is_descending {
+                    ordering.reverse()
+                } else {
+                    ordering
+                }
+            });
+        }
+        "size" => {
+            sorted_images.sort_by(|a, b| {
+                let size_a = a.size.unwrap_or(0);
+                let size_b = b.size.unwrap_or(0);
+                let ordering = size_a.cmp(&size_b);
+                if is_descending {
+                    ordering.reverse()
+                } else {
+                    ordering
+                }
+            });
+        }
+        "dateCreated" => {
+            sorted_images.sort_by(|a, b| {
+                let date_a = a.created_at.as_ref()
+                    .and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok())
+                    .map(|dt| dt.timestamp());
+                let date_b = b.created_at.as_ref()
+                    .and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok())
+                    .map(|dt| dt.timestamp());
+                
+                // Sort by date, with None values last
+                let ordering = match (date_a, date_b) {
+                    (Some(a), Some(b)) => a.cmp(&b),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
+                };
+                if is_descending {
+                    ordering.reverse()
+                } else {
+                    ordering
+                }
+            });
+        }
+        "lastCategorized" => {
+            sorted_images.sort_by(|a, b| {
+                let get_latest_assignment = |path: &str| -> Option<i64> {
+                    category_map.get(path)
+                        .and_then(|assignments| {
+                            assignments.iter()
+                                .filter_map(|assignment| {
+                                    chrono::DateTime::parse_from_rfc3339(&assignment.assigned_at)
+                                        .ok()
+                                        .map(|dt| dt.timestamp())
+                                })
+                                .max()
+                        })
+                };
+                
+                let date_a = get_latest_assignment(&a.path);
+                let date_b = get_latest_assignment(&b.path);
+                
+                // Sort by date, with None values last
+                let ordering = match (date_a, date_b) {
+                    (Some(a), Some(b)) => a.cmp(&b), // Compare normally first
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
+                };
+                if is_descending {
+                    ordering.reverse()
+                } else {
+                    ordering
+                }
+            });
+        }
+        _ => {
+            // Unknown sort option, return as-is
+        }
+    }
+    
+    Ok(sorted_images)
 }
 
 /// Initializes and runs the Tauri application with configured plugins and invoke handlers.
@@ -313,7 +561,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image, load_hito_config, save_hito_config])
+        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image, load_hito_config, save_hito_config, sort_images])
         .setup(|_app| {
             // File drops in Tauri 2.0 are handled through the event system
             // JavaScript will listen for tauri://drag-drop events

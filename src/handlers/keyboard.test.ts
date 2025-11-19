@@ -82,6 +82,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowLeft" });
@@ -97,6 +98,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
@@ -112,6 +114,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open and overlay as visible (state-based checks)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
       state.shortcutsOverlayVisible = true;
 
@@ -129,6 +132,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open but overlay not visible (state-based checks)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
       state.shortcutsOverlayVisible = false;
 
@@ -144,6 +148,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
       state.shortcutsOverlayVisible = false;
 
@@ -160,6 +165,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
       state.shortcutsOverlayVisible = false;
 
@@ -180,6 +186,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "Delete" });
@@ -195,6 +202,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "Backspace" });
@@ -210,6 +218,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { code: "Delete" });
@@ -225,6 +234,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { code: "Backspace" });
@@ -240,6 +250,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Modal is closed (state-based check)
+      state.currentModalImagePath = "";
       state.currentModalIndex = -1;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
@@ -255,6 +266,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Modal is closed (state-based check)
+      state.currentModalImagePath = "";
       state.currentModalIndex = -1;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
@@ -273,6 +285,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
@@ -348,6 +361,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowLeft" });
@@ -364,6 +378,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
@@ -380,6 +395,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "Escape" });
@@ -396,6 +412,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "?" });
@@ -412,6 +429,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const event = new KeyboardEvent("keydown", { key: "Delete" });
@@ -429,6 +447,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Modal is closed (state-based check, not DOM style)
+      state.currentModalImagePath = "";
       state.currentModalIndex = -1;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
@@ -444,6 +463,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Modal is closed (state-based check, not DOM style)
+      state.currentModalImagePath = "";
       state.currentModalIndex = -1;
 
       const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
@@ -610,6 +630,7 @@ describe("keyboard handlers", () => {
       setupKeyboardHandlers();
 
       // Set modal as open (state-based check)
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       const input = document.createElement("input");

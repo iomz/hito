@@ -6,10 +6,11 @@ import { ensureImagePathsArray, getFilename } from "../utils/state";
 import { closeModal, showPreviousImage, showNextImage } from "../ui/modal";
 import { ModalCategories } from "./ModalCategories";
 import { ShortcutsOverlay } from "./ShortcutsOverlay";
+import { getFilteredAndSortedImagesSync } from "../utils/filteredImages";
 
 export function ImageModal() {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(-1);
+  const [currentImagePath, setCurrentImagePath] = useState<string>("");
   const [imageSrc, setImageSrc] = useState<string>("");
   const [caption, setCaption] = useState<string>("");
   const [showPrevBtn, setShowPrevBtn] = useState(false);
@@ -24,14 +25,14 @@ export function ImageModal() {
   // Subscribe to modal state changes
   useEffect(() => {
     const handleStateChange = async () => {
-      const modalIndex = state.currentModalIndex;
-      const shouldBeOpen = modalIndex >= 0;
+      const modalImagePath = state.currentModalImagePath;
+      const shouldBeOpen = Boolean(modalImagePath);
       
-      if (shouldBeOpen !== isOpen || modalIndex !== currentIndex) {
+      if (shouldBeOpen !== isOpen || modalImagePath !== currentImagePath) {
         setIsOpen(shouldBeOpen);
-        setCurrentIndex(modalIndex);
+        setCurrentImagePath(modalImagePath);
         
-        if (shouldBeOpen && modalIndex >= 0) {
+        if (shouldBeOpen && modalImagePath) {
           // Store previously focused element only when opening the modal for the first time
           if (previouslyFocusedElementRef.current === null && document.activeElement) {
             previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
@@ -54,19 +55,24 @@ export function ImageModal() {
             return;
           }
           
-          if (modalIndex >= state.allImagePaths.length) {
-            // Clear any stale image state before closing
-            setImageSrc("");
-            setCaption("");
-            setShowPrevBtn(false);
-            setShowNextBtn(false);
-            // Close the modal
-            closeModal();
-            showError(`Image index ${modalIndex} is out of range`);
-            return;
+          // Get filtered images to check if image is in the filtered list
+          // Skip this check if suppressCategoryRefilter is true (defer refiltering during category assignment)
+          if (!state.suppressCategoryRefilter) {
+            const filteredImagesCheck = getFilteredAndSortedImagesSync();
+            const imageIndex = filteredImagesCheck.findIndex((img) => img.path === modalImagePath);
+            
+            if (imageIndex < 0) {
+              // Image not in filtered list, close modal (only if not suppressing refilter)
+              setImageSrc("");
+              setCaption("");
+              setShowPrevBtn(false);
+              setShowNextBtn(false);
+              closeModal();
+              return;
+            }
           }
           
-          const imagePath = state.allImagePaths[modalIndex].path;
+          const imagePath = modalImagePath;
           
           // Get or load image data
           let dataUrl = state.loadedImages.get(imagePath);
@@ -92,14 +98,26 @@ export function ImageModal() {
           
           setImageSrc(dataUrl);
           
-          // Update caption
+          // Update caption with filtered list position
+          // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
+          const filteredImages = getFilteredAndSortedImagesSync();
+          const currentIndex = filteredImages.findIndex((img) => img.path === imagePath);
           const filename = getFilename(imagePath);
-          const captionText = `${modalIndex + 1} / ${state.allImagePaths.length} - ${filename}`;
+          // If image not found in filtered list but suppressCategoryRefilter is true, show fallback caption
+          const captionText = currentIndex >= 0 
+            ? `${currentIndex + 1} / ${filteredImages.length} - ${filename}`
+            : `? / ${filteredImages.length} - ${filename}`;
           setCaption(captionText);
           
-          // Update button visibility
-          setShowPrevBtn(modalIndex > 0);
-          setShowNextBtn(modalIndex < state.allImagePaths.length - 1);
+          // Update button visibility based on filtered list (only if image is in list or suppress is active)
+          if (currentIndex >= 0) {
+            setShowPrevBtn(currentIndex > 0);
+            setShowNextBtn(currentIndex < filteredImages.length - 1);
+          } else if (state.suppressCategoryRefilter) {
+            // If suppress is active and image not in filtered list (due to category change),
+            // keep buttons as they were (don't change visibility)
+            // This allows user to navigate which will trigger refilter
+          }
         } else {
           // Modal closed - restore focus to previously focused element
           if (previouslyFocusedElementRef.current) {
@@ -122,7 +140,7 @@ export function ImageModal() {
     handleStateChange();
     
     return unsubscribe;
-  }, [isOpen, currentIndex]);
+  }, [isOpen, currentImagePath]);
 
   // Keyboard handling and focus management
   useEffect(() => {

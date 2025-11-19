@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { state } from "../state";
 import {
   openModal,
+  openModalByIndex,
   closeModal,
   showNextImage,
   showPreviousImage,
@@ -41,11 +42,22 @@ describe("modal", () => {
       { path: "/test/image3.png" },
     ];
     state.currentModalIndex = -1;
+    state.currentModalImagePath = "";
     state.isDeletingImage = false;
     state.loadedImages.clear();
     state.hotkeys = [];
     state.categories = [];
     state.shortcutsOverlayVisible = false;
+    state.filterOptions = {
+      categoryId: "",
+      namePattern: "",
+      nameOperator: "contains",
+      sizeOperator: "largerThan",
+      sizeValue: "",
+      sizeValue2: "",
+    };
+    state.sortOption = "name";
+    state.sortDirection = "ascending";
 
     // Mock window.__TAURI__
     (window as any).__TAURI__ = {
@@ -60,7 +72,7 @@ describe("modal", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       (state as any).allImagePaths = null;
 
-      await openModal(0);
+      await openModalByIndex(0);
 
       expect(consoleSpy).toHaveBeenCalled();
       expect(state.allImagePaths).toEqual([]);
@@ -68,15 +80,16 @@ describe("modal", () => {
     });
 
     it("should return early if index is out of range", async () => {
-      await openModal(-1);
-      await openModal(100);
+      await openModalByIndex(-1);
+      await openModalByIndex(100);
 
       expect(state.currentModalIndex).toBe(-1);
+      expect(state.currentModalImagePath).toBe("");
     });
 
     it("should return early if modal elements are missing", async () => {
       // This test verifies state is set correctly
-      await openModal(0);
+      await openModalByIndex(0);
 
       expect(state.currentModalIndex).toBe(0);
     });
@@ -84,7 +97,7 @@ describe("modal", () => {
     it("should open modal with cached image", async () => {
       state.loadedImages.set("/test/image1.png", "cached-data-url");
 
-      await openModal(0);
+      await openModalByIndex(0);
 
       // React component handles rendering - we just verify state
       expect(state.currentModalIndex).toBe(0);
@@ -94,7 +107,7 @@ describe("modal", () => {
     it("should load image if not cached", async () => {
       const { loadImageData } = await import("../utils/images");
 
-      await openModal(0);
+      await openModalByIndex(0);
 
       expect(loadImageData).toHaveBeenCalledWith("/test/image1.png");
       expect(state.currentModalIndex).toBe(0);
@@ -105,7 +118,7 @@ describe("modal", () => {
       const { showError } = await import("./error");
       vi.mocked(loadImageData).mockRejectedValueOnce(new Error("Failed"));
 
-      await openModal(0);
+      await openModalByIndex(0);
 
       expect(showError).toHaveBeenCalled();
       expect(state.currentModalIndex).toBe(-1);
@@ -119,8 +132,8 @@ describe("modal", () => {
       });
       vi.mocked(loadImageData).mockReturnValueOnce(loadPromise);
 
-      const promise1 = openModal(0);
-      const promise2 = openModal(1);
+      const promise1 = openModalByIndex(0);
+      const promise2 = openModalByIndex(1);
 
       resolveLoad!("data-url");
       await promise1;
@@ -134,7 +147,7 @@ describe("modal", () => {
       state.shortcutsOverlayVisible = true;
       state.loadedImages.set("/test/image1.png", "data-url");
 
-      await openModal(0);
+      await openModalByIndex(0);
 
       expect(state.shortcutsOverlayVisible).toBe(false);
     });
@@ -146,7 +159,7 @@ describe("modal", () => {
         { path: "/test/image2.png" },
       ];
 
-      await openModal(0);
+      await openModalByIndex(0);
 
       // React component handles caption rendering - we verify state
       expect(state.currentModalIndex).toBe(0);
@@ -158,7 +171,7 @@ describe("modal", () => {
         { path: "C:\\test\\image1.png" },
       ];
 
-      await openModal(0);
+      await openModalByIndex(0);
 
       // React component handles caption rendering - we verify state
       expect(state.currentModalIndex).toBe(0);
@@ -167,7 +180,7 @@ describe("modal", () => {
     it("should open modal and set currentModalIndex", async () => {
       state.loadedImages.set("/test/image1.png", "data-url");
 
-      await openModal(0);
+      await openModalByIndex(0);
 
       expect(state.currentModalIndex).toBe(0);
     });
@@ -204,6 +217,7 @@ describe("modal", () => {
     });
 
     it("should advance to next image", async () => {
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
       state.loadedImages.set("/test/image2.png", "data-url");
 
@@ -211,19 +225,23 @@ describe("modal", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(state.currentModalIndex).toBe(1);
+      expect(state.currentModalImagePath).toBe("/test/image2.png");
     });
 
     it("should not advance if at last image", () => {
+      state.currentModalImagePath = "/test/image3.png";
       state.currentModalIndex = 2;
 
       showNextImage();
 
       expect(state.currentModalIndex).toBe(2);
+      expect(state.currentModalImagePath).toBe("/test/image3.png");
     });
   });
 
   describe("showPreviousImage", () => {
     it("should go to previous image", async () => {
+      state.currentModalImagePath = "/test/image2.png";
       state.currentModalIndex = 1;
       state.loadedImages.set("/test/image1.png", "data-url");
 
@@ -231,14 +249,17 @@ describe("modal", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(state.currentModalIndex).toBe(0);
+      expect(state.currentModalImagePath).toBe("/test/image1.png");
     });
 
     it("should not go back if at first image", () => {
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
 
       showPreviousImage();
 
       expect(state.currentModalIndex).toBe(0);
+      expect(state.currentModalImagePath).toBe("/test/image1.png");
     });
   });
 
@@ -283,9 +304,11 @@ describe("modal", () => {
     });
 
     it("should return early if index is out of range", async () => {
+      state.currentModalImagePath = "";
       state.currentModalIndex = -1;
       await deleteCurrentImage();
 
+      state.currentModalImagePath = "";
       state.currentModalIndex = 100;
       await deleteCurrentImage();
 
@@ -295,6 +318,7 @@ describe("modal", () => {
     it("should delete image successfully", async () => {
       const tauri = await import("../utils/tauri");
       const { showNotification } = await import("./notification");
+      state.currentModalImagePath = "/test/image2.png";
       state.currentModalIndex = 1;
       vi.spyOn(tauri, "invokeTauri").mockResolvedValueOnce(undefined);
 
@@ -312,12 +336,14 @@ describe("modal", () => {
       const { invoke } = window.__TAURI__!.core;
       const { showNotification } = await import("./notification");
       state.allImagePaths = [{ path: "/test/image1.png" }];
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
       vi.mocked(invoke).mockResolvedValueOnce(undefined);
 
       await deleteCurrentImage();
 
       expect(state.currentModalIndex).toBe(-1);
+      expect(state.currentModalImagePath).toBe("");
       expect(showNotification).toHaveBeenCalledWith(
         "Image deleted. No more images in this directory."
       );
@@ -325,6 +351,7 @@ describe("modal", () => {
 
     it("should navigate to previous if last image", async () => {
       const { invoke } = window.__TAURI__!.core;
+      state.currentModalImagePath = "/test/image3.png";
       state.currentModalIndex = 2;
       state.loadedImages.set("/test/image2.png", "data-url");
       vi.mocked(invoke).mockResolvedValueOnce(undefined);
@@ -332,11 +359,13 @@ describe("modal", () => {
       await deleteCurrentImage();
 
       expect(state.currentModalIndex).toBe(1);
+      expect(state.currentModalImagePath).toBe("/test/image2.png");
     });
 
     it("should handle deletion errors", async () => {
       const { invoke } = window.__TAURI__!.core;
       const { showError } = await import("./error");
+      state.currentModalImagePath = "/test/image1.png";
       state.currentModalIndex = 0;
       vi.mocked(invoke).mockRejectedValueOnce(new Error("Delete failed"));
 
@@ -349,6 +378,7 @@ describe("modal", () => {
     it("should adjust currentIndex when deleting before batch position", async () => {
       const { invoke } = window.__TAURI__!.core;
       state.currentIndex = 2;
+      state.currentModalImagePath = "/test/image2.png";
       state.currentModalIndex = 1;
       vi.mocked(invoke).mockResolvedValueOnce(undefined);
 

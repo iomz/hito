@@ -4,6 +4,8 @@ import type { Event } from "@tauri-apps/api/event";
 // Type definitions
 export interface ImagePath {
   path: string;
+  size?: number; // File size in bytes
+  created_at?: string; // ISO 8601 datetime string
 }
 
 export interface DirectoryPath {
@@ -34,6 +36,11 @@ export interface Category {
   id: string;
   name: string;
   color: string; // Hex color for visual distinction
+}
+
+export interface CategoryAssignment {
+  category_id: string;
+  assigned_at: string; // ISO 8601 datetime string
 }
 
 // Type augmentation for window.__TAURI__

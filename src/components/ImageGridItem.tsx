@@ -11,6 +11,8 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
   const [imageData, setImageData] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(state.selectionMode);
+  const [isSelected, setIsSelected] = useState(state.selectedImages.has(imagePath));
 
   useEffect(() => {
     if (!imagePath || typeof imagePath !== "string") {
@@ -44,19 +46,35 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
     };
   }, [imagePath]);
 
-  const handleClick = () => {
+  useEffect(() => {
+    const updateSelection = () => {
+      setSelectionMode(state.selectionMode);
+      setIsSelected(state.selectedImages.has(imagePath));
+    };
+    
+    updateSelection();
+    const unsubscribe = state.subscribe(updateSelection);
+    return unsubscribe;
+  }, [imagePath]);
+
+  const handleClick = (e: React.MouseEvent) => {
     if (hasError) return;
     
-    // Find the index of this image in the state
-    const index = state.allImagePaths.findIndex((img) => img.path === imagePath);
-    if (index >= 0) {
-      openModal(index);
+    if (selectionMode) {
+      e.stopPropagation();
+      const toggleFn = (state as any).toggleImageSelection;
+      if (toggleFn) {
+        toggleFn(imagePath);
+      }
+    } else {
+      // Open modal with image path (it will find the image in the filtered/sorted list)
+      openModal(imagePath);
     }
   };
 
   return (
     <div
-      className="image-item"
+      className={`image-item ${selectionMode ? "selection-mode" : ""} ${isSelected ? "selected" : ""}`}
       data-image-path={imagePath}
       onClick={handleClick}
       style={{
@@ -65,8 +83,25 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
         alignItems: "center",
         justifyContent: "center",
         cursor: hasError ? "default" : "pointer",
+        position: "relative",
       }}
     >
+      {selectionMode && (
+        <div className="image-item-checkbox">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              const toggleFn = (state as any).toggleImageSelection;
+              if (toggleFn) {
+                toggleFn(imagePath);
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
       {isLoading && (
         <div className="placeholder" style={{ width: "60px", height: "60px", opacity: 0.6 }}>
           <svg

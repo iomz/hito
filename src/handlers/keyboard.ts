@@ -53,8 +53,8 @@ export function setupKeyboardHandlers(): void {
     // If typing in editable element, skip hotkey checks but continue to modal shortcuts
     
     // Only handle modal-specific shortcuts when modal is open
-    // Check state.currentModalIndex instead of DOM element display style (React manages visibility)
-    if (state.currentModalIndex < 0) {
+    // Check state.currentModalImagePath instead of DOM element display style (React manages visibility)
+    if (!state.currentModalImagePath) {
       return;
     }
     
