@@ -312,8 +312,9 @@ describe("categories config file location", () => {
       mockInvoke.mockRejectedValue(new Error("Failed to load"));
 
       const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
+      
+      // Error is rethrown for non-file-not-found errors
+      await expect(loadHitoConfig()).rejects.toThrow("Failed to load");
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
@@ -688,10 +689,6 @@ describe("categories UI and management", () => {
           ["/image1.jpg", []],
         ]);
 
-        // Import showNextImage directly (not through mock)
-        // The mock is defined at the top but we can import the actual module
-        vi.unmock("./modal");
-        const { showNextImage } = await import("./modal");
         const { getFilteredAndSortedImagesSync } = await import("../utils/filteredImages");
         
         // Mock getFilteredAndSortedImagesSync to return filtered list
@@ -700,20 +697,23 @@ describe("categories UI and management", () => {
           { path: "/image2.jpg" },
         ]);
 
-        // Call the actual showNextImage function
-        showNextImage();
+        // Get the real implementation and set it as the mock implementation
+        const { showNextImage: realShowNextImage } = await vi.importActual<typeof import("./modal")>("./modal");
+        const { showNextImage } = await import("./modal");
+        const originalMock = vi.mocked(showNextImage);
+        originalMock.mockImplementation(realShowNextImage);
 
-        // Should clear suppress flag and cache
-        expect(state.suppressCategoryRefilter).toBe(false);
-        expect(state.cachedImageCategoriesForRefilter).toBeNull();
-        
-        // Re-mock for other tests
-        vi.doMock("./modal", () => ({
-          openModal: vi.fn(),
-          closeModal: vi.fn(),
-          showNextImage: vi.fn(),
-          showPreviousImage: vi.fn(),
-        }));
+        try {
+          // Call showNextImage (which will call through to the real implementation)
+          showNextImage();
+
+          // Should clear suppress flag and cache
+          expect(state.suppressCategoryRefilter).toBe(false);
+          expect(state.cachedImageCategoriesForRefilter).toBeNull();
+        } finally {
+          // Restore the mock to ensure test isolation
+          originalMock.mockReset();
+        }
       });
 
       it("should NOT update grid filter immediately when assigning in modal", async () => {
@@ -1398,9 +1398,11 @@ describe("categories UI and management", () => {
 
     it("should create default hotkeys in error handler when load fails and no hotkeys exist", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      state.currentDirectory = "/test/dir";
       state.hotkeys = [];
       
-      mockInvoke.mockRejectedValueOnce(new Error("Load failed"));
+      // Error message must include "not found" to trigger file-not-found handling
+      mockInvoke.mockRejectedValueOnce(new Error("File not found"));
       mockInvoke.mockResolvedValueOnce(undefined); // Save call
 
       const { loadHitoConfig } = await import("./categories");
@@ -1415,11 +1417,13 @@ describe("categories UI and management", () => {
 
     it("should not create default hotkeys in error handler when hotkeys already exist", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      state.currentDirectory = "/test/dir";
       state.hotkeys = [
         { id: "existing", key: "X", modifiers: [], action: "custom_action" },
       ];
       
-      mockInvoke.mockRejectedValueOnce(new Error("Load failed"));
+      // Error message must include "not found" to trigger file-not-found handling
+      mockInvoke.mockRejectedValueOnce(new Error("File not found"));
 
       const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
@@ -1433,6 +1437,7 @@ describe("categories UI and management", () => {
 
   describe("toggleImageCategory edge cases", () => {
     beforeEach(() => {
+      state.currentDirectory = "/test/dir";
       state.allImagePaths = [
         { path: "/image1.jpg" },
         { path: "/image2.jpg" },

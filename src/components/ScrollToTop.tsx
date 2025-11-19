@@ -6,7 +6,7 @@ export function ScrollToTop() {
   useEffect(() => {
     const handleScroll = () => {
       // Show button when scrolled down more than 300px
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
       setIsVisible(scrollTop > 300);
     };
 
@@ -30,6 +30,7 @@ export function ScrollToTop() {
 
   return (
     <button
+      type="button"
       className="scroll-to-top"
       onClick={scrollToTop}
       aria-label="Scroll to top"

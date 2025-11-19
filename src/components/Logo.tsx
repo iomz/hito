@@ -7,9 +7,17 @@ export function Logo() {
   };
 
   return (
-    <h1 style={{ cursor: "pointer" }} onClick={handleClick}>
-      Hito
-    </h1>
+    <button 
+      onClick={handleClick}
+      style={{ 
+        background: 'none', 
+        border: 'none', 
+        padding: 0,
+        cursor: 'pointer'
+      }}
+    >
+      <h1>Hito</h1>
+    </button>
   );
 }
 

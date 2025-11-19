@@ -36,6 +36,27 @@ function getConfigFileName(): string | undefined {
 }
 
 /**
+ * Create default hotkey configurations.
+ */
+function createDefaultHotkeys(): HotkeyConfig[] {
+  const baseId = Date.now();
+  return [
+    {
+      id: `hotkey_${baseId}_0`,
+      key: "J",
+      modifiers: [],
+      action: "next_image",
+    },
+    {
+      id: `hotkey_${baseId}_1`,
+      key: "K",
+      modifiers: [],
+      action: "previous_image",
+    },
+  ];
+}
+
+/**
  * Load categories, image assignments, and hotkeys from .hito.json in the current directory.
  */
 export async function loadHitoConfig(): Promise<void> {
@@ -96,22 +117,7 @@ export async function loadHitoConfig(): Promise<void> {
       state.notify();
     } else if (!fileExists) {
       // File doesn't exist - create default hotkeys
-      const defaultHotkeys: HotkeyConfig[] = [
-        {
-          id: `hotkey_${Date.now()}_${Math.random()}`,
-          key: "J",
-          modifiers: [],
-          action: "next_image",
-        },
-        {
-          id: `hotkey_${Date.now()}_${Math.random()}`,
-          key: "K",
-          modifiers: [],
-          action: "previous_image",
-        },
-      ];
-      
-      state.hotkeys = defaultHotkeys;
+      state.hotkeys = createDefaultHotkeys();
       state.notify();
       
       // Save the default hotkeys to create the .hito.json file
@@ -123,33 +129,34 @@ export async function loadHitoConfig(): Promise<void> {
       }
     }
   } catch (error) {
-    console.error("Failed to load .hito.json:", error);
-    // If loading failed and file might not exist, try to create default hotkeys
-    // This is a fallback in case of errors
-    if (!state.hotkeys || state.hotkeys.length === 0) {
-      const defaultHotkeys: HotkeyConfig[] = [
-        {
-          id: `hotkey_${Date.now()}_${Math.random()}`,
-          key: "J",
-          modifiers: [],
-          action: "next_image",
-        },
-        {
-          id: `hotkey_${Date.now()}_${Math.random()}`,
-          key: "K",
-          modifiers: [],
-          action: "previous_image",
-        },
-      ];
-      
-      state.hotkeys = defaultHotkeys;
-      state.notify();
-      
-      try {
-        await saveHitoConfig();
-      } catch (saveError) {
-        console.error("Failed to save default hotkeys:", saveError);
+    // Check if this is a file-not-found error
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorCode = (error as { code?: string })?.code;
+    const isFileNotFound = 
+      errorCode === 'ENOENT' ||
+      errorMessage.toLowerCase().includes('no such file') ||
+      errorMessage.toLowerCase().includes('not found');
+    
+    if (isFileNotFound) {
+      // File doesn't exist - create default hotkeys
+      console.log("[loadHitoConfig] Config file not found, creating default hotkeys");
+      if (!state.hotkeys || state.hotkeys.length === 0) {
+        state.hotkeys = createDefaultHotkeys();
+        state.notify();
+        
+        // Save the default hotkeys to create the .hito.json file
+        try {
+          await saveHitoConfig();
+          console.log("[loadHitoConfig] Default hotkeys saved successfully");
+        } catch (saveError) {
+          console.error("[loadHitoConfig] Failed to save default hotkeys:", saveError);
+          // Don't rethrow - we've already set the defaults in state
+        }
       }
+    } else {
+      // Other errors (permission, parse, network, etc.) - log and rethrow
+      console.error("[loadHitoConfig] Failed to load .hito.json:", error);
+      throw error;
     }
   }
 }
@@ -261,7 +268,21 @@ function imageMatchesCategoryFilter(imagePath: string, filterCategoryId: string 
  * Get the filtered list of images based on current filter options.
  */
 function getFilteredImages(): string[] {
-  let images = Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : [];
+  const rawImages = Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : [];
+  
+  // Normalize images to a consistent shape: detect type and convert strings to objects
+  // Normalize: convert strings to objects with path property, or use objects as-is
+  let images: Array<{ path: string }> = rawImages.map((item) => {
+    if (typeof item === "string") {
+      return { path: item };
+    } else if (typeof item === "object" && item !== null && "path" in item) {
+      return { path: item.path };
+    } else {
+      // Fallback: try to coerce to string or use empty string
+      return { path: String(item) };
+    }
+  });
+  
   const filters = state.filterOptions;
 
   // Apply category filter

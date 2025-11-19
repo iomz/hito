@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
+use chrono;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -61,7 +62,7 @@ fn get_parent_directory(file_path: String) -> Result<String, String> {
 ///
 /// Scans the provided directory for subdirectories and image files. Returns directories first,
 /// then images. Image files must have common image extensions (`jpg`, `jpeg`, `png`, `gif`,
-/// `bmp`, `webp`, `svg`, `ico`) and be at least 15 KB in size. Results are sorted by path.
+/// `bmp`, `webp`, `svg`, `ico`). Results are sorted by path.
 ///
 /// # Returns
 ///
