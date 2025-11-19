@@ -137,7 +137,7 @@ export function ShortcutsOverlay() {
               {activeHotkeys.length > 0 ? (
                 <div className="shortcuts-section">
                   <h3 className="shortcuts-heading">Custom Hotkeys</h3>
-                  {activeHotkeys.map((hotkey, index) => {
+                  {activeHotkeys.map((hotkey) => {
                     // Format hotkey display
                     const keyParts = [...hotkey.modifiers, hotkey.key];
                     const keyDisplay = keyParts.join(" + ");
@@ -172,7 +172,7 @@ export function ShortcutsOverlay() {
                     }
                     
                     return (
-                      <div key={index} className="shortcut-item">
+                      <div key={hotkey.id} className="shortcut-item">
                         <span className="shortcut-key">{keyDisplay}</span>
                         <span className="shortcut-desc">{actionDesc}</span>
                       </div>

@@ -39,11 +39,22 @@ function App() {
     setupDocumentDragHandlers();
     setupKeyboardHandlers();
     
-    // Setup Tauri drag events
+    // Setup Tauri drag events and store cleanup function
+    let cleanupTauriDragEvents: (() => void) | undefined;
     setupTauriDragEvents()
+      .then((cleanup) => {
+        cleanupTauriDragEvents = cleanup;
+      })
       .catch((error) => {
         console.error('[App] Failed to setup Tauri drag events:', error);
       });
+    
+    // Return cleanup function that will be called on unmount
+    return () => {
+      if (cleanupTauriDragEvents) {
+        cleanupTauriDragEvents();
+      }
+    };
   }, []);
 
   const handleH1Click = () => {

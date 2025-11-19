@@ -594,6 +594,91 @@ describe("categories UI and management", () => {
       expect(state.imageCategories.has("/img2.jpg")).toBe(false);
       expect(state.imageCategories.get("/img3.jpg")).toEqual(["cat2"]);
     });
+
+    it("should clean up hotkeys that reference the deleted category", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ];
+      state.hotkeys = [
+        { id: "hotkey1", key: "K", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+        { id: "hotkey2", key: "L", modifiers: ["Ctrl"], action: "toggle_category_next_cat1" },
+        { id: "hotkey3", key: "M", modifiers: ["Ctrl"], action: "assign_category_cat1" },
+        { id: "hotkey4", key: "N", modifiers: ["Ctrl"], action: "assign_category_cat1_image" },
+        { id: "hotkey5", key: "O", modifiers: ["Ctrl"], action: "toggle_category_cat2" },
+        { id: "hotkey6", key: "P", modifiers: ["Ctrl"], action: "" },
+      ];
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { confirm } = await import("../utils/dialog");
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      const { deleteCategory } = await import("./categories");
+      await deleteCategory("cat1");
+
+      // Hotkeys referencing cat1 should have their actions cleared
+      expect(state.hotkeys[0].action).toBe("");
+      expect(state.hotkeys[1].action).toBe("");
+      expect(state.hotkeys[2].action).toBe("");
+      expect(state.hotkeys[3].action).toBe("");
+      // Hotkey referencing cat2 should remain unchanged
+      expect(state.hotkeys[4].action).toBe("toggle_category_cat2");
+      // Hotkey with no action should remain unchanged
+      expect(state.hotkeys[5].action).toBe("");
+    });
+
+    it("should return early if user cancels deletion", async () => {
+      state.categories = [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+      ];
+      mockInvoke.mockClear();
+
+      const { confirm } = await import("../utils/dialog");
+      vi.mocked(confirm).mockResolvedValue(false);
+
+      const { deleteCategory } = await import("./categories");
+      await deleteCategory("cat1");
+
+      // Category should not be removed
+      expect(state.categories).toHaveLength(1);
+      expect(mockInvoke).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setupCategories", () => {
+    beforeEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    it("should set up onclick handler for add category button when element exists", async () => {
+      const addCategoryBtn = document.createElement('button');
+      addCategoryBtn.id = 'add-category-btn';
+      document.body.appendChild(addCategoryBtn);
+
+      const { setupCategories } = await import("./categories");
+      await setupCategories();
+
+      expect(addCategoryBtn.onclick).toBeDefined();
+      
+      // Trigger the click handler
+      if (addCategoryBtn.onclick) {
+        (addCategoryBtn.onclick as () => void)();
+      }
+
+      expect(state.categoryDialogVisible).toBe(true);
+    });
+
+    it("should handle missing add category button gracefully", async () => {
+      // No element in DOM
+      const { setupCategories } = await import("./categories");
+      
+      // Should not throw
+      await expect(setupCategories()).resolves.not.toThrow();
+    });
   });
 
   describe("loadHitoConfig hotkey handling", () => {

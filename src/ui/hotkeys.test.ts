@@ -358,10 +358,180 @@ describe("hotkeys", () => {
     });
   });
 
+  describe("checkAndExecuteHotkey", () => {
+    beforeEach(() => {
+      state.hotkeys = [];
+    });
+
+    it("should handle errors in executeHotkeyAction gracefully", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      state.hotkeys = [
+        { id: "h1", key: "K", modifiers: ["Ctrl"], action: "unknown_action_that_will_fail" },
+      ];
+
+      const { checkAndExecuteHotkey } = await import("./hotkeys");
+      const event = new KeyboardEvent("keydown", {
+        key: "K",
+        ctrlKey: true,
+      });
+
+      const result = checkAndExecuteHotkey(event);
+
+      expect(result).toBe(true);
+      // Wait for async error handling - executeHotkeyAction will warn for unknown action
+      // but the error catch is for actual errors, so this tests the error path exists
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      // The function should complete without throwing
+      consoleSpy.mockRestore();
+    });
+
+    it("should return false when no matching hotkey found", async () => {
+      const { checkAndExecuteHotkey } = await import("./hotkeys");
+      const event = new KeyboardEvent("keydown", {
+        key: "X",
+        ctrlKey: true,
+      });
+
+      const result = checkAndExecuteHotkey(event);
+
+      expect(result).toBe(false);
+    });
+  });
+
   describe("setupHotkeySidebar", () => {
-    it("should handle missing elements gracefully", async () => {
+    beforeEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    it("should set up onclick handlers when all elements exist", async () => {
+      const sidebarToggle = document.createElement("button");
+      sidebarToggle.id = "hotkey-sidebar-toggle";
+      const sidebarClose = document.createElement("button");
+      sidebarClose.id = "hotkey-sidebar-close";
+      const addHotkeyBtn = document.createElement("button");
+      addHotkeyBtn.id = "add-hotkey-btn";
+      const sidebar = document.createElement("div");
+      sidebar.id = "hotkeys-panel";
+
+      document.body.appendChild(sidebarToggle);
+      document.body.appendChild(sidebarClose);
+      document.body.appendChild(addHotkeyBtn);
+      document.body.appendChild(sidebar);
+
+      const { setupHotkeySidebar, toggleHotkeySidebar, closeHotkeySidebar, showHotkeyDialog } = await import("./hotkeys");
+      setupHotkeySidebar();
+
+      expect(sidebarToggle.onclick).toBeDefined();
+      expect(sidebarClose.onclick).toBeDefined();
+      expect(addHotkeyBtn.onclick).toBeDefined();
+      expect(sidebar.onclick).toBeDefined();
+
+      // Test toggle button
+      state.isHotkeySidebarOpen = false;
+      if (sidebarToggle.onclick) {
+        (sidebarToggle.onclick as () => void)();
+      }
+      expect(state.isHotkeySidebarOpen).toBe(true);
+
+      // Test close button
+      if (sidebarClose.onclick) {
+        (sidebarClose.onclick as () => void)();
+      }
+      expect(state.isHotkeySidebarOpen).toBe(false);
+
+      // Test add hotkey button
+      if (addHotkeyBtn.onclick) {
+        (addHotkeyBtn.onclick as () => void)();
+      }
+      expect(state.hotkeyDialogVisible).toBe(true);
+
+      // Test sidebar click outside
+      state.isHotkeySidebarOpen = true;
+      const clickEvent = new MouseEvent("click", { bubbles: true });
+      Object.defineProperty(clickEvent, "target", { value: sidebar, writable: false });
+      if (sidebar.onclick) {
+        (sidebar.onclick as (e: MouseEvent) => void)(clickEvent);
+      }
+      expect(state.isHotkeySidebarOpen).toBe(false);
+    });
+
+    it("should handle missing sidebar toggle button", async () => {
+      const sidebarClose = document.createElement("button");
+      sidebarClose.id = "hotkey-sidebar-close";
+      const addHotkeyBtn = document.createElement("button");
+      addHotkeyBtn.id = "add-hotkey-btn";
+
+      document.body.appendChild(sidebarClose);
+      document.body.appendChild(addHotkeyBtn);
+
       const { setupHotkeySidebar } = await import("./hotkeys");
       expect(() => setupHotkeySidebar()).not.toThrow();
+    });
+
+    it("should handle missing sidebar close button", async () => {
+      const sidebarToggle = document.createElement("button");
+      sidebarToggle.id = "hotkey-sidebar-toggle";
+      const addHotkeyBtn = document.createElement("button");
+      addHotkeyBtn.id = "add-hotkey-btn";
+
+      document.body.appendChild(sidebarToggle);
+      document.body.appendChild(addHotkeyBtn);
+
+      const { setupHotkeySidebar } = await import("./hotkeys");
+      expect(() => setupHotkeySidebar()).not.toThrow();
+    });
+
+    it("should handle missing add hotkey button", async () => {
+      const sidebarToggle = document.createElement("button");
+      sidebarToggle.id = "hotkey-sidebar-toggle";
+      const sidebarClose = document.createElement("button");
+      sidebarClose.id = "hotkey-sidebar-close";
+
+      document.body.appendChild(sidebarToggle);
+      document.body.appendChild(sidebarClose);
+
+      const { setupHotkeySidebar } = await import("./hotkeys");
+      expect(() => setupHotkeySidebar()).not.toThrow();
+    });
+
+    it("should handle missing sidebar element gracefully", async () => {
+      const sidebarToggle = document.createElement("button");
+      sidebarToggle.id = "hotkey-sidebar-toggle";
+      const sidebarClose = document.createElement("button");
+      sidebarClose.id = "hotkey-sidebar-close";
+      const addHotkeyBtn = document.createElement("button");
+      addHotkeyBtn.id = "add-hotkey-btn";
+
+      document.body.appendChild(sidebarToggle);
+      document.body.appendChild(sidebarClose);
+      document.body.appendChild(addHotkeyBtn);
+
+      const { setupHotkeySidebar } = await import("./hotkeys");
+      expect(() => setupHotkeySidebar()).not.toThrow();
+    });
+
+    it("should handle clicking inside sidebar without closing", async () => {
+      const sidebar = document.createElement("div");
+      sidebar.id = "hotkeys-panel";
+      const innerButton = document.createElement("button");
+      sidebar.appendChild(innerButton);
+      document.body.appendChild(sidebar);
+
+      const { setupHotkeySidebar } = await import("./hotkeys");
+      setupHotkeySidebar();
+
+      state.isHotkeySidebarOpen = true;
+      const clickEvent = new MouseEvent("click", { bubbles: true });
+      Object.defineProperty(clickEvent, "target", { value: innerButton, writable: false });
+      if (sidebar.onclick) {
+        (sidebar.onclick as (e: MouseEvent) => void)(clickEvent);
+      }
+      // Sidebar should remain open when clicking inside
+      expect(state.isHotkeySidebarOpen).toBe(true);
     });
   });
 

@@ -3,7 +3,6 @@ import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
 import { showNotification } from "../ui/notification";
 import { showError, clearError } from "../ui/error";
-import { hideSpinner } from "../ui/spinner";
 import { loadHitoConfig } from "../ui/categories";
 import { ensureImagePathsArray } from "../utils/state";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
@@ -81,7 +80,10 @@ export async function browseImages(path: string): Promise<void> {
     }
     
     // Set currentIndex FIRST, then update arrays
-    // This ensures ImageGrid sees the correct index when it mounts
+    // This ensures ImageGrid sees the correct index when it mounts.
+    // NOTE: currentIndex represents the exclusive end of the loaded range (i.e., the count
+    // of loaded images), not a position/index. When images.length > 0, it's set to firstBatchEnd
+    // to indicate the first batch of images should be loaded. When 0, it means no images are loaded.
     const firstBatchEnd = Math.min(BATCH_SIZE, images.length);
     state.currentIndex = images.length > 0 ? firstBatchEnd : 0;
     
@@ -100,7 +102,6 @@ export async function browseImages(path: string): Promise<void> {
     console.error('[browseImages] ERROR:', error);
     state.isLoading = false;
     state.notify();
-    hideSpinner();
     showError(`Error: ${error}`);
   }
 }

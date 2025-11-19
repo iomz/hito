@@ -76,6 +76,7 @@ export async function loadHitoConfig(): Promise<void> {
         modifiers: Array.isArray(h.modifiers) ? h.modifiers : [],
         action: h.action || "",
       }));
+      state.notify();
     }
   } catch (error) {
     console.error("Failed to load .hito.json:", error);

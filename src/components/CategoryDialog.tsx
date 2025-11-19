@@ -186,6 +186,7 @@ export function CategoryDialog() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.stopPropagation();
         handleCancel();
       }
     };

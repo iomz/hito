@@ -1,5 +1,5 @@
 import { state } from "../state";
-import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage, hideShortcutsOverlay } from "../ui/modal";
+import { closeModal, showPreviousImage, showNextImage, toggleShortcutsOverlay, deleteCurrentImage } from "../ui/modal";
 import { checkAndExecuteHotkey } from "../ui/hotkeys";
 
 /**
@@ -86,13 +86,6 @@ export function setupKeyboardHandlers(): void {
     const modal = document.querySelector("#image-modal") as HTMLElement | null;
     if (modal && event.target === modal) {
       closeModal();
-    }
-    // Check if click is on shortcuts overlay backdrop
-    if (state.shortcutsOverlayVisible) {
-      const shortcutsOverlay = document.querySelector("#keyboard-shortcuts-overlay") as HTMLElement | null;
-      if (shortcutsOverlay && event.target === shortcutsOverlay) {
-        hideShortcutsOverlay();
-      }
     }
   };
   

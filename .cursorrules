@@ -37,3 +37,15 @@ Closes #123
 - Always let the user review changes first before committing
 - Only commit when explicitly requested by the user
 - When committing, use the Conventional Changelog format described above
+
+## Package Management
+
+- **Use `pnpm`** for all package management operations (install, add, remove, etc.)
+- Do not use `npm` or `yarn` commands
+- When suggesting commands, prefer `pnpm` over other package managers
+
+## Code Style
+
+- **Use soft tabs (spaces)** for indentation, never hard tabs
+- Follow existing indentation style in the codebase (typically 2 spaces for TypeScript/React files)
+- Maintain consistent indentation throughout the project

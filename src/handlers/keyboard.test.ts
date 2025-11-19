@@ -319,27 +319,6 @@ describe("keyboard handlers", () => {
       expect(closeModal).toHaveBeenCalled();
     });
 
-    it("should hide shortcuts overlay when clicking on overlay", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard");
-
-      setupKeyboardHandlers();
-
-      // Set overlay as visible (state-based check)
-      state.shortcutsOverlayVisible = true;
-
-      const shortcutsOverlay = document.getElementById("keyboard-shortcuts-overlay");
-      if (shortcutsOverlay) {
-        const clickEvent = new MouseEvent("click", { bubbles: true });
-        Object.defineProperty(clickEvent, "target", {
-          value: shortcutsOverlay,
-          enumerable: true,
-        });
-        window.dispatchEvent(clickEvent);
-      }
-
-      expect(state.shortcutsOverlayVisible).toBe(false);
-    });
-
     it("should not close modal when clicking inside modal content", async () => {
       const { setupKeyboardHandlers } = await import("./keyboard");
       const { closeModal } = await import("../ui/modal");
