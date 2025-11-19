@@ -239,26 +239,6 @@ export function generateCategoryColor(): string {
 
 
 /**
- * Get a contrasting text color (black or white) based on background color brightness.
- */
-function getContrastColor(hexColor: string): string {
-  // Remove # if present
-  const hex = hexColor.replace("#", "");
-
-  // Convert to RGB
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-
-  // Calculate luminance
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-  // Return black for light colors, white for dark colors
-  return luminance > 0.5 ? "#000000" : "#ffffff";
-}
-
-
-/**
  * Check if an image matches the current category filter.
  */
 function imageMatchesCategoryFilter(imagePath: string, filterCategoryId: string | "uncategorized" | ""): boolean {

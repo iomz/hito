@@ -278,6 +278,21 @@ describe("browse", () => {
       expect(showNotification).toHaveBeenCalledWith(
         "No images or directories found in this directory."
       );
+      // Should set currentIndexAtom to 0 when images.length === 0 (line 101)
+      expect(store.get(currentIndexAtom)).toBe(0);
+    });
+
+    it("should set currentIndexAtom to 0 when images array is empty (branch: images.length === 0)", async () => {
+      vi.mocked(invokeTauri).mockResolvedValueOnce({
+        directories: ["/test/subdir"],
+        images: [], // Empty images array
+      });
+
+      await browseImages("/test/path");
+
+      // When images.length === 0, currentIndexAtom should be set to 0 (line 101)
+      expect(store.get(currentIndexAtom)).toBe(0);
+      expect(store.get(allDirectoryPathsAtom)).toEqual(["/test/subdir"]);
     });
   });
 });

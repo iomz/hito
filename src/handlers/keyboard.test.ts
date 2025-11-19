@@ -489,7 +489,7 @@ describe("keyboard handlers", () => {
       document.body.removeChild(input);
     });
 
-    it("should skip hotkey handling when typing in TEXTAREA element", async () => {
+    it("should skip hotkey handling when typing in TEXTAREA element (tagName check)", async () => {
       const { setupKeyboardHandlers } = await import("./keyboard");
       const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
 
@@ -573,6 +573,36 @@ describe("keyboard handlers", () => {
       expect(checkAndExecuteHotkey).not.toHaveBeenCalled();
 
       document.body.removeChild(editable);
+    });
+
+    it("should skip hotkey handling when typing in INPUT element using nodeName (branch: nodeName check)", async () => {
+      const { setupKeyboardHandlers } = await import("./keyboard");
+      const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
+
+      vi.mocked(checkAndExecuteHotkey).mockReturnValue(false);
+      vi.mocked(checkAndExecuteHotkey).mockClear();
+
+      setupKeyboardHandlers();
+
+      // Create an input element and set nodeName (but not tagName) to test nodeName branch
+      const input = document.createElement("input");
+      input.type = "text";
+      // Remove tagName to force nodeName check (line 34)
+      Object.defineProperty(input, "tagName", { value: undefined, writable: true });
+      // Ensure nodeName is set
+      expect(input.nodeName).toBe("INPUT");
+
+      document.body.appendChild(input);
+      input.focus();
+
+      const event = new KeyboardEvent("keydown", { key: "j", bubbles: true });
+      // Dispatch on input so target is the input element
+      input.dispatchEvent(event);
+
+      // Should not execute hotkey when typing in input (nodeName branch, line 34)
+      expect(checkAndExecuteHotkey).not.toHaveBeenCalled();
+
+      document.body.removeChild(input);
     });
 
     it("should still check hotkeys when typing in regular elements", async () => {

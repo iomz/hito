@@ -182,6 +182,38 @@ describe("hotkeys", () => {
       expect(toggleCategoryForCurrentImage).toHaveBeenCalledWith("cat1");
     });
 
+    it("should handle errors in executeHotkeyAction gracefully (branch: catch error)", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { checkAndExecuteHotkey } = await import("./hotkeys");
+      const { toggleCategoryForCurrentImage } = await import("./categories");
+
+      // Make toggleCategoryForCurrentImage throw an error
+      vi.mocked(toggleCategoryForCurrentImage).mockRejectedValueOnce(new Error("Test error"));
+
+      store.set(hotkeysAtom, [
+        {
+          id: "hotkey1",
+          key: "K",
+          modifiers: ["Ctrl"],
+          action: "toggle_category_cat1",
+        },
+      ]);
+
+      const event = new KeyboardEvent("keydown", {
+        key: "k",
+        ctrlKey: true,
+        metaKey: false,
+      });
+
+      const result = checkAndExecuteHotkey(event);
+
+      expect(result).toBe(true);
+      // Wait for async error handling (line 287)
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(consoleSpy).toHaveBeenCalledWith("Failed to execute hotkey action:", expect.any(Error));
+      consoleSpy.mockRestore();
+    });
+
     it("should match and execute hotkey with Cmd modifier on Mac", async () => {
       // Use a hotkey with Cmd modifier for Mac
       store.set(hotkeysAtom, [
@@ -586,6 +618,22 @@ describe("hotkeys", () => {
       // Hotkey should be removed
       expect(store.get(hotkeysAtom)).toHaveLength(1);
       expect(store.get(hotkeysAtom)[0].id).toBe("h2");
+    });
+
+    it("should return early when user cancels deletion (branch: !userConfirmed)", async () => {
+      const { confirm } = await import("../utils/dialog");
+      vi.mocked(confirm).mockResolvedValueOnce(false); // User cancels
+
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "A", modifiers: ["Ctrl"], action: "toggle_category_cat1" },
+      ]);
+
+      const { deleteHotkey } = await import("./hotkeys");
+      await deleteHotkey("h1");
+
+      // Hotkey should NOT be removed when user cancels (lines 187-188)
+      expect(store.get(hotkeysAtom)).toHaveLength(1);
+      expect(store.get(hotkeysAtom)[0].id).toBe("h1");
     });
   });
 
