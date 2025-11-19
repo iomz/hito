@@ -1,5 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import {
+  allImagePathsAtom,
+  imageCategoriesAtom,
+  categoriesAtom,
+  sortOptionAtom,
+  sortDirectionAtom,
+  filterOptionsAtom,
+  suppressCategoryRefilterAtom,
+  cachedImageCategoriesForRefilterAtom,
+  resetStateAtom,
+} from "../state";
 import { getFilteredAndSortedImages, getFilteredAndSortedImagesSync } from "./filteredImages";
 import type { ImagePath, CategoryAssignment } from "../types";
 
@@ -12,34 +23,35 @@ vi.mock("./tauri", () => ({
 describe("filteredImages", () => {
   beforeEach(() => {
     // Reset state
-    state.allImagePaths = [];
-    state.imageCategories.clear();
-    state.categories = [];
-    state.sortOption = "name";
-    state.sortDirection = "ascending";
-    state.filterOptions = {
+    store.set(resetStateAtom);
+    store.set(allImagePathsAtom, []);
+    store.set(imageCategoriesAtom, new Map());
+    store.set(categoriesAtom, []);
+    store.set(sortOptionAtom, "name");
+    store.set(sortDirectionAtom, "ascending");
+    store.set(filterOptionsAtom, {
       categoryId: "",
       namePattern: "",
       nameOperator: "contains",
       sizeOperator: "largerThan",
       sizeValue: "",
       sizeValue2: "",
-    };
-    state.suppressCategoryRefilter = false;
-    state.cachedImageCategoriesForRefilter = null;
+    });
+    store.set(suppressCategoryRefilterAtom, false);
+    store.set(cachedImageCategoriesForRefilterAtom, null);
     vi.clearAllMocks();
   });
 
   describe("getFilteredAndSortedImagesSync", () => {
     describe("empty arrays", () => {
       it("should return empty array when allImagePaths is empty", () => {
-        state.allImagePaths = [];
+        store.set(allImagePathsAtom, []);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toEqual([]);
       });
 
       it("should return empty array when allImagePaths is not an array", () => {
-        (state as any).allImagePaths = null;
+        store.set(allImagePathsAtom, null as any);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toEqual([]);
       });
@@ -47,16 +59,16 @@ describe("filteredImages", () => {
 
     describe("sorting", () => {
       beforeEach(() => {
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/zebra.jpg", size: 5000, created_at: "2023-01-03T00:00:00Z" },
           { path: "/test/apple.png", size: 10000, created_at: "2023-01-01T00:00:00Z" },
           { path: "/test/banana.gif", size: 2000, created_at: "2023-01-02T00:00:00Z" },
-        ];
+        ]);
       });
 
       it("should sort by name ascending", () => {
-        state.sortOption = "name";
-        state.sortDirection = "ascending";
+        store.set(sortOptionAtom, "name");
+        store.set(sortDirectionAtom, "ascending");
         const result = getFilteredAndSortedImagesSync();
         expect(result.map((img) => img.path)).toEqual([
           "/test/apple.png",
@@ -66,8 +78,8 @@ describe("filteredImages", () => {
       });
 
       it("should sort by name descending", () => {
-        state.sortOption = "name";
-        state.sortDirection = "descending";
+        store.set(sortOptionAtom, "name");
+        store.set(sortDirectionAtom, "descending");
         const result = getFilteredAndSortedImagesSync();
         expect(result.map((img) => img.path)).toEqual([
           "/test/zebra.jpg",
@@ -77,8 +89,8 @@ describe("filteredImages", () => {
       });
 
       it("should sort by size ascending", () => {
-        state.sortOption = "size";
-        state.sortDirection = "ascending";
+        store.set(sortOptionAtom, "size");
+        store.set(sortDirectionAtom, "ascending");
         const result = getFilteredAndSortedImagesSync();
         expect(result.map((img) => img.path)).toEqual([
           "/test/banana.gif",
@@ -88,8 +100,8 @@ describe("filteredImages", () => {
       });
 
       it("should sort by size descending", () => {
-        state.sortOption = "size";
-        state.sortDirection = "descending";
+        store.set(sortOptionAtom, "size");
+        store.set(sortDirectionAtom, "descending");
         const result = getFilteredAndSortedImagesSync();
         expect(result.map((img) => img.path)).toEqual([
           "/test/apple.png",
@@ -99,8 +111,8 @@ describe("filteredImages", () => {
       });
 
       it("should sort by dateCreated ascending", () => {
-        state.sortOption = "dateCreated";
-        state.sortDirection = "ascending";
+        store.set(sortOptionAtom, "dateCreated");
+        store.set(sortDirectionAtom, "ascending");
         const result = getFilteredAndSortedImagesSync();
         expect(result.map((img) => img.path)).toEqual([
           "/test/apple.png",
@@ -110,8 +122,8 @@ describe("filteredImages", () => {
       });
 
       it("should sort by dateCreated descending", () => {
-        state.sortOption = "dateCreated";
-        state.sortDirection = "descending";
+        store.set(sortOptionAtom, "dateCreated");
+        store.set(sortDirectionAtom, "descending");
         const result = getFilteredAndSortedImagesSync();
         expect(result.map((img) => img.path)).toEqual([
           "/test/zebra.jpg",
@@ -121,14 +133,17 @@ describe("filteredImages", () => {
       });
 
       it("should sort by lastCategorized ascending", () => {
-        state.sortOption = "lastCategorized";
-        state.sortDirection = "ascending";
+        store.set(sortOptionAtom, "lastCategorized");
+        store.set(sortDirectionAtom, "ascending");
         const now = new Date().toISOString();
         const later = new Date(Date.now() + 1000).toISOString();
         const assignments1: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: now }];
         const assignments2: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: later }];
-        state.imageCategories.set("/test/apple.png", assignments1);
-        state.imageCategories.set("/test/zebra.jpg", assignments2);
+        const imageCategories = store.get(imageCategoriesAtom);
+        const updatedImageCategories = new Map(imageCategories);
+        updatedImageCategories.set("/test/apple.png", assignments1);
+        updatedImageCategories.set("/test/zebra.jpg", assignments2);
+        store.set(imageCategoriesAtom, updatedImageCategories);
         // banana.gif has no categories, so it should be first (timestamp 0)
 
         const result = getFilteredAndSortedImagesSync();
@@ -138,14 +153,17 @@ describe("filteredImages", () => {
       });
 
       it("should sort by lastCategorized descending", () => {
-        state.sortOption = "lastCategorized";
-        state.sortDirection = "descending";
+        store.set(sortOptionAtom, "lastCategorized");
+        store.set(sortDirectionAtom, "descending");
         const now = new Date().toISOString();
         const later = new Date(Date.now() + 1000).toISOString();
         const assignments1: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: now }];
         const assignments2: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: later }];
-        state.imageCategories.set("/test/apple.png", assignments1);
-        state.imageCategories.set("/test/zebra.jpg", assignments2);
+        const imageCategories = store.get(imageCategoriesAtom);
+        const updatedImageCategories = new Map(imageCategories);
+        updatedImageCategories.set("/test/apple.png", assignments1);
+        updatedImageCategories.set("/test/zebra.jpg", assignments2);
+        store.set(imageCategoriesAtom, updatedImageCategories);
 
         const result = getFilteredAndSortedImagesSync();
         expect(result[0].path).toBe("/test/zebra.jpg");
@@ -154,16 +172,19 @@ describe("filteredImages", () => {
       });
 
       it("should use cached imageCategories when suppressCategoryRefilter is true", () => {
-        state.sortOption = "lastCategorized";
-        state.sortDirection = "ascending";
+        store.set(sortOptionAtom, "lastCategorized");
+        store.set(sortDirectionAtom, "ascending");
         const now = new Date().toISOString();
         const later = new Date(Date.now() + 1000).toISOString();
         
         // Set up state categories
         const assignments1: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: now }];
         const assignments2: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: later }];
-        state.imageCategories.set("/test/apple.png", assignments1);
-        state.imageCategories.set("/test/zebra.jpg", assignments2);
+        const imageCategories = store.get(imageCategoriesAtom);
+        const updatedImageCategories = new Map(imageCategories);
+        updatedImageCategories.set("/test/apple.png", assignments1);
+        updatedImageCategories.set("/test/zebra.jpg", assignments2);
+        store.set(imageCategoriesAtom, updatedImageCategories);
 
         // Create cached snapshot with different order
         const cachedCategories = new Map<string, CategoryAssignment[]>();
@@ -171,8 +192,9 @@ describe("filteredImages", () => {
         const cachedAssignments2: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: now }];
         cachedCategories.set("/test/apple.png", cachedAssignments1);
         cachedCategories.set("/test/zebra.jpg", cachedAssignments2);
-        state.cachedImageCategoriesForRefilter = cachedCategories;
-        state.suppressCategoryRefilter = true;
+        store.set(cachedImageCategoriesForRefilterAtom, cachedCategories);
+        store.set(suppressCategoryRefilterAtom, true);
+        store.set(imageCategoriesAtom, updatedImageCategories);
 
         const result = getFilteredAndSortedImagesSync();
         // Should use cached order (apple has later timestamp in cache)
@@ -184,23 +206,27 @@ describe("filteredImages", () => {
 
     describe("category filtering", () => {
       beforeEach(() => {
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/image1.jpg" },
           { path: "/test/image2.jpg" },
           { path: "/test/image3.jpg" },
-        ];
-        state.categories = [
+        ]);
+        store.set(categoriesAtom, [
           { id: "cat1", name: "Category 1", color: "#ff0000" },
           { id: "cat2", name: "Category 2", color: "#00ff00" },
-        ];
+        ]);
       });
 
       it("should filter by category", () => {
         const assignments1: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: new Date().toISOString() }];
         const assignments2: CategoryAssignment[] = [{ category_id: "cat2", assigned_at: new Date().toISOString() }];
-        state.imageCategories.set("/test/image1.jpg", assignments1);
-        state.imageCategories.set("/test/image2.jpg", assignments2);
-        state.filterOptions.categoryId = "cat1";
+        const imageCategories = store.get(imageCategoriesAtom);
+        const updatedImageCategories = new Map(imageCategories);
+        updatedImageCategories.set("/test/image1.jpg", assignments1);
+        updatedImageCategories.set("/test/image2.jpg", assignments2);
+        store.set(imageCategoriesAtom, updatedImageCategories);
+        const filterOptions = store.get(filterOptionsAtom);
+        store.set(filterOptionsAtom, { ...filterOptions, categoryId: "cat1" });
 
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
@@ -209,9 +235,13 @@ describe("filteredImages", () => {
 
       it("should filter uncategorized images", () => {
         const assignments1: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: new Date().toISOString() }];
-        state.imageCategories.set("/test/image1.jpg", assignments1);
+        const imageCategories = store.get(imageCategoriesAtom);
+        const updatedImageCategories = new Map(imageCategories);
+        updatedImageCategories.set("/test/image1.jpg", assignments1);
+        store.set(imageCategoriesAtom, updatedImageCategories);
         // image2 and image3 have no categories
-        state.filterOptions.categoryId = "uncategorized";
+        const filterOptions = store.get(filterOptionsAtom);
+        store.set(filterOptionsAtom, { ...filterOptions, categoryId: "uncategorized" });
 
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(2);
@@ -220,15 +250,20 @@ describe("filteredImages", () => {
 
       it("should use cached imageCategories when suppressCategoryRefilter is true", () => {
         const assignments1: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: new Date().toISOString() }];
-        state.imageCategories.set("/test/image1.jpg", assignments1);
+        const imageCategories = store.get(imageCategoriesAtom);
+        const updatedImageCategories = new Map(imageCategories);
+        updatedImageCategories.set("/test/image1.jpg", assignments1);
+        store.set(imageCategoriesAtom, updatedImageCategories);
         
         // Create cached snapshot
         const cachedCategories = new Map<string, CategoryAssignment[]>();
         const cachedAssignments2: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: new Date().toISOString() }];
         cachedCategories.set("/test/image2.jpg", cachedAssignments2);
-        state.cachedImageCategoriesForRefilter = cachedCategories;
-        state.suppressCategoryRefilter = true;
-        state.filterOptions.categoryId = "cat1";
+        store.set(cachedImageCategoriesForRefilterAtom, cachedCategories);
+        store.set(suppressCategoryRefilterAtom, true);
+        store.set(imageCategoriesAtom, updatedImageCategories);
+        const filterOptions = store.get(filterOptionsAtom);
+        store.set(filterOptionsAtom, { ...filterOptions, categoryId: "cat1" });
 
         const result = getFilteredAndSortedImagesSync();
         // Should use cached snapshot (image2 has category in cache, not in state)
@@ -239,48 +274,53 @@ describe("filteredImages", () => {
 
     describe("name filtering", () => {
       beforeEach(() => {
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/apple.jpg" },
           { path: "/test/banana.png" },
           { path: "/test/cherry.gif" },
-        ];
+        ]);
       });
 
       it("should filter by name contains", () => {
-        state.filterOptions.namePattern = "e";
-        state.filterOptions.nameOperator = "contains";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, namePattern: "e", nameOperator: "contains" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(2);
         expect(result.map((img) => img.path)).toEqual(["/test/apple.jpg", "/test/cherry.gif"]);
       });
 
       it("should filter by name startsWith", () => {
-        state.filterOptions.namePattern = "ba";
-        state.filterOptions.nameOperator = "startsWith";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, namePattern: "ba", nameOperator: "startsWith" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/banana.png");
       });
 
       it("should filter by name endsWith", () => {
-        state.filterOptions.namePattern = ".gif";
-        state.filterOptions.nameOperator = "endsWith";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, namePattern: ".gif", nameOperator: "endsWith" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/cherry.gif");
       });
 
       it("should filter by name exact", () => {
-        state.filterOptions.namePattern = "banana.png";
-        state.filterOptions.nameOperator = "exact";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, namePattern: "banana.png", nameOperator: "exact" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/banana.png");
       });
 
       it("should be case-insensitive", () => {
-        state.filterOptions.namePattern = "APPLE";
-        state.filterOptions.nameOperator = "contains";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, namePattern: "APPLE", nameOperator: "contains" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/apple.jpg");
@@ -290,76 +330,81 @@ describe("filteredImages", () => {
     describe("size filtering", () => {
       beforeEach(() => {
         // Sizes: 2KB, 5KB, 10KB (in bytes: 2048, 5120, 10240)
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/small.jpg", size: 2 * 1024 },
           { path: "/test/medium.png", size: 5 * 1024 },
           { path: "/test/large.gif", size: 10 * 1024 },
-        ];
+        ]);
       });
 
       it("should filter by size largerThan", () => {
-        state.filterOptions.sizeValue = "5";
-        state.filterOptions.sizeOperator = "largerThan";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, sizeValue: "5", sizeOperator: "largerThan" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/large.gif");
       });
 
       it("should filter by size lessThan", () => {
-        state.filterOptions.sizeValue = "5";
-        state.filterOptions.sizeOperator = "lessThan";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, sizeValue: "5", sizeOperator: "lessThan" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/small.jpg");
       });
 
       it("should filter by size between", () => {
-        state.filterOptions.sizeValue = "3";
-        state.filterOptions.sizeValue2 = "7";
-        state.filterOptions.sizeOperator = "between";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, sizeValue: "3", sizeValue2: "7", sizeOperator: "between" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/medium.png");
       });
 
       it("should handle between with reversed values", () => {
-        state.filterOptions.sizeValue = "7";
-        state.filterOptions.sizeValue2 = "3";
-        state.filterOptions.sizeOperator = "between";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, sizeValue: "7", sizeValue2: "3", sizeOperator: "between" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/medium.png");
       });
 
       it("should not apply size filter when sizeValue is empty", () => {
-        state.filterOptions.sizeValue = "";
-        state.filterOptions.sizeOperator = "largerThan";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, sizeValue: "", sizeOperator: "largerThan" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(3);
       });
 
       it("should not apply size filter when sizeValue is invalid", () => {
-        state.filterOptions.sizeValue = "invalid";
-        state.filterOptions.sizeOperator = "largerThan";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, sizeValue: "invalid", sizeOperator: "largerThan" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(3);
       });
 
       it("should not apply between filter when sizeValue2 is invalid", () => {
-        state.filterOptions.sizeValue = "5";
-        state.filterOptions.sizeValue2 = "invalid";
-        state.filterOptions.sizeOperator = "between";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, sizeValue: "5", sizeValue2: "invalid", sizeOperator: "between" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(3);
       });
 
       it("should handle images without size", () => {
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/nosize.jpg" },
           { path: "/test/withsize.jpg", size: 5 * 1024 },
-        ];
-        state.filterOptions.sizeValue = "3";
-        state.filterOptions.sizeOperator = "largerThan";
+        ]);
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, sizeValue: "3", sizeOperator: "largerThan" };
+        store.set(filterOptionsAtom, filterOptions);
         const result = getFilteredAndSortedImagesSync();
         // Image without size has size 0, so it should be filtered out for largerThan
         expect(result).toHaveLength(1);
@@ -369,20 +414,23 @@ describe("filteredImages", () => {
 
     describe("combined filters", () => {
       beforeEach(() => {
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/apple1.jpg", size: 2 * 1024 },
           { path: "/test/apple2.png", size: 5 * 1024 },
           { path: "/test/banana.jpg", size: 10 * 1024 },
-        ];
+        ]);
       });
 
       it("should apply category and name filters together", () => {
         const assignments: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: new Date().toISOString() }];
-        state.imageCategories.set("/test/apple1.jpg", assignments);
-        state.imageCategories.set("/test/apple2.png", assignments);
-        state.filterOptions.categoryId = "cat1";
-        state.filterOptions.namePattern = "apple";
-        state.filterOptions.nameOperator = "contains";
+        const imageCategories = store.get(imageCategoriesAtom);
+        const updatedImageCategories = new Map(imageCategories);
+        updatedImageCategories.set("/test/apple1.jpg", assignments);
+        updatedImageCategories.set("/test/apple2.png", assignments);
+        store.set(imageCategoriesAtom, updatedImageCategories);
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, categoryId: "cat1", namePattern: "apple", nameOperator: "contains" };
+        store.set(filterOptionsAtom, filterOptions);
 
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(2);
@@ -390,10 +438,9 @@ describe("filteredImages", () => {
       });
 
       it("should apply name and size filters together", () => {
-        state.filterOptions.namePattern = "apple";
-        state.filterOptions.nameOperator = "contains";
-        state.filterOptions.sizeValue = "3";
-        state.filterOptions.sizeOperator = "largerThan";
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, namePattern: "apple", nameOperator: "contains", sizeValue: "3", sizeOperator: "largerThan" };
+        store.set(filterOptionsAtom, filterOptions);
 
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
@@ -402,12 +449,13 @@ describe("filteredImages", () => {
 
       it("should apply all filters together", () => {
         const assignments: CategoryAssignment[] = [{ category_id: "cat1", assigned_at: new Date().toISOString() }];
-        state.imageCategories.set("/test/apple2.png", assignments);
-        state.filterOptions.categoryId = "cat1";
-        state.filterOptions.namePattern = "apple";
-        state.filterOptions.nameOperator = "contains";
-        state.filterOptions.sizeValue = "3";
-        state.filterOptions.sizeOperator = "largerThan";
+        const imageCategories = store.get(imageCategoriesAtom);
+        const updatedImageCategories = new Map(imageCategories);
+        updatedImageCategories.set("/test/apple2.png", assignments);
+        store.set(imageCategoriesAtom, updatedImageCategories);
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, categoryId: "cat1", namePattern: "apple", nameOperator: "contains", sizeValue: "3", sizeOperator: "largerThan" };
+        store.set(filterOptionsAtom, filterOptions);
 
         const result = getFilteredAndSortedImagesSync();
         expect(result).toHaveLength(1);
@@ -434,17 +482,17 @@ describe("filteredImages", () => {
           { path: "/test/sorted2.jpg" },
         ]);
 
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/unsorted1.jpg" },
           { path: "/test/unsorted2.jpg" },
-        ];
+        ]);
 
         const result = await getFilteredAndSortedImages();
 
         expect(invokeTauri).toHaveBeenCalledWith("sort_images", expect.objectContaining({
-          images: state.allImagePaths,
-          sortOption: state.sortOption,
-          sortDirection: state.sortDirection,
+          images: store.get(allImagePathsAtom),
+          sortOption: store.get(sortOptionAtom),
+          sortDirection: store.get(sortDirectionAtom),
         }));
         expect(result).toEqual([
           { path: "/test/sorted1.jpg" },
@@ -457,12 +505,10 @@ describe("filteredImages", () => {
         vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(true);
         vi.mocked(invokeTauri).mockResolvedValueOnce([]);
 
-        state.allImagePaths = [{ path: "/test/image.jpg" }];
-        state.filterOptions.categoryId = "cat1";
-        state.filterOptions.namePattern = "test";
-        state.filterOptions.nameOperator = "contains";
-        state.filterOptions.sizeValue = "100";
-        state.filterOptions.sizeOperator = "largerThan";
+        store.set(allImagePathsAtom, [{ path: "/test/image.jpg" }]);
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, categoryId: "cat1", namePattern: "test", nameOperator: "contains", sizeValue: "100", sizeOperator: "largerThan" };
+        store.set(filterOptionsAtom, filterOptions);
 
         await getFilteredAndSortedImages();
 
@@ -483,10 +529,14 @@ describe("filteredImages", () => {
         vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(true);
         vi.mocked(invokeTauri).mockResolvedValueOnce([]);
 
-        state.allImagePaths = [{ path: "/test/image.jpg" }];
-        state.filterOptions.sizeValue = "100";
-        state.filterOptions.sizeValue2 = "200";
-        state.filterOptions.sizeOperator = "between";
+        store.set(allImagePathsAtom, [{ path: "/test/image.jpg" }]);
+        const filterOptions = store.get(filterOptionsAtom);
+        store.set(filterOptionsAtom, {
+          ...filterOptions,
+          sizeValue: "100",
+          sizeValue2: "200",
+          sizeOperator: "between",
+        });
 
         await getFilteredAndSortedImages();
 
@@ -503,12 +553,12 @@ describe("filteredImages", () => {
         vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(true);
         vi.mocked(invokeTauri).mockRejectedValueOnce(new Error("Rust error"));
 
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/zebra.jpg" },
           { path: "/test/apple.png" },
-        ];
-        state.sortOption = "name";
-        state.sortDirection = "ascending";
+        ]);
+        store.set(sortOptionAtom, "name");
+        store.set(sortDirectionAtom, "ascending");
 
         const result = await getFilteredAndSortedImages();
 
@@ -523,12 +573,12 @@ describe("filteredImages", () => {
         const { isTauriInvokeAvailable } = await import("./tauri");
         vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(false);
 
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/zebra.jpg" },
           { path: "/test/apple.png" },
-        ];
-        state.sortOption = "name";
-        state.sortDirection = "ascending";
+        ]);
+        store.set(sortOptionAtom, "name");
+        store.set(sortDirectionAtom, "ascending");
 
         const result = await getFilteredAndSortedImages();
 
@@ -539,7 +589,7 @@ describe("filteredImages", () => {
         const { isTauriInvokeAvailable } = await import("./tauri");
         vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(false);
 
-        state.allImagePaths = [];
+        store.set(allImagePathsAtom, []);
         const result = await getFilteredAndSortedImages();
         expect(result).toEqual([]);
       });
@@ -548,15 +598,14 @@ describe("filteredImages", () => {
         const { isTauriInvokeAvailable } = await import("./tauri");
         vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(false);
 
-        state.allImagePaths = [
+        store.set(allImagePathsAtom, [
           { path: "/test/apple1.jpg", size: 2 * 1024 },
           { path: "/test/apple2.png", size: 5 * 1024 },
           { path: "/test/banana.jpg", size: 10 * 1024 },
-        ];
-        state.filterOptions.namePattern = "apple";
-        state.filterOptions.nameOperator = "contains";
-        state.filterOptions.sizeValue = "3";
-        state.filterOptions.sizeOperator = "largerThan";
+        ]);
+        let filterOptions = store.get(filterOptionsAtom);
+        filterOptions = { ...filterOptions, namePattern: "apple", nameOperator: "contains", sizeValue: "3", sizeOperator: "largerThan" };
+        store.set(filterOptionsAtom, filterOptions);
 
         const result = await getFilteredAndSortedImages();
 

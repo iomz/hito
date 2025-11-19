@@ -1,4 +1,5 @@
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import { isHotkeySidebarOpenAtom, hotkeysAtom, categoriesAtom, hotkeyDialogVisibleAtom, hotkeyDialogHotkeyAtom } from "../state";
 import { createElement } from "../utils/dom";
 import type { HotkeyConfig } from "../types";
 import { saveHitoConfig } from "./categories";
@@ -16,10 +17,10 @@ export async function toggleHotkeySidebar(): Promise<void> {
   const hotkeySidebar = document.querySelector("#hotkeys-panel") as HTMLElement | null;
   if (!hotkeySidebar) return;
   
-  state.isHotkeySidebarOpen = !state.isHotkeySidebarOpen;
-  state.notify();
+  const current = store.get(isHotkeySidebarOpenAtom);
+  store.set(isHotkeySidebarOpenAtom, !current);
   
-  if (state.isHotkeySidebarOpen) {
+  if (!current) {
     hotkeySidebar.classList.add("open");
   } else {
     hotkeySidebar.classList.remove("open");
@@ -33,8 +34,7 @@ export function closeHotkeySidebar(): void {
   const hotkeySidebar = document.querySelector("#hotkeys-panel") as HTMLElement | null;
   if (!hotkeySidebar) return;
   
-  state.isHotkeySidebarOpen = false;
-  state.notify();
+  store.set(isHotkeySidebarOpenAtom, false);
   hotkeySidebar.classList.remove("open");
 }
 
@@ -55,8 +55,9 @@ export function formatHotkeyDisplay(config: HotkeyConfig): string {
  */
 export function isHotkeyDuplicate(key: string, modifiers: string[], excludeId?: string): boolean {
   const sortedModifiers = [...modifiers].sort();
+  const hotkeys = store.get(hotkeysAtom);
   
-  return state.hotkeys.some((hotkey) => {
+  return hotkeys.some((hotkey) => {
     // Skip the hotkey being edited
     if (excludeId && hotkey.id === excludeId) {
       return false;
@@ -109,10 +110,11 @@ export function populateActionDropdown(actionInput: HTMLSelectElement, existingA
   actionInput.appendChild(navigationGroup);
   
   // Add category toggle actions
-  if (state.categories.length > 0) {
+  const categories = store.get(categoriesAtom);
+  if (categories.length > 0) {
     const toggleGroup = createElement("optgroup") as HTMLOptGroupElement;
     toggleGroup.label = "Toggle Category";
-    state.categories.forEach((category) => {
+    categories.forEach((category) => {
       const option = createElement("option") as HTMLOptionElement;
       option.value = `toggle_category_${category.id}`;
       option.textContent = `Toggle ${category.name}`;
@@ -122,7 +124,7 @@ export function populateActionDropdown(actionInput: HTMLSelectElement, existingA
     
     const toggleAndNextGroup = createElement("optgroup") as HTMLOptGroupElement;
     toggleAndNextGroup.label = "Toggle Category and Move to Next";
-    state.categories.forEach((category) => {
+    categories.forEach((category) => {
       const option = createElement("option") as HTMLOptionElement;
       option.value = `toggle_category_next_${category.id}`;
       option.textContent = `Toggle ${category.name} and move to next`;
@@ -158,16 +160,16 @@ export function populateActionDropdown(actionInput: HTMLSelectElement, existingA
  * Show the add/edit hotkey dialog.
  */
 export function showHotkeyDialog(existingHotkey?: HotkeyConfig): void {
-  state.hotkeyDialogVisible = true;
-  state.hotkeyDialogHotkey = existingHotkey;
-  state.notify();
+  store.set(hotkeyDialogVisibleAtom, true);
+  store.set(hotkeyDialogHotkeyAtom, existingHotkey);
 }
 
 /**
  * Edit an existing hotkey.
  */
 export function editHotkey(hotkeyId: string): void {
-  const hotkey = state.hotkeys.find(h => h.id === hotkeyId);
+  const hotkeys = store.get(hotkeysAtom);
+  const hotkey = hotkeys.find(h => h.id === hotkeyId);
   if (hotkey) {
     showHotkeyDialog(hotkey);
   }
@@ -185,8 +187,8 @@ export async function deleteHotkey(hotkeyId: string): Promise<void> {
     return;
   }
 
-  state.hotkeys = state.hotkeys.filter(h => h.id !== hotkeyId);
-  state.notify();
+  const hotkeys = store.get(hotkeysAtom);
+  store.set(hotkeysAtom, hotkeys.filter(h => h.id !== hotkeyId));
   saveHitoConfig().catch((error) => {
     console.error("Failed to save hotkeys:", error);
   });
@@ -264,7 +266,8 @@ export function checkAndExecuteHotkey(event: KeyboardEvent): boolean {
   const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
   
   // Find matching hotkey
-  const matchingHotkey = state.hotkeys.find((hotkey) => {
+  const hotkeys = store.get(hotkeysAtom);
+  const matchingHotkey = hotkeys.find((hotkey) => {
     if (hotkey.key !== key) {
       return false;
     }

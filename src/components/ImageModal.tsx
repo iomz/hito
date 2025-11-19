@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { state } from "../state";
+import { useAtomValue } from "jotai";
+import { currentModalImagePathAtom, suppressCategoryRefilterAtom, loadedImagesAtom } from "../state";
 import { loadImageData } from "../utils/images";
 import { showError } from "../ui/error";
 import { ensureImagePathsArray, getFilename } from "../utils/state";
@@ -22,10 +23,13 @@ export function ImageModal() {
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
   const loadRequestIdRef = useRef<number>(0);
 
+  const modalImagePath = useAtomValue(currentModalImagePathAtom);
+  const suppressCategoryRefilter = useAtomValue(suppressCategoryRefilterAtom);
+  const loadedImages = useAtomValue(loadedImagesAtom);
+
   // Subscribe to modal state changes
   useEffect(() => {
     const handleStateChange = async () => {
-      const modalImagePath = state.currentModalImagePath;
       const shouldBeOpen = Boolean(modalImagePath);
       
       if (shouldBeOpen !== isOpen || modalImagePath !== currentImagePath) {
@@ -57,7 +61,7 @@ export function ImageModal() {
           
           // Get filtered images to check if image is in the filtered list
           // Skip this check if suppressCategoryRefilter is true (defer refiltering during category assignment)
-          if (!state.suppressCategoryRefilter) {
+          if (!suppressCategoryRefilter) {
             const filteredImagesCheck = getFilteredAndSortedImagesSync();
             const imageIndex = filteredImagesCheck.findIndex((img) => img.path === modalImagePath);
             
@@ -75,7 +79,7 @@ export function ImageModal() {
           const imagePath = modalImagePath;
           
           // Get or load image data
-          let dataUrl = state.loadedImages.get(imagePath);
+          let dataUrl = loadedImages.get(imagePath);
           if (!dataUrl) {
             try {
               dataUrl = await loadImageData(imagePath);
@@ -113,7 +117,7 @@ export function ImageModal() {
           if (currentIndex >= 0) {
             setShowPrevBtn(currentIndex > 0);
             setShowNextBtn(currentIndex < filteredImages.length - 1);
-          } else if (state.suppressCategoryRefilter) {
+          } else if (suppressCategoryRefilter) {
             // If suppress is active and image not in filtered list (due to category change),
             // keep buttons as they were (don't change visibility)
             // This allows user to navigate which will trigger refilter
@@ -132,15 +136,10 @@ export function ImageModal() {
         }
       }
     };
-
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(handleStateChange);
     
     // Initialize with current state
     handleStateChange();
-    
-    return unsubscribe;
-  }, [isOpen, currentImagePath]);
+  }, [isOpen, currentImagePath, modalImagePath, suppressCategoryRefilter, loadedImages]);
 
   // Keyboard handling and focus management
   useEffect(() => {

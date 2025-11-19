@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { state } from "../state";
+import React, { useState } from "react";
+import { useAtomValue } from "jotai";
+import { isHotkeySidebarOpenAtom, currentDirectoryAtom } from "../state";
 import { toggleHotkeySidebar, closeHotkeySidebar } from "../ui/hotkeys";
 import { showCategoryDialog } from "../ui/categories";
 import { showHotkeyDialog } from "../ui/hotkeys";
@@ -9,22 +10,9 @@ import { HotkeyList } from "./HotkeyList";
 import { ConfigFileInput } from "./ConfigFileInput";
 
 export function HotkeySidebar() {
-  const [isOpen, setIsOpen] = useState(false);
+  const isOpen = useAtomValue(isHotkeySidebarOpenAtom);
+  const currentDirectory = useAtomValue(currentDirectoryAtom);
   const [activeTab, setActiveTab] = useState<"categories" | "hotkeys" | "file">("categories");
-  const [currentDirectory, setCurrentDirectory] = useState("");
-
-  useEffect(() => {
-    // Sync initial state
-    setIsOpen(state.isHotkeySidebarOpen);
-    setCurrentDirectory(state.currentDirectory);
-    
-    // Subscribe to future changes
-    const unsubscribe = state.subscribe(() => {
-      setIsOpen(state.isHotkeySidebarOpen);
-      setCurrentDirectory(state.currentDirectory);
-    });
-    return unsubscribe;
-  }, []);
 
   const handleToggle = () => {
     toggleHotkeySidebar();

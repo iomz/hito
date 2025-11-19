@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
-import { state } from "../state";
+import React from "react";
+import { useAtomValue } from "jotai";
+import { shortcutsOverlayVisibleAtom, hotkeysAtom, categoriesAtom } from "../state";
 import type { HotkeyConfig, Category } from "../types";
 import { hideShortcutsOverlay } from "../ui/modal";
 
@@ -32,50 +33,9 @@ function categoriesEqual(a: Category[], b: Category[]): boolean {
 }
 
 export function ShortcutsOverlay() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [hotkeys, setHotkeys] = useState<HotkeyConfig[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  
-  // Use refs to track previous values for deep equality checks
-  const prevIsVisibleRef = useRef<boolean>(false);
-  const prevHotkeysRef = useRef<HotkeyConfig[]>([]);
-  const prevCategoriesRef = useRef<Category[]>([]);
-
-  // Subscribe to state changes instead of polling
-  useEffect(() => {
-    // Initialize state
-    setIsVisible(state.shortcutsOverlayVisible);
-    setHotkeys([...state.hotkeys]);
-    setCategories([...state.categories]);
-    prevIsVisibleRef.current = state.shortcutsOverlayVisible;
-    prevHotkeysRef.current = [...state.hotkeys];
-    prevCategoriesRef.current = [...state.categories];
-    
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(() => {
-      // Update visibility only if it actually changed
-      if (state.shortcutsOverlayVisible !== prevIsVisibleRef.current) {
-        setIsVisible(state.shortcutsOverlayVisible);
-        prevIsVisibleRef.current = state.shortcutsOverlayVisible;
-      }
-      
-      // Update hotkeys only if content actually differs
-      if (!hotkeysEqual(state.hotkeys, prevHotkeysRef.current)) {
-        const newHotkeys = [...state.hotkeys];
-        setHotkeys(newHotkeys);
-        prevHotkeysRef.current = newHotkeys;
-      }
-      
-      // Update categories only if content actually differs
-      if (!categoriesEqual(state.categories, prevCategoriesRef.current)) {
-        const newCategories = [...state.categories];
-        setCategories(newCategories);
-        prevCategoriesRef.current = newCategories;
-      }
-    });
-    
-    return unsubscribe;
-  }, []);
+  const isVisible = useAtomValue(shortcutsOverlayVisibleAtom);
+  const hotkeys = useAtomValue(hotkeysAtom);
+  const categories = useAtomValue(categoriesAtom);
 
   if (!isVisible) {
     return null;

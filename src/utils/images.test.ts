@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPlaceholder, createErrorPlaceholder, createImageElement, loadImageData } from './images';
-import { state } from '../state';
+import { store } from './jotaiStore';
+import { allImagePathsAtom, loadedImagesAtom, currentModalImagePathAtom, resetStateAtom } from '../state';
 
 // Mock the modal module
 vi.mock('../ui/modal', () => ({
@@ -10,7 +11,8 @@ vi.mock('../ui/modal', () => ({
 describe('image utilities', () => {
   beforeEach(() => {
     // Reset state
-    state.allImagePaths = [];
+    store.set(resetStateAtom);
+    store.set(allImagePathsAtom, []);
     vi.clearAllMocks();
   });
 
@@ -45,7 +47,7 @@ describe('image utilities', () => {
       const imagePath = '/path/to/image.jpg';
       const dataUrl = 'data:image/jpeg;base64,testdata';
       
-      state.allImagePaths = [{ path: imagePath }];
+      store.set(allImagePathsAtom, [{ path: imagePath }]);
 
       const img = createImageElement(imagePath, dataUrl);
 
@@ -59,7 +61,7 @@ describe('image utilities', () => {
       const imagePath = '/Users/iomz/Pictures/photo.png';
       const dataUrl = 'data:image/png;base64,test';
       
-      state.allImagePaths = [{ path: imagePath }];
+      store.set(allImagePathsAtom, [{ path: imagePath }]);
 
       const img = createImageElement(imagePath, dataUrl);
       expect(img.alt).toBe('photo.png');
@@ -69,7 +71,7 @@ describe('image utilities', () => {
       const imagePath = 'C:\\Users\\iomz\\Pictures\\photo.png';
       const dataUrl = 'data:image/png;base64,test';
       
-      state.allImagePaths = [{ path: imagePath }];
+      store.set(allImagePathsAtom, [{ path: imagePath }]);
 
       const img = createImageElement(imagePath, dataUrl);
       expect(img.alt).toBe('photo.png');
@@ -79,7 +81,7 @@ describe('image utilities', () => {
       const imagePath = 'image';
       const dataUrl = 'data:image/jpeg;base64,test';
       
-      state.allImagePaths = [{ path: imagePath }];
+      store.set(allImagePathsAtom, [{ path: imagePath }]);
 
       const img = createImageElement(imagePath, dataUrl);
       expect(img.alt).toBe('image');
@@ -89,7 +91,7 @@ describe('image utilities', () => {
       const imagePath = '/path/to/image.jpg';
       const dataUrl = 'data:image/jpeg;base64,test';
       
-      state.allImagePaths = [{ path: imagePath }];
+      store.set(allImagePathsAtom, [{ path: imagePath }]);
 
       const img = createImageElement(imagePath, dataUrl);
       
@@ -106,7 +108,7 @@ describe('image utilities', () => {
 
     it('should return early if allImagePaths is not an array', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      (state as any).allImagePaths = null;
+      store.set(allImagePathsAtom, null as any);
       const imagePath = '/path/to/image.jpg';
       const dataUrl = 'data:image/jpeg;base64,test';
 
@@ -121,8 +123,8 @@ describe('image utilities', () => {
 
     it('should not open modal if image not found in allImagePaths', async () => {
       const { openModal } = await import('../ui/modal');
-      state.allImagePaths = [{ path: '/other/image.jpg' }];
-      state.currentModalImagePath = "";
+      store.set(allImagePathsAtom, [{ path: '/other/image.jpg' }]);
+      store.set(currentModalImagePathAtom, "");
       const imagePath = '/path/to/image.jpg';
       const dataUrl = 'data:image/jpeg;base64,test';
 
@@ -133,7 +135,7 @@ describe('image utilities', () => {
 
       // openModal is called but returns early because image is not in filtered list
       // Check that modal state wasn't changed
-      expect(state.currentModalImagePath).toBe("");
+      expect(store.get(currentModalImagePathAtom)).toBe("");
     });
   });
 
@@ -144,7 +146,7 @@ describe('image utilities', () => {
           invoke: vi.fn(),
         },
       };
-      state.loadedImages.clear();
+      store.set(loadedImagesAtom, new Map());
     });
 
     it('should load image data successfully', async () => {
@@ -156,7 +158,7 @@ describe('image utilities', () => {
 
       expect(invoke).toHaveBeenCalledWith('load_image', { imagePath: '/test/image.png' });
       expect(result).toBe(dataUrl);
-      expect(state.loadedImages.get('/test/image.png')).toBe(dataUrl);
+      expect(store.get(loadedImagesAtom).get('/test/image.png')).toBe(dataUrl);
     });
 
     it('should throw error when Tauri API is unavailable', async () => {
@@ -198,7 +200,7 @@ describe('image utilities', () => {
       expect(invoke).toHaveBeenCalledTimes(2);
       expect(result1).toBe(dataUrl);
       expect(result2).toBe(dataUrl);
-      expect(state.loadedImages.get('/test/image.png')).toBe(dataUrl);
+      expect(store.get(loadedImagesAtom).get('/test/image.png')).toBe(dataUrl);
     });
   });
 });

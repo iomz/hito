@@ -1,5 +1,19 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { state } from "../state";
+import React, { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  allImagePathsAtom,
+  allDirectoryPathsAtom,
+  currentIndexAtom,
+  isLoadingBatchAtom,
+  sortOptionAtom,
+  sortDirectionAtom,
+  filterOptionsAtom,
+  imageCategoriesAtom,
+  suppressCategoryRefilterAtom,
+  cachedImageCategoriesForRefilterAtom,
+  isLoadingAtom,
+} from "../state";
+import { store } from "../utils/jotaiStore";
 import { BATCH_SIZE } from "../constants";
 import { loadImageBatch } from "../core/browse";
 import { ImageGridItem } from "./ImageGridItem";
@@ -13,143 +27,97 @@ export function ImageGrid() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isMountedRef = useRef(true);
-  // Initialize from state to avoid missing initial images
+  const prevSortFilterKeyRef = useRef<string>("");
+  
+  // Use jotai atoms for reactive state
+  const allImagePaths = useAtomValue(allImagePathsAtom);
+  const allDirectoryPaths = useAtomValue(allDirectoryPathsAtom);
+  const currentIndex = useAtomValue(currentIndexAtom);
+  const sortOption = useAtomValue(sortOptionAtom);
+  const sortDirection = useAtomValue(sortDirectionAtom);
+  const filterOptions = useAtomValue(filterOptionsAtom);
+  const imageCategories = useAtomValue(imageCategoriesAtom);
+  const suppressCategoryRefilter = useAtomValue(suppressCategoryRefilterAtom);
+  const cachedImageCategoriesForRefilter = useAtomValue(cachedImageCategoriesForRefilterAtom);
+  const isLoading = useAtomValue(isLoadingAtom);
+  const isLoadingBatch = useAtomValue(isLoadingBatchAtom);
+  const setCurrentIndex = useSetAtom(currentIndexAtom);
+  const setIsLoading = useSetAtom(isLoadingAtom);
+  
+  // Initialize from atoms to avoid missing initial images
   const [visibleCount, setVisibleCount] = useState(() => {
-    if (!Array.isArray(state.allImagePaths) || state.allImagePaths.length === 0) {
+    if (!Array.isArray(allImagePaths) || allImagePaths.length === 0) {
       return 0;
     }
     // If currentIndex is 0, show first batch. Otherwise, show up to currentIndex
-    const initialCount = state.currentIndex > 0 
-      ? Math.min(state.currentIndex, state.allImagePaths.length)
-      : Math.min(BATCH_SIZE, state.allImagePaths.length);
+    const initialCount = currentIndex > 0 
+      ? Math.min(currentIndex, allImagePaths.length)
+      : Math.min(BATCH_SIZE, allImagePaths.length);
     return initialCount;
   });
   const [dirCount, setDirCount] = useState(() => {
-    return Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
+    return Array.isArray(allDirectoryPaths) ? allDirectoryPaths.length : 0;
   });
-  // Track sort/filter/categories changes to force useMemo recalculation
-  const [sortFilterKey, setSortFilterKey] = useState(() => {
-    const categoriesHash = JSON.stringify(Array.from(state.imageCategories.entries()).sort());
-    return `${state.sortOption}|${state.sortDirection}|${JSON.stringify(state.filterOptions)}|${categoriesHash}`;
-  });
+  
+  // Compute sortFilterKey from atoms
+  const sortFilterKey = useMemo(() => {
+    const categoriesHash = JSON.stringify(Array.from(imageCategories.entries()).sort());
+    return `${sortOption}|${sortDirection}|${JSON.stringify(filterOptions)}|${categoriesHash}`;
+  }, [sortOption, sortDirection, filterOptions, imageCategories]);
+  
   // Store sorted images after Rust sorting
   const [sortedImages, setSortedImages] = useState<ImagePath[]>(() => 
-    Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : []
+    Array.isArray(allImagePaths) ? [...allImagePaths] : []
   );
-  // Track loading state for spinner overlay
-  const [isLoading, setIsLoading] = useState(state.isLoading);
 
   // Immediately reset visibleCount to 0 when array becomes empty to prevent DOM mismatch
   // Use useLayoutEffect to run synchronously before browser paint
   useLayoutEffect(() => {
-    const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
+    const imagePathsLength = Array.isArray(allImagePaths) ? allImagePaths.length : 0;
     if (imagePathsLength === 0 && visibleCount > 0) {
       setVisibleCount(0);
       setDirCount(0);
       setSortedImages([]);
     }
-  }, [state.allImagePaths, visibleCount]);
+  }, [allImagePaths, visibleCount]);
 
-  // Track mounted state and subscribe to state changes
+  // Track mounted state and react to atom changes
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Initialize tracking variables from current state
-    let lastIndex = state.currentIndex;
-    let lastImagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
-    let lastDirPathsLength = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
-    let lastVisibleCount = visibleCount;
-    let lastSortOption = state.sortOption;
-    let lastSortDirection = state.sortDirection;
-    let lastFilterOptions = JSON.stringify(state.filterOptions);
-    let lastImageCategoriesSize = state.imageCategories.size;
-    let lastImageCategoriesHash = JSON.stringify(Array.from(state.imageCategories.entries()).sort());
-    let lastSuppressCategoryRefilter = state.suppressCategoryRefilter;
+    const imagePathsLength = Array.isArray(allImagePaths) ? allImagePaths.length : 0;
+    const dirPathsLength = Array.isArray(allDirectoryPaths) ? allDirectoryPaths.length : 0;
     
-    // Subscribe to state changes
-    const checkForUpdates = () => {
-      if (!isMountedRef.current) return;
-      
-      const currentIndex = state.currentIndex;
-      const imagePathsLength = Array.isArray(state.allImagePaths) ? state.allImagePaths.length : 0;
-      const dirPathsLength = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths.length : 0;
-      const currentSortOption = state.sortOption;
-      const currentSortDirection = state.sortDirection;
-      const currentFilterOptions = JSON.stringify(state.filterOptions);
-      const currentImageCategoriesSize = state.imageCategories.size;
-      const currentImageCategoriesHash = JSON.stringify(Array.from(state.imageCategories.entries()).sort());
-      const currentSuppressCategoryRefilter = state.suppressCategoryRefilter;
-      
-      // Check if suppress flag was just cleared (was true, now false) - this triggers deferred refilter
-      const suppressFlagCleared = lastSuppressCategoryRefilter && !currentSuppressCategoryRefilter;
-      
-      // Re-render on any state change (including sort/filter/categories)
-      const sortFilterChanged = currentSortOption !== lastSortOption || currentSortDirection !== lastSortDirection || currentFilterOptions !== lastFilterOptions;
-      const imageCategoriesChanged = currentImageCategoriesSize !== lastImageCategoriesSize || currentImageCategoriesHash !== lastImageCategoriesHash;
-      
-      // If sort/filter/categories changed, reset pagination to start from the beginning
-      if (sortFilterChanged || imageCategoriesChanged) {
-        state.currentIndex = 0;
-        lastIndex = 0;
+    // Calculate what visibleCount should be (for pagination)
+    let newVisibleCount = 0;
+    if (imagePathsLength > 0) {
+      if (currentIndex > 0) {
+        newVisibleCount = Math.min(currentIndex, imagePathsLength);
+      } else {
+        // If currentIndex is 0 but we have images, show first batch
+        newVisibleCount = Math.min(BATCH_SIZE, imagePathsLength);
       }
-      
-      // Calculate what visibleCount should be (for pagination)
-      let newVisibleCount = 0;
+    }
+    
+    setVisibleCount(newVisibleCount);
+    setDirCount(dirPathsLength);
+    
+    // Reset pagination when sort/filter/categories change (handled by sortFilterKey dependency)
+    // Only reset when sortFilterKey actually changes, not on every render
+    if (sortFilterKey !== prevSortFilterKeyRef.current) {
+      prevSortFilterKeyRef.current = sortFilterKey;
+      // Reset to first batch when sort/filter/categories change
       if (imagePathsLength > 0) {
-        if (sortFilterChanged || imageCategoriesChanged) {
-          // Reset to first batch when sort/filter/categories change
-          newVisibleCount = Math.min(BATCH_SIZE, imagePathsLength);
-        } else if (state.currentIndex > 0) {
-          newVisibleCount = Math.min(state.currentIndex, imagePathsLength);
-        } else {
-          // If currentIndex is 0 but we have images, show first batch
-          newVisibleCount = Math.min(BATCH_SIZE, imagePathsLength);
-        }
+        setCurrentIndex(Math.min(BATCH_SIZE, imagePathsLength));
+      } else {
+        setCurrentIndex(0);
       }
-      
-      // Re-render if something changed
-      if (state.currentIndex !== lastIndex || imagePathsLength !== lastImagePathsLength || dirPathsLength !== lastDirPathsLength || newVisibleCount !== lastVisibleCount || sortFilterChanged || imageCategoriesChanged || suppressFlagCleared) {
-        lastIndex = state.currentIndex;
-        lastImagePathsLength = imagePathsLength;
-        lastDirPathsLength = dirPathsLength;
-        lastVisibleCount = newVisibleCount;
-        lastSortOption = currentSortOption;
-        lastSortDirection = currentSortDirection;
-        lastFilterOptions = currentFilterOptions;
-        lastImageCategoriesSize = currentImageCategoriesSize;
-        lastImageCategoriesHash = currentImageCategoriesHash;
-        lastSuppressCategoryRefilter = currentSuppressCategoryRefilter;
-        setVisibleCount(newVisibleCount);
-        setDirCount(dirPathsLength);
-        
-        // Update sortFilterKey to force useMemo recalculation when sort/filter/categories change
-        // Also update when suppress flag is cleared (deferred refilter on navigation)
-        // But suppress if suppressCategoryRefilter is true (defer re-filtering until navigation)
-        if (sortFilterChanged || (imageCategoriesChanged && !state.suppressCategoryRefilter) || suppressFlagCleared) {
-          setSortFilterKey(`${currentSortOption}|${currentSortDirection}|${currentFilterOptions}|${currentImageCategoriesHash}`);
-        }
-      }
-    };
-    
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(checkForUpdates);
-    
-    // Subscribe to loading state changes
-    const updateLoading = () => {
-      setIsLoading(state.isLoading);
-    };
-    updateLoading();
-    const unsubscribeLoading = state.subscribe(updateLoading);
-    
-    // Check immediately on mount
-    checkForUpdates();
+    }
     
     return () => {
       isMountedRef.current = false;
-      unsubscribe();
-      unsubscribeLoading();
     };
-  }, []); // Empty deps - we're subscribing to external state
+  }, [allImagePaths, allDirectoryPaths, currentIndex, sortFilterKey, setCurrentIndex]);
 
   // Call Rust sorting when sort option or images change
   useEffect(() => {
@@ -165,7 +133,7 @@ export function ImageGrid() {
         return;
       }
 
-      const images = Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : [];
+      const images = Array.isArray(allImagePaths) ? [...allImagePaths] : [];
       if (images.length === 0) {
         if (!cancelled) {
           setSortedImages([]);
@@ -175,25 +143,24 @@ export function ImageGrid() {
 
       // Show loading spinner while sorting
       if (!cancelled) {
-        state.isLoading = true;
-        state.notify();
+        setIsLoading(true);
       }
 
       try {
         // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
-        const imageCategoriesForSorting = state.suppressCategoryRefilter && state.cachedImageCategoriesForRefilter
-          ? state.cachedImageCategoriesForRefilter
-          : state.imageCategories;
+        const imageCategoriesForSorting = suppressCategoryRefilter && cachedImageCategoriesForRefilter
+          ? cachedImageCategoriesForRefilter
+          : imageCategories;
         
         // Convert imageCategories Map to array format for Rust
         const imageCategoriesArray = Array.from(imageCategoriesForSorting.entries());
 
         // Convert filterOptions to Rust format (camelCase to snake_case)
-        const filters = state.filterOptions;
+        const filters = filterOptions;
         const hasCategoryFilter = filters.categoryId && filters.categoryId !== "";
         const hasNameFilter = filters.namePattern && filters.namePattern !== "";
         const hasSizeFilter = filters.sizeValue && filters.sizeValue !== "";
-        const filterOptions = (hasCategoryFilter || hasNameFilter || hasSizeFilter) ? {
+        const rustFilterOptions = (hasCategoryFilter || hasNameFilter || hasSizeFilter) ? {
           category_id: hasCategoryFilter ? filters.categoryId : null,
           name_pattern: hasNameFilter ? filters.namePattern : null,
           name_operator: hasNameFilter ? filters.nameOperator : null,
@@ -205,10 +172,10 @@ export function ImageGrid() {
         // Call Rust sorting and filtering
         const sorted = await invokeTauri<ImagePath[]>("sort_images", {
           images,
-          sortOption: state.sortOption,
-          sortDirection: state.sortDirection,
+          sortOption: sortOption,
+          sortDirection: sortDirection,
           imageCategories: imageCategoriesArray,
-          filterOptions: filterOptions,
+          filterOptions: rustFilterOptions,
         });
 
         if (!cancelled) {
@@ -224,8 +191,7 @@ export function ImageGrid() {
       } finally {
         // Hide loading spinner after sorting completes
         if (!cancelled) {
-          state.isLoading = false;
-          state.notify();
+          setIsLoading(false);
         }
       }
     };
@@ -235,7 +201,7 @@ export function ImageGrid() {
     return () => {
       cancelled = true;
     };
-  }, [state.allImagePaths, state.sortOption, state.sortDirection, sortFilterKey]);
+  }, [allImagePaths, sortOption, sortDirection, sortFilterKey, imageCategories, suppressCategoryRefilter, cachedImageCategoriesForRefilter, setIsLoading]);
 
   // Filtering is now done in Rust, so sortedImages are already filtered
   const processedImages = React.useMemo(() => {
@@ -268,16 +234,17 @@ export function ImageGrid() {
             entries.forEach((entry) => {
               if (!isMountedRef.current) return;
               
-              if (entry.isIntersecting && !state.isLoadingBatch) {
-                // Use state.currentIndex to track how many images are shown
-                const currentVisibleCount = state.currentIndex > 0 ? state.currentIndex : Math.min(BATCH_SIZE, processedImagesLength);
+              const currentIsLoadingBatch = store.get(isLoadingBatchAtom);
+              if (entry.isIntersecting && !currentIsLoadingBatch) {
+                // Use currentIndex to track how many images are shown
+                const currentIndexValue = store.get(currentIndexAtom);
+                const currentVisibleCount = currentIndexValue > 0 ? currentIndexValue : Math.min(BATCH_SIZE, processedImagesLength);
                 const nextStartIndex = currentVisibleCount;
                 const nextEndIndex = currentVisibleCount + BATCH_SIZE;
                 
                 // Check against processed images length, not allImagePaths
                 if (nextStartIndex < processedImagesLength) {
-                  state.currentIndex = nextEndIndex;
-                  state.notify();
+                  setCurrentIndex(nextEndIndex);
                   // Note: loadImageBatch is just for state management, actual loading is handled by React
                   loadImageBatch(nextStartIndex, nextEndIndex).catch((error) => {
                     console.error("Failed to load image batch:", error);
@@ -308,15 +275,15 @@ export function ImageGrid() {
         observerRef.current = null;
       }
     };
-  }, [processedImages, state.sortOption, state.filterOptions]);
+  }, [processedImages, sortOption, filterOptions, setCurrentIndex]);
 
-  // Get the visible range of images - use visibleCount (React state) not state.currentIndex
+  // Get the visible range of images - use visibleCount (React state) not currentIndex
   // Ensure visibleCount never exceeds array length to prevent DOM mismatch errors
   const imagePathsLength = processedImages.length;
   const safeVisibleCount = Math.min(visibleCount, imagePathsLength);
   const visibleImagePaths = processedImages.slice(0, safeVisibleCount);
 
-  const directories = Array.isArray(state.allDirectoryPaths) ? state.allDirectoryPaths : [];
+  const directories = Array.isArray(allDirectoryPaths) ? allDirectoryPaths : [];
 
   return (
     <div id="image-grid" className="image-grid" ref={gridRef}>

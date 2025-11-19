@@ -1,5 +1,21 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import {
+  allImagePathsAtom,
+  allDirectoryPathsAtom,
+  currentIndexAtom,
+  isLoadingBatchAtom,
+  loadedImagesAtom,
+  currentModalIndexAtom,
+  currentModalImagePathAtom,
+  currentDirectoryAtom,
+  configFilePathAtom,
+  categoriesAtom,
+  imageCategoriesAtom,
+  hotkeysAtom,
+  isLoadingAtom,
+  resetStateAtom,
+} from "../state";
 import { loadImageBatch, browseImages } from "./browse";
 import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
@@ -41,17 +57,7 @@ vi.mock("../utils/tauri", () => ({
 describe("browse", () => {
   beforeEach(() => {
     // Reset state
-    state.allImagePaths = [];
-    state.allDirectoryPaths = [];
-    state.currentIndex = 0;
-    state.isLoadingBatch = false;
-    state.loadedImages.clear();
-    state.currentModalIndex = -1;
-    state.currentDirectory = "";
-    state.configFilePath = "";
-    state.categories = [];
-    state.imageCategories.clear();
-    state.hotkeys = [];
+    store.set(resetStateAtom);
 
     // Setup DOM elements (code uses querySelector)
     const existingErrorMsg = document.getElementById("error-msg");
@@ -86,87 +92,85 @@ describe("browse", () => {
   describe("loadImageBatch", () => {
     it("should return early if allImagePaths is not an array", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      (state as any).allImagePaths = null;
+      // Set invalid value - ensureImagePathsArray will handle this
+      store.set(allImagePathsAtom, null as any);
 
       await loadImageBatch(0, 10);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "state.allImagePaths is not an array in loadImageBatch:",
-        null
-      );
-      expect(state.allImagePaths).toEqual([]);
+      expect(consoleSpy).toHaveBeenCalled();
+      expect(store.get(allImagePathsAtom)).toEqual([]);
       consoleSpy.mockRestore();
     });
 
     it("should return early if allImagePaths is not an array (string)", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      (state as any).allImagePaths = "not an array";
+      store.set(allImagePathsAtom, "not an array" as any);
 
       await loadImageBatch(0, 10);
 
       expect(consoleSpy).toHaveBeenCalled();
-      expect(state.allImagePaths).toEqual([]);
+      expect(store.get(allImagePathsAtom)).toEqual([]);
       consoleSpy.mockRestore();
     });
 
     it("should return early if already loading", async () => {
-      state.allImagePaths = [{ path: "/test/image1.png" }];
-      state.isLoadingBatch = true;
+      store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
+      store.set(isLoadingBatchAtom, true);
 
       await loadImageBatch(0, 10);
 
       // We just verify it doesn't throw and resets loading state
-      expect(state.isLoadingBatch).toBe(true); // Still true since it returns early
+      expect(store.get(isLoadingBatchAtom)).toBe(true); // Still true since it returns early
     });
 
     it("should return early if startIndex >= allImagePaths.length", async () => {
-      state.allImagePaths = [{ path: "/test/image1.png" }];
+      store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
 
       await loadImageBatch(10, 20);
 
-      expect(state.isLoadingBatch).toBe(false);
+      expect(store.get(isLoadingBatchAtom)).toBe(false);
     });
 
     it("should return early if imageGrid is null", async () => {
       // This test verifies it doesn't throw
-      state.allImagePaths = [{ path: "/test/image1.png" }];
+      store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
 
       await loadImageBatch(0, 10);
 
-      expect(state.isLoadingBatch).toBe(false);
+      expect(store.get(isLoadingBatchAtom)).toBe(false);
     });
 
     it("should load images successfully", async () => {
       // This test verifies the function completes without errors
-      state.allImagePaths = [
+      store.set(allImagePathsAtom, [
         { path: "/test/image1.png" },
         { path: "/test/image2.png" },
-      ];
+      ]);
 
       await loadImageBatch(0, 2);
 
       // Function is no-op, React component handles rendering
-      expect(state.isLoadingBatch).toBe(false);
+      expect(store.get(isLoadingBatchAtom)).toBe(false);
     });
 
     it("should handle image loading errors", async () => {
       // This test verifies the function completes without errors
-      state.allImagePaths = [{ path: "/test/image1.png" }];
+      store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
 
       await loadImageBatch(0, 1);
 
       // Function is no-op, React component handles error states
-      expect(state.isLoadingBatch).toBe(false);
+      expect(store.get(isLoadingBatchAtom)).toBe(false);
     });
 
     it("should clamp endIndex to array length", async () => {
       // This test verifies the function completes correctly
-      state.allImagePaths = [{ path: "/test/image1.png" }];
+      store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
 
       await loadImageBatch(0, 100);
 
       // Function is no-op, React component handles rendering
-      expect(state.isLoadingBatch).toBe(false);
+      expect(store.get(isLoadingBatchAtom)).toBe(false);
     });
   });
 
@@ -191,8 +195,8 @@ describe("browse", () => {
 
       await browseImages("/test/path");
 
-      expect(state.allDirectoryPaths).toEqual([]);
-      expect(state.allImagePaths).toEqual([]);
+      expect(store.get(allDirectoryPathsAtom)).toEqual([]);
+      expect(store.get(allImagePathsAtom)).toEqual([]);
     });
 
     it("should handle invalid backend response (non-array images)", async () => {
@@ -203,8 +207,8 @@ describe("browse", () => {
 
       await browseImages("/test/path");
 
-      expect(state.allDirectoryPaths).toEqual([]);
-      expect(state.allImagePaths).toEqual([]);
+      expect(store.get(allDirectoryPathsAtom)).toEqual([]);
+      expect(store.get(allImagePathsAtom)).toEqual([]);
     });
 
     it("should handle invalid backend response (null values)", async () => {
@@ -215,8 +219,8 @@ describe("browse", () => {
 
       await browseImages("/test/path");
 
-      expect(state.allDirectoryPaths).toEqual([]);
-      expect(state.allImagePaths).toEqual([]);
+      expect(store.get(allDirectoryPathsAtom)).toEqual([]);
+      expect(store.get(allImagePathsAtom)).toEqual([]);
     });
 
     it("should process valid directory contents", async () => {
@@ -229,8 +233,8 @@ describe("browse", () => {
       await browseImages("/test/path");
 
       expect(invokeTauri).toHaveBeenCalledWith("list_images", { path: "/test/path" });
-      expect(state.allDirectoryPaths).toEqual(contents.directories);
-      expect(state.allImagePaths).toEqual(contents.images);
+      expect(store.get(allDirectoryPathsAtom)).toEqual(contents.directories);
+      expect(store.get(allImagePathsAtom)).toEqual(contents.images);
     });
 
     it("should handle Tauri API unavailable", async () => {
@@ -247,13 +251,13 @@ describe("browse", () => {
       await browseImages("/test/path");
 
       expect(showError).toHaveBeenCalled();
-      expect(state.isLoading).toBe(false);
+      expect(store.get(isLoadingAtom)).toBe(false);
     });
 
     it("should reset state before browsing", async () => {
-      state.currentIndex = 100;
-      state.isLoadingBatch = true;
-      state.currentModalIndex = 5;
+      store.set(currentIndexAtom, 100);
+      store.set(isLoadingBatchAtom, true);
+      store.set(currentModalIndexAtom, 5);
       vi.mocked(invokeTauri).mockResolvedValueOnce({
         directories: [],
         images: [],
@@ -261,9 +265,9 @@ describe("browse", () => {
 
       await browseImages("/test/path");
 
-      expect(state.currentIndex).toBe(0); // Reset to 0 when empty
-      expect(state.isLoadingBatch).toBe(false);
-      expect(state.currentModalIndex).toBe(-1);
+      expect(store.get(currentIndexAtom)).toBe(0); // Reset to 0 when empty
+      expect(store.get(isLoadingBatchAtom)).toBe(false);
+      expect(store.get(currentModalIndexAtom)).toBe(-1);
     });
 
     it("should show notification when no images or directories found", async () => {

@@ -1,17 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { state } from "../state";
+import React from "react";
+import { useAtomValue } from "jotai";
+import { errorMessageAtom } from "../state";
 
 export function ErrorMessage() {
-  const [errorText, setErrorText] = useState(state.errorMessage);
-
-  useEffect(() => {
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(() => {
-      setErrorText(state.errorMessage);
-    });
-
-    return unsubscribe;
-  }, []);
+  const errorText = useAtomValue(errorMessageAtom);
 
   if (!errorText) {
     return null;

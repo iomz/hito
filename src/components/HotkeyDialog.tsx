@@ -1,42 +1,31 @@
 import React, { useEffect, useState, useRef } from "react";
-import { state } from "../state";
+import { useAtomValue, useSetAtom } from "jotai";
+import { hotkeyDialogVisibleAtom, hotkeyDialogHotkeyAtom, hotkeysAtom, categoriesAtom } from "../state";
 import type { HotkeyConfig, Category } from "../types";
 import { formatHotkeyDisplay, isHotkeyDuplicate, populateActionDropdown } from "../ui/hotkeys";
 import { saveHitoConfig } from "../ui/categories";
 
 export function HotkeyDialog() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [editingHotkey, setEditingHotkey] = useState<HotkeyConfig | undefined>(undefined);
+  const isVisible = useAtomValue(hotkeyDialogVisibleAtom);
+  const editingHotkey = useAtomValue(hotkeyDialogHotkeyAtom);
+  const categories = useAtomValue(categoriesAtom);
+  const hotkeys = useAtomValue(hotkeysAtom);
+  const setHotkeyDialogVisible = useSetAtom(hotkeyDialogVisibleAtom);
+  const setHotkeyDialogHotkey = useSetAtom(hotkeyDialogHotkeyAtom);
+  const setHotkeys = useSetAtom(hotkeysAtom);
+  
   const [capturedModifiers, setCapturedModifiers] = useState<string[]>([]);
   const [capturedKey, setCapturedKey] = useState<string>("");
   const [isCapturing, setIsCapturing] = useState(false);
   const [action, setAction] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showError, setShowError] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
   
   const keyDisplayRef = useRef<HTMLDivElement>(null);
   const actionSelectRef = useRef<HTMLSelectElement>(null);
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
   const rafRefs = useRef<number[]>([]);
   const previousCategoriesRef = useRef<string>("");
-
-  // Subscribe to state changes for visibility and hotkey
-  useEffect(() => {
-    // Initial sync
-    setIsVisible(state.hotkeyDialogVisible);
-    setEditingHotkey(state.hotkeyDialogHotkey);
-    setCategories([...state.categories]);
-    
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(() => {
-      setIsVisible(state.hotkeyDialogVisible);
-      setEditingHotkey(state.hotkeyDialogHotkey);
-      setCategories([...state.categories]);
-    });
-    
-    return unsubscribe;
-  }, []);
 
   // Initialize or reset state when visibility or hotkey changes
   useEffect(() => {
@@ -176,9 +165,8 @@ export function HotkeyDialog() {
   };
 
   const handleCancel = () => {
-    state.hotkeyDialogVisible = false;
-    state.hotkeyDialogHotkey = undefined;
-    state.notify();
+    setHotkeyDialogVisible(false);
+    setHotkeyDialogHotkey(undefined);
   };
 
   const handleSave = async () => {
@@ -201,14 +189,16 @@ export function HotkeyDialog() {
     
     if (editingHotkey) {
       // Update existing hotkey
-      const index = state.hotkeys.findIndex(h => h.id === editingHotkey.id);
+      const updatedHotkeys = [...hotkeys];
+      const index = updatedHotkeys.findIndex(h => h.id === editingHotkey.id);
       if (index >= 0) {
-        state.hotkeys[index] = {
+        updatedHotkeys[index] = {
           ...editingHotkey,
           key: capturedKey,
           modifiers: [...capturedModifiers],
           action: selectedAction
         };
+        setHotkeys(updatedHotkeys);
       }
     } else {
       // Add new hotkey
@@ -218,7 +208,7 @@ export function HotkeyDialog() {
         modifiers: [...capturedModifiers],
         action: selectedAction
       };
-      state.hotkeys.push(newHotkey);
+      setHotkeys([...hotkeys, newHotkey]);
     }
     
     try {
@@ -231,9 +221,8 @@ export function HotkeyDialog() {
     }
     
     // Close dialog
-    state.hotkeyDialogVisible = false;
-    state.hotkeyDialogHotkey = undefined;
-    state.notify();
+    setHotkeyDialogVisible(false);
+    setHotkeyDialogHotkey(undefined);
   };
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {

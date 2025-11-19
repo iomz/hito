@@ -1,106 +1,92 @@
+import { atom } from "jotai";
 import type { ImagePath, DirectoryPath, HotkeyConfig, Category, CategoryAssignment } from "./types";
 
-// State change listener type
-type StateChangeListener = () => void;
+// Jotai atoms for state management
+export const allImagePathsAtom = atom<ImagePath[]>([]);
+export const allDirectoryPathsAtom = atom<DirectoryPath[]>([]);
+export const currentIndexAtom = atom<number>(0);
+export const isLoadingBatchAtom = atom<boolean>(false);
+export const loadedImagesAtom = atom<Map<string, string>>(new Map<string, string>());
+export const currentModalIndexAtom = atom<number>(-1); // Deprecated: use currentModalImagePath
+export const currentModalImagePathAtom = atom<string>(""); // Current image path being viewed in modal (empty = closed)
+export const isDeletingImageAtom = atom<boolean>(false);
+export const hotkeysAtom = atom<HotkeyConfig[]>([]);
+export const isHotkeySidebarOpenAtom = atom<boolean>(false);
+export const categoriesAtom = atom<Category[]>([]);
+export const imageCategoriesAtom = atom<Map<string, CategoryAssignment[]>>(new Map<string, CategoryAssignment[]>()); // image path -> category assignments with datetime
+export const currentDirectoryAtom = atom<string>(""); // Current directory being viewed
+export const configFilePathAtom = atom<string>(""); // Custom config file path (empty = default to currentDirectory/.hito.json)
+export const resetCounterAtom = atom<number>(0); // Incremented on reset to force ImageGrid remount
+export const shortcutsOverlayVisibleAtom = atom<boolean>(false); // Whether the keyboard shortcuts overlay is visible
+export const categoryDialogVisibleAtom = atom<boolean>(false); // Whether the category dialog is visible
+export const categoryDialogCategoryAtom = atom<Category | undefined>(undefined); // Category being edited (undefined = new category)
+export const hotkeyDialogVisibleAtom = atom<boolean>(false); // Whether the hotkey dialog is visible
+export const hotkeyDialogHotkeyAtom = atom<HotkeyConfig | undefined>(undefined); // Hotkey being edited (undefined = new hotkey)
+export const isLoadingAtom = atom<boolean>(false); // Whether the loading spinner should be visible
+export const errorMessageAtom = atom<string>(""); // Current error message to display (empty = no error)
+export const sortOptionAtom = atom<"name" | "dateCreated" | "lastCategorized" | "size">("name");
+export const sortDirectionAtom = atom<"ascending" | "descending">("ascending");
+export const filterOptionsAtom = atom<{
+  categoryId: "" | "uncategorized" | string;
+  namePattern: string;
+  nameOperator: "contains" | "startsWith" | "endsWith" | "exact";
+  sizeOperator: "largerThan" | "lessThan" | "between";
+  sizeValue: string;
+  sizeValue2: string;
+}>({
+  categoryId: "",
+  namePattern: "",
+  nameOperator: "contains",
+  sizeOperator: "largerThan",
+  sizeValue: "",
+  sizeValue2: "",
+});
+export const selectionModeAtom = atom<boolean>(false);
+export const selectedImagesAtom = atom<Set<string>>(new Set<string>());
+export const toggleImageSelectionAtom = atom<((path: string) => void) | undefined>(undefined); // Optional function to toggle image selection (set by ImageGridSelection component)
+export const suppressCategoryRefilterAtom = atom<boolean>(false); // When true, don't trigger re-filtering on category changes (used during modal assignment)
+export const cachedImageCategoriesForRefilterAtom = atom<Map<string, CategoryAssignment[]> | null>(null); // Cached snapshot of imageCategories when suppressCategoryRefilter is set
 
-// State change listeners
-const listeners = new Set<StateChangeListener>();
-
-// State
-export const state = {
-  allImagePaths: [] as ImagePath[],
-  allDirectoryPaths: [] as DirectoryPath[],
-  currentIndex: 0,
-  isLoadingBatch: false,
-  loadedImages: new Map<string, string>(),
-  currentModalIndex: -1, // Deprecated: use currentModalImagePath
-  currentModalImagePath: "" as string, // Current image path being viewed in modal (empty = closed)
-  isDeletingImage: false,
-  hotkeys: [] as HotkeyConfig[],
-  isHotkeySidebarOpen: false,
-  categories: [] as Category[],
-  imageCategories: new Map<string, CategoryAssignment[]>(), // image path -> category assignments with datetime
-  currentDirectory: "", // Current directory being viewed
-  configFilePath: "", // Custom config file path (empty = default to currentDirectory/.hito.json)
-  resetCounter: 0, // Incremented on reset to force ImageGrid remount
-  shortcutsOverlayVisible: false, // Whether the keyboard shortcuts overlay is visible
-  categoryDialogVisible: false, // Whether the category dialog is visible
-  categoryDialogCategory: undefined as Category | undefined, // Category being edited (undefined = new category)
-  hotkeyDialogVisible: false, // Whether the hotkey dialog is visible
-  hotkeyDialogHotkey: undefined as HotkeyConfig | undefined, // Hotkey being edited (undefined = new hotkey)
-  isLoading: false, // Whether the loading spinner should be visible
-  errorMessage: "", // Current error message to display (empty = no error)
-  sortOption: "name" as "name" | "dateCreated" | "lastCategorized" | "size",
-  sortDirection: "ascending" as "ascending" | "descending",
-  filterOptions: {
-    categoryId: "" as "" | "uncategorized" | string,
+// Create a write-only atom that resets all state to initial values
+export const resetStateAtom = atom(null, (get, set) => {
+  set(allImagePathsAtom, []);
+  set(allDirectoryPathsAtom, []);
+  set(currentIndexAtom, 0);
+  set(isLoadingBatchAtom, false);
+  set(loadedImagesAtom, new Map<string, string>());
+  set(currentModalIndexAtom, -1);
+  set(currentModalImagePathAtom, "");
+  set(isDeletingImageAtom, false);
+  set(hotkeysAtom, []);
+  set(isHotkeySidebarOpenAtom, false);
+  set(categoriesAtom, []);
+  set(imageCategoriesAtom, new Map<string, CategoryAssignment[]>());
+  set(currentDirectoryAtom, "");
+  set(configFilePathAtom, "");
+  set(resetCounterAtom, (prev) => prev + 1); // Increment to force remounts
+  set(shortcutsOverlayVisibleAtom, false);
+  set(categoryDialogVisibleAtom, false);
+  set(categoryDialogCategoryAtom, undefined);
+  set(hotkeyDialogVisibleAtom, false);
+  set(hotkeyDialogHotkeyAtom, undefined);
+  set(isLoadingAtom, false);
+  set(errorMessageAtom, "");
+  set(sortOptionAtom, "name");
+  set(sortDirectionAtom, "ascending");
+  set(filterOptionsAtom, {
+    categoryId: "",
     namePattern: "",
-    nameOperator: "contains" as "contains" | "startsWith" | "endsWith" | "exact",
-    sizeOperator: "largerThan" as "largerThan" | "lessThan" | "between",
+    nameOperator: "contains",
+    sizeOperator: "largerThan",
     sizeValue: "",
     sizeValue2: "",
-  },
-  selectionMode: false,
-  selectedImages: new Set<string>(),
-  toggleImageSelection: undefined as ((path: string) => void) | undefined, // Optional function to toggle image selection (set by ImageGridSelection component)
-  suppressCategoryRefilter: false, // When true, don't trigger re-filtering on category changes (used during modal assignment)
-  cachedImageCategoriesForRefilter: null as Map<string, CategoryAssignment[]> | null, // Cached snapshot of imageCategories when suppressCategoryRefilter is set
-  
-  // Subscribe to state changes
-  subscribe(listener: StateChangeListener): () => void {
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
-  },
-  
-  // Notify all listeners of state changes
-  notify(): void {
-    listeners.forEach((listener) => listener());
-  },
-  
-  // Reset all state to initial values
-  reset(): void {
-    this.allImagePaths = [];
-    this.allDirectoryPaths = [];
-    this.currentIndex = 0;
-    this.isLoadingBatch = false;
-    this.loadedImages.clear();
-    this.currentModalIndex = -1;
-    this.currentModalImagePath = "";
-    this.isDeletingImage = false;
-    this.hotkeys = [];
-    this.isHotkeySidebarOpen = false;
-    this.categories = [];
-    this.imageCategories.clear();
-    this.currentDirectory = "";
-    this.configFilePath = "";
-    this.resetCounter += 1; // Increment to force remounts
-    this.shortcutsOverlayVisible = false;
-    this.categoryDialogVisible = false;
-    this.categoryDialogCategory = undefined;
-    this.hotkeyDialogVisible = false;
-    this.hotkeyDialogHotkey = undefined;
-    this.isLoading = false;
-    this.errorMessage = "";
-    this.sortOption = "name";
-    this.sortDirection = "ascending";
-    this.filterOptions = {
-      categoryId: "",
-      namePattern: "",
-      nameOperator: "contains",
-      sizeOperator: "largerThan",
-      sizeValue: "",
-      sizeValue2: "",
-    };
-    this.selectionMode = false;
-    this.selectedImages.clear();
-    this.toggleImageSelection = undefined;
-    this.suppressCategoryRefilter = false;
-    this.cachedImageCategoriesForRefilter = null;
-    this.notify();
-  }
-};
+  });
+  set(selectionModeAtom, false);
+  set(selectedImagesAtom, new Set<string>());
+  set(toggleImageSelectionAtom, undefined);
+  set(suppressCategoryRefilterAtom, false);
+  set(cachedImageCategoriesForRefilterAtom, null);
+});
 
 // DOM Elements
 export const elements = {

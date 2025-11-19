@@ -1,36 +1,26 @@
-import React, { useEffect, useState } from "react";
-import { state } from "../state";
+import React, { useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { allImagePathsAtom, imageCategoriesAtom } from "../state";
 
 export function ImageGridStats() {
-  const [totalImages, setTotalImages] = useState(0);
-  const [imagesWithCategory, setImagesWithCategory] = useState(0);
-
-  useEffect(() => {
-    const updateStats = () => {
-      const images = Array.isArray(state.allImagePaths) ? state.allImagePaths : [];
-      const total = images.length;
-      
-      // Count images with at least one category
-            let withCategory = 0;
-            images.forEach((imagePathObj) => {
-              const assignments = state.imageCategories?.get(imagePathObj.path);
-              if (assignments && assignments.length > 0) {
-                withCategory++;
-              }
-            });
-      
-      setTotalImages(total);
-      setImagesWithCategory(withCategory);
-    };
-
-    // Initial update
-    updateStats();
-
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(updateStats);
-
-    return unsubscribe;
-  }, []);
+  const allImagePaths = useAtomValue(allImagePathsAtom);
+  const imageCategories = useAtomValue(imageCategoriesAtom);
+  
+  const { totalImages, imagesWithCategory } = useMemo(() => {
+    const images = Array.isArray(allImagePaths) ? allImagePaths : [];
+    const total = images.length;
+    
+    // Count images with at least one category
+    let withCategory = 0;
+    images.forEach((imagePathObj) => {
+      const assignments = imageCategories?.get(imagePathObj.path);
+      if (assignments && assignments.length > 0) {
+        withCategory++;
+      }
+    });
+    
+    return { totalImages: total, imagesWithCategory: withCategory };
+  }, [allImagePaths, imageCategories]);
 
   if (totalImages === 0) {
     return null;

@@ -1,4 +1,13 @@
-import { state } from "../state";
+import { store } from "./jotaiStore";
+import {
+  allImagePathsAtom,
+  sortOptionAtom,
+  sortDirectionAtom,
+  filterOptionsAtom,
+  imageCategoriesAtom,
+  suppressCategoryRefilterAtom,
+  cachedImageCategoriesForRefilterAtom,
+} from "../state";
 import { invokeTauri, isTauriInvokeAvailable } from "./tauri";
 import type { ImagePath } from "../types";
 
@@ -65,13 +74,15 @@ function applySizeFilter(images: ImagePath[], sizeOperator: string, sizeValue: s
  * Apply sorting to images array in-place based on current sort options.
  */
 function applySorting(images: ImagePath[]): void {
-  switch (state.sortOption) {
+  const sortOption = store.get(sortOptionAtom);
+  const sortDirection = store.get(sortDirectionAtom);
+  switch (sortOption) {
     case "name":
       images.sort((a, b) => {
         const nameA = a.path.split(/[/\\]/).pop()?.toLowerCase() || "";
         const nameB = b.path.split(/[/\\]/).pop()?.toLowerCase() || "";
         const result = nameA.localeCompare(nameB);
-        return state.sortDirection === "descending" ? -result : result;
+        return sortDirection === "descending" ? -result : result;
       });
       break;
     case "size":
@@ -79,7 +90,7 @@ function applySorting(images: ImagePath[]): void {
         const sizeA = a.size || 0;
         const sizeB = b.size || 0;
         const result = sizeA - sizeB;
-        return state.sortDirection === "descending" ? -result : result;
+        return sortDirection === "descending" ? -result : result;
       });
       break;
     case "dateCreated":
@@ -87,14 +98,17 @@ function applySorting(images: ImagePath[]): void {
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
         const result = dateA - dateB;
-        return state.sortDirection === "descending" ? -result : result;
+        return sortDirection === "descending" ? -result : result;
       });
       break;
     case "lastCategorized": {
       // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
-      const imageCategoriesForSorting = state.suppressCategoryRefilter && state.cachedImageCategoriesForRefilter
-        ? state.cachedImageCategoriesForRefilter
-        : state.imageCategories;
+      const suppressCategoryRefilter = store.get(suppressCategoryRefilterAtom);
+      const cachedImageCategoriesForRefilter = store.get(cachedImageCategoriesForRefilterAtom);
+      const imageCategories = store.get(imageCategoriesAtom);
+      const imageCategoriesForSorting = suppressCategoryRefilter && cachedImageCategoriesForRefilter
+        ? cachedImageCategoriesForRefilter
+        : imageCategories;
       images.sort((a, b) => {
         const getLatestAssignment = (path: string): number => {
           const assignments = imageCategoriesForSorting.get(path);
@@ -109,7 +123,7 @@ function applySorting(images: ImagePath[]): void {
         const dateA = getLatestAssignment(a.path);
         const dateB = getLatestAssignment(b.path);
         const result = dateA - dateB;
-        return state.sortDirection === "descending" ? -result : result;
+        return sortDirection === "descending" ? -result : result;
       });
       break;
     }
@@ -120,12 +134,15 @@ function applySorting(images: ImagePath[]): void {
  * Apply filtering to images array based on current filter options.
  */
 function applyFiltering(images: ImagePath[]): ImagePath[] {
-  const filters = state.filterOptions;
+  const filters = store.get(filterOptionsAtom);
   
   // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
-  const imageCategoriesForFiltering = state.suppressCategoryRefilter && state.cachedImageCategoriesForRefilter
-    ? state.cachedImageCategoriesForRefilter
-    : state.imageCategories;
+  const suppressCategoryRefilter = store.get(suppressCategoryRefilterAtom);
+  const cachedImageCategoriesForRefilter = store.get(cachedImageCategoriesForRefilterAtom);
+  const imageCategories = store.get(imageCategoriesAtom);
+  const imageCategoriesForFiltering = suppressCategoryRefilter && cachedImageCategoriesForRefilter
+    ? cachedImageCategoriesForRefilter
+    : imageCategories;
 
   // Apply category filter
   if (filters.categoryId) {
@@ -178,7 +195,8 @@ function applyFiltering(images: ImagePath[]): ImagePath[] {
  * This mirrors the logic in ImageGrid's processedImages useMemo.
  */
 export async function getFilteredAndSortedImages(): Promise<ImagePath[]> {
-  let images = Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : [];
+  const allImagePaths = store.get(allImagePathsAtom);
+  let images = Array.isArray(allImagePaths) ? [...allImagePaths] : [];
   
   if (images.length === 0) {
     return [];
@@ -188,14 +206,17 @@ export async function getFilteredAndSortedImages(): Promise<ImagePath[]> {
   let rustSucceeded = false;
   if (isTauriInvokeAvailable()) {
     try {
-      const imageCategoriesArray = Array.from(state.imageCategories.entries());
+      const imageCategories = store.get(imageCategoriesAtom);
+      const imageCategoriesArray = Array.from(imageCategories.entries());
       
       // Convert filterOptions to Rust format (camelCase to snake_case)
-      const filters = state.filterOptions;
+      const filters = store.get(filterOptionsAtom);
+      const sortOption = store.get(sortOptionAtom);
+      const sortDirection = store.get(sortDirectionAtom);
       const hasCategoryFilter = filters.categoryId && filters.categoryId !== "";
       const hasNameFilter = filters.namePattern && filters.namePattern !== "";
       const hasSizeFilter = filters.sizeValue && filters.sizeValue !== "";
-      const filterOptions = (hasCategoryFilter || hasNameFilter || hasSizeFilter) ? {
+      const rustFilterOptions = (hasCategoryFilter || hasNameFilter || hasSizeFilter) ? {
         category_id: hasCategoryFilter ? filters.categoryId : null,
         name_pattern: hasNameFilter ? filters.namePattern : null,
         name_operator: hasNameFilter ? filters.nameOperator : null,
@@ -206,10 +227,10 @@ export async function getFilteredAndSortedImages(): Promise<ImagePath[]> {
       
       images = await invokeTauri<ImagePath[]>("sort_images", {
         images,
-        sortOption: state.sortOption,
-        sortDirection: state.sortDirection,
+        sortOption: sortOption,
+        sortDirection: sortDirection,
         imageCategories: imageCategoriesArray,
-        filterOptions: filterOptions,
+        filterOptions: rustFilterOptions,
       });
       rustSucceeded = true;
     } catch (error) {
@@ -232,7 +253,8 @@ export async function getFilteredAndSortedImages(): Promise<ImagePath[]> {
  * Use this for immediate UI updates where async sorting would cause delays.
  */
 export function getFilteredAndSortedImagesSync(): ImagePath[] {
-  let images = Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : [];
+  const allImagePaths = store.get(allImagePathsAtom);
+  let images = Array.isArray(allImagePaths) ? [...allImagePaths] : [];
   
   applySorting(images);
   images = applyFiltering(images);

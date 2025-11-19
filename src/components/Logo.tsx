@@ -1,9 +1,12 @@
 import React from "react";
-import { state } from "../state";
+import { useSetAtom } from "jotai";
+import { resetStateAtom } from "../state";
 
 export function Logo() {
+  const resetState = useSetAtom(resetStateAtom);
+  
   const handleClick = () => {
-    state.reset();
+    resetState();
   };
 
   return (

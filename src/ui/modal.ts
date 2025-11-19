@@ -1,4 +1,15 @@
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import {
+  currentModalImagePathAtom,
+  currentModalIndexAtom,
+  loadedImagesAtom,
+  suppressCategoryRefilterAtom,
+  cachedImageCategoriesForRefilterAtom,
+  shortcutsOverlayVisibleAtom,
+  isDeletingImageAtom,
+  allImagePathsAtom,
+  currentIndexAtom,
+} from "../state";
 import { loadImageData } from "../utils/images";
 import { showError } from "./error";
 import { showNotification } from "./notification";
@@ -28,28 +39,32 @@ export async function openModal(imagePath: string): Promise<void> {
   }
   
   const requestedPath = imagePath;
-  state.currentModalImagePath = imagePath;
+  store.set(currentModalImagePathAtom, imagePath);
   // Keep currentModalIndex for backward compatibility, but calculate from filtered list
-  state.currentModalIndex = imageIndex;
-  state.notify();
+  store.set(currentModalIndexAtom, imageIndex);
   
   // Pre-load image data if not already loaded (React component will use it)
-  let dataUrl = state.loadedImages.get(imagePath);
+  const loadedImages = store.get(loadedImagesAtom);
+  let dataUrl = loadedImages.get(imagePath);
   if (!dataUrl) {
     try {
       dataUrl = await loadImageData(imagePath);
+      // Update loadedImages atom
+      const updatedLoadedImages = new Map(loadedImages);
+      updatedLoadedImages.set(imagePath, dataUrl);
+      store.set(loadedImagesAtom, updatedLoadedImages);
     } catch (error) {
       showError(`Error loading image: ${error}`);
       // Reset modal on error
-      state.currentModalImagePath = "";
-      state.currentModalIndex = -1;
-      state.notify();
+      store.set(currentModalImagePathAtom, "");
+      store.set(currentModalIndexAtom, -1);
       return;
     }
   }
   
   // Check if a newer modal request has been made while we were loading
-  if (state.currentModalImagePath !== requestedPath) {
+  const currentModalImagePath = store.get(currentModalImagePathAtom);
+  if (currentModalImagePath !== requestedPath) {
     return;
   }
   
@@ -78,21 +93,16 @@ export async function openModalByIndex(imageIndex: number): Promise<void> {
  * Clears suppressCategoryRefilter flag to trigger deferred re-filtering if needed.
  */
 export function closeModal(): void {
-  state.currentModalImagePath = "";
-  state.currentModalIndex = -1;
+  store.set(currentModalImagePathAtom, "");
+  store.set(currentModalIndexAtom, -1);
   
   // Clear suppress flag and cached snapshot to trigger deferred re-filtering from category assignments
-  const hadSuppress = state.suppressCategoryRefilter;
-  state.suppressCategoryRefilter = false;
-  state.cachedImageCategoriesForRefilter = null;
+  const hadSuppress = store.get(suppressCategoryRefilterAtom);
+  store.set(suppressCategoryRefilterAtom, false);
+  store.set(cachedImageCategoriesForRefilterAtom, null);
   
   // Hide shortcuts overlay if visible
   hideShortcutsOverlay();
-  
-  // Notify to trigger refilter if suppress was active
-  if (hadSuppress) {
-    state.notify();
-  }
 }
 
 /**
@@ -102,17 +112,18 @@ export function closeModal(): void {
  * Clears suppressCategoryRefilter flag to trigger deferred re-filtering.
  */
 export function showNextImage(): void {
-  if (!state.currentModalImagePath) {
+  const currentModalImagePath = store.get(currentModalImagePathAtom);
+  if (!currentModalImagePath) {
     return;
   }
   
   // Clear suppress flag and cached snapshot to trigger deferred re-filtering from category assignments
-  const hadSuppress = state.suppressCategoryRefilter;
-  state.suppressCategoryRefilter = false;
-  state.cachedImageCategoriesForRefilter = null;
+  const hadSuppress = store.get(suppressCategoryRefilterAtom);
+  store.set(suppressCategoryRefilterAtom, false);
+  store.set(cachedImageCategoriesForRefilterAtom, null);
   
   const filteredImages = getFilteredAndSortedImagesSync();
-  const currentIndex = filteredImages.findIndex((img) => img.path === state.currentModalImagePath);
+  const currentIndex = filteredImages.findIndex((img) => img.path === currentModalImagePath);
   
   if (currentIndex >= 0) {
     // Current image is still in filtered list, navigate to next
@@ -123,9 +134,6 @@ export function showNextImage(): void {
     // Current image no longer in filtered list (due to category change),
     // navigate to first image in new filtered list
     openModal(filteredImages[0].path);
-  } else if (hadSuppress) {
-    // No images in filtered list, notify to trigger refilter (may close modal)
-    state.notify();
   }
 }
 
@@ -136,17 +144,18 @@ export function showNextImage(): void {
  * Clears suppressCategoryRefilter flag to trigger deferred re-filtering.
  */
 export function showPreviousImage(): void {
-  if (!state.currentModalImagePath) {
+  const currentModalImagePath = store.get(currentModalImagePathAtom);
+  if (!currentModalImagePath) {
     return;
   }
   
   // Clear suppress flag and cached snapshot to trigger deferred re-filtering from category assignments
-  const hadSuppress = state.suppressCategoryRefilter;
-  state.suppressCategoryRefilter = false;
-  state.cachedImageCategoriesForRefilter = null;
+  const hadSuppress = store.get(suppressCategoryRefilterAtom);
+  store.set(suppressCategoryRefilterAtom, false);
+  store.set(cachedImageCategoriesForRefilterAtom, null);
   
   const filteredImages = getFilteredAndSortedImagesSync();
-  const currentIndex = filteredImages.findIndex((img) => img.path === state.currentModalImagePath);
+  const currentIndex = filteredImages.findIndex((img) => img.path === currentModalImagePath);
   
   if (currentIndex >= 0) {
     // Current image is still in filtered list, navigate to previous
@@ -157,9 +166,6 @@ export function showPreviousImage(): void {
     // Current image no longer in filtered list (due to category change),
     // navigate to last image in new filtered list
     openModal(filteredImages[filteredImages.length - 1].path);
-  } else if (hadSuppress) {
-    // No images in filtered list, notify to trigger refilter (may close modal)
-    state.notify();
   }
 }
 
@@ -168,16 +174,15 @@ export function showPreviousImage(): void {
  * Toggle the keyboard shortcuts overlay between visible and hidden.
  */
 export function toggleShortcutsOverlay(): void {
-  state.shortcutsOverlayVisible = !state.shortcutsOverlayVisible;
-  state.notify();
+  const current = store.get(shortcutsOverlayVisibleAtom);
+  store.set(shortcutsOverlayVisibleAtom, !current);
 }
 
 /**
  * Hide the keyboard shortcuts overlay.
  */
 export function hideShortcutsOverlay(): void {
-  state.shortcutsOverlayVisible = false;
-  state.notify();
+  store.set(shortcutsOverlayVisibleAtom, false);
 }
 
 /**
@@ -189,7 +194,8 @@ export function hideShortcutsOverlay(): void {
  */
 export async function deleteCurrentImage(): Promise<void> {
   // Re-entrancy guard: ignore if deletion is already in progress
-  if (state.isDeletingImage) {
+  const isDeletingImage = store.get(isDeletingImageAtom);
+  if (isDeletingImage) {
     return;
   }
   
@@ -197,18 +203,20 @@ export async function deleteCurrentImage(): Promise<void> {
     return;
   }
   
-  if (!state.currentModalImagePath) {
+  const currentModalImagePath = store.get(currentModalImagePathAtom);
+  if (!currentModalImagePath) {
     return;
   }
   
-  const imagePath = state.currentModalImagePath;
+  const imagePath = currentModalImagePath;
   const filteredImages = getFilteredAndSortedImagesSync();
   const deletedIndex = filteredImages.findIndex((img) => img.path === imagePath);
   const isLastImage = deletedIndex === filteredImages.length - 1;
   const isOnlyImage = filteredImages.length === 1;
   
   // Find the index in allImagePaths for removal
-  const allImagePathsIndex = state.allImagePaths.findIndex((img) => img.path === imagePath);
+  const allImagePaths = store.get(allImagePathsAtom);
+  const allImagePathsIndex = allImagePaths.findIndex((img) => img.path === imagePath);
   
   if (!isTauriInvokeAvailable()) {
     showError("Tauri invoke API not available");
@@ -216,22 +224,27 @@ export async function deleteCurrentImage(): Promise<void> {
   }
   
   // Set deletion flag to prevent re-entrancy
-  state.isDeletingImage = true;
+  store.set(isDeletingImageAtom, true);
   
   try {
     await invokeTauri("delete_image", { imagePath });
     
     // Remove from loaded images cache
-    state.loadedImages.delete(imagePath);
+    const loadedImages = store.get(loadedImagesAtom);
+    const updatedLoadedImages = new Map(loadedImages);
+    updatedLoadedImages.delete(imagePath);
+    store.set(loadedImagesAtom, updatedLoadedImages);
     
     // Remove from image list (use allImagePathsIndex, not deletedIndex)
     if (allImagePathsIndex >= 0) {
-      state.allImagePaths.splice(allImagePathsIndex, 1);
-      state.notify();
+      const updatedAllImagePaths = [...allImagePaths];
+      updatedAllImagePaths.splice(allImagePathsIndex, 1);
+      store.set(allImagePathsAtom, updatedAllImagePaths);
       
       // Adjust currentIndex if the deleted image was before the current batch loading position
-      if (allImagePathsIndex < state.currentIndex) {
-        state.currentIndex -= 1;
+      const currentIndex = store.get(currentIndexAtom);
+      if (allImagePathsIndex < currentIndex) {
+        store.set(currentIndexAtom, currentIndex - 1);
       }
     }
     
@@ -243,7 +256,7 @@ export async function deleteCurrentImage(): Promise<void> {
       // If it was the only image or no images remain, close the modal
       closeModal();
       showNotification("Image deleted. No more images in this directory.");
-      state.isDeletingImage = false;
+      store.set(isDeletingImageAtom, false);
       return; // Return immediately to avoid generic notification
     } else if (isLastImage || deletedIndex >= updatedFilteredImages.length) {
       // If it was the last image, go to the previous one
@@ -269,7 +282,7 @@ export async function deleteCurrentImage(): Promise<void> {
     showError(`Failed to delete image: ${error}`);
   } finally {
     // Always reset the deletion flag
-    state.isDeletingImage = false;
+    store.set(isDeletingImageAtom, false);
   }
 }
 

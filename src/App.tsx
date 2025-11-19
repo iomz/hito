@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo } from "react";
+import { useAtomValue } from "jotai";
 import { setupDocumentDragHandlers, setupTauriDragEvents } from "./handlers/dragDrop";
 import { setupKeyboardHandlers } from "./handlers/keyboard";
-import { state } from "./state";
+import { allImagePathsAtom, allDirectoryPathsAtom } from "./state";
 import { DropZone } from "./components/DropZone";
 import { CurrentPath } from "./components/CurrentPath";
 import { ErrorMessage } from "./components/ErrorMessage";
@@ -18,26 +19,15 @@ import { Logo } from "./components/Logo";
 import { CUSTOM_DRAG_EVENTS } from "./constants";
 
 function App() {
-  const [hasContent, setHasContent] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
+  const allImagePaths = useAtomValue(allImagePathsAtom);
+  const allDirectoryPaths = useAtomValue(allDirectoryPathsAtom);
+  const [isDragOver, setIsDragOver] = React.useState(false);
 
-  // Subscribe to state changes to reactively show/hide ImageGrid
-  useEffect(() => {
-    const hasContent = () => Boolean(
-      Array.isArray(state.allImagePaths) && state.allImagePaths.length > 0 ||
-      Array.isArray(state.allDirectoryPaths) && state.allDirectoryPaths.length > 0
-    );
-    
-    // One-time initial sync
-    setHasContent(hasContent());
-    
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(() => {
-      setHasContent(hasContent());
-    });
-    
-    return unsubscribe;
-  }, []);
+  // Compute hasContent reactively from atoms
+  const hasContent = useMemo(() => Boolean(
+    Array.isArray(allImagePaths) && allImagePaths.length > 0 ||
+    Array.isArray(allDirectoryPaths) && allDirectoryPaths.length > 0
+  ), [allImagePaths, allDirectoryPaths]);
 
   useEffect(() => {
     // Setup all event handlers after DOM is ready

@@ -1,4 +1,18 @@
-import { state } from "../state";
+import { store } from "../utils/jotaiStore";
+import {
+  categoriesAtom,
+  imageCategoriesAtom,
+  hotkeysAtom,
+  configFilePathAtom,
+  currentDirectoryAtom,
+  allImagePathsAtom,
+  filterOptionsAtom,
+  currentModalImagePathAtom,
+  suppressCategoryRefilterAtom,
+  cachedImageCategoriesForRefilterAtom,
+  categoryDialogVisibleAtom,
+  categoryDialogCategoryAtom,
+} from "../state";
 import type { Category, HotkeyConfig, CategoryAssignment } from "../types";
 import { confirm } from "../utils/dialog";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
@@ -11,20 +25,23 @@ interface HitoFile {
 }
 
 function getConfigFileDirectory(): string {
-  if (state.configFilePath) {
-    const path = normalizePath(state.configFilePath);
+  const configFilePath = store.get(configFilePathAtom);
+  const currentDirectory = store.get(currentDirectoryAtom);
+  if (configFilePath) {
+    const path = normalizePath(configFilePath);
     const lastSlash = path.lastIndexOf("/");
     if (lastSlash >= 0) {
       return path.substring(0, lastSlash);
     }
-    return state.currentDirectory;
+    return currentDirectory;
   }
-  return state.currentDirectory;
+  return currentDirectory;
 }
 
 function getConfigFileName(): string | undefined {
-  if (state.configFilePath) {
-    const path = normalizePath(state.configFilePath);
+  const configFilePath = store.get(configFilePathAtom);
+  if (configFilePath) {
+    const path = normalizePath(configFilePath);
     const lastSlash = path.lastIndexOf("/");
     if (lastSlash >= 0) {
       const filename = path.substring(lastSlash + 1);
@@ -61,8 +78,10 @@ function createDefaultHotkeys(): HotkeyConfig[] {
  */
 export async function loadHitoConfig(): Promise<void> {
   const configDir = getConfigFileDirectory();
+  const currentDirectory = store.get(currentDirectoryAtom);
+  const configFilePath = store.get(configFilePathAtom);
   if (!configDir || configDir.trim() === "") {
-    console.warn("[loadHitoConfig] Config directory is empty or not set. currentDirectory:", state.currentDirectory, "configFilePath:", state.configFilePath);
+    console.warn("[loadHitoConfig] Config directory is empty or not set. currentDirectory:", currentDirectory, "configFilePath:", configFilePath);
     return;
   }
 
@@ -87,15 +106,11 @@ export async function loadHitoConfig(): Promise<void> {
     });
 
     if (data.categories) {
-      state.categories = data.categories;
+      store.set(categoriesAtom, data.categories);
     }
 
     if (data.image_categories) {
-      state.imageCategories = new Map(data.image_categories);
-    }
-    
-    if (data.categories || data.image_categories) {
-      state.notify();
+      store.set(imageCategoriesAtom, new Map(data.image_categories));
     }
 
     // Check if file exists - if all arrays are empty/undefined, file doesn't exist
@@ -108,17 +123,15 @@ export async function loadHitoConfig(): Promise<void> {
 
     if (data.hotkeys && data.hotkeys.length > 0) {
       // Ensure hotkeys have all required fields
-      state.hotkeys = data.hotkeys.map((h) => ({
+      store.set(hotkeysAtom, data.hotkeys.map((h) => ({
         id: h.id || `hotkey_${Date.now()}_${Math.random()}`,
         key: h.key || "",
         modifiers: Array.isArray(h.modifiers) ? h.modifiers : [],
         action: h.action || "",
-      }));
-      state.notify();
+      })));
     } else if (!fileExists) {
       // File doesn't exist - create default hotkeys
-      state.hotkeys = createDefaultHotkeys();
-      state.notify();
+      store.set(hotkeysAtom, createDefaultHotkeys());
       
       // Save the default hotkeys to create the .hito.json file
       try {
@@ -140,9 +153,9 @@ export async function loadHitoConfig(): Promise<void> {
     if (isFileNotFound) {
       // File doesn't exist - create default hotkeys
       console.log("[loadHitoConfig] Config file not found, creating default hotkeys");
-      if (!state.hotkeys || state.hotkeys.length === 0) {
-        state.hotkeys = createDefaultHotkeys();
-        state.notify();
+      const hotkeys = store.get(hotkeysAtom);
+      if (!hotkeys || hotkeys.length === 0) {
+        store.set(hotkeysAtom, createDefaultHotkeys());
         
         // Save the default hotkeys to create the .hito.json file
         try {
@@ -163,8 +176,10 @@ export async function loadHitoConfig(): Promise<void> {
 
 export async function saveHitoConfig(): Promise<void> {
   const configDir = getConfigFileDirectory();
+  const currentDirectory = store.get(currentDirectoryAtom);
+  const configFilePath = store.get(configFilePathAtom);
   if (!configDir || configDir.trim() === "") {
-    console.warn("[saveHitoConfig] Config directory is empty or not set. currentDirectory:", state.currentDirectory, "configFilePath:", state.configFilePath);
+    console.warn("[saveHitoConfig] Config directory is empty or not set. currentDirectory:", currentDirectory, "configFilePath:", configFilePath);
     return;
   }
 
@@ -174,22 +189,25 @@ export async function saveHitoConfig(): Promise<void> {
       return;
     }
 
-    const imageCategoriesArray = Array.from(state.imageCategories.entries());
+    const imageCategories = store.get(imageCategoriesAtom);
+    const categories = store.get(categoriesAtom);
+    const hotkeys = store.get(hotkeysAtom);
+    const imageCategoriesArray = Array.from(imageCategories.entries());
     const configFileName = getConfigFileName();
 
     console.log("[saveHitoConfig] Saving config:", {
       directory: configDir,
       filename: configFileName,
-      categoriesCount: state.categories.length,
+      categoriesCount: categories.length,
       imageCategoriesCount: imageCategoriesArray.length,
-      hotkeysCount: state.hotkeys.length,
+      hotkeysCount: hotkeys.length,
     });
 
     await invokeTauri("save_hito_config", {
       directory: configDir,
-      categories: state.categories,
+      categories: categories,
       imageCategories: imageCategoriesArray,
-      hotkeys: state.hotkeys,
+      hotkeys: hotkeys,
       filename: configFileName,
     });
 
@@ -249,9 +267,12 @@ function imageMatchesCategoryFilter(imagePath: string, filterCategoryId: string 
   }
   
   // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
-  const imageCategoriesForFiltering = state.suppressCategoryRefilter && state.cachedImageCategoriesForRefilter
-    ? state.cachedImageCategoriesForRefilter
-    : state.imageCategories;
+  const suppressCategoryRefilter = store.get(suppressCategoryRefilterAtom);
+  const cachedImageCategoriesForRefilter = store.get(cachedImageCategoriesForRefilterAtom);
+  const imageCategories = store.get(imageCategoriesAtom);
+  const imageCategoriesForFiltering = suppressCategoryRefilter && cachedImageCategoriesForRefilter
+    ? cachedImageCategoriesForRefilter
+    : imageCategories;
   
   const assignments = imageCategoriesForFiltering.get(imagePath);
   
@@ -268,7 +289,8 @@ function imageMatchesCategoryFilter(imagePath: string, filterCategoryId: string 
  * Get the filtered list of images based on current filter options.
  */
 function getFilteredImages(): string[] {
-  const rawImages = Array.isArray(state.allImagePaths) ? [...state.allImagePaths] : [];
+  const allImagePaths = store.get(allImagePathsAtom);
+  const rawImages = Array.isArray(allImagePaths) ? [...allImagePaths] : [];
   
   // Normalize images to a consistent shape: detect type and convert strings to objects
   // Normalize: convert strings to objects with path property, or use objects as-is
@@ -283,7 +305,7 @@ function getFilteredImages(): string[] {
     }
   });
   
-  const filters = state.filterOptions;
+  const filters = store.get(filterOptionsAtom);
 
   // Apply category filter
   if (filters.categoryId) {
@@ -364,20 +386,22 @@ export async function toggleImageCategory(
   imagePath: string,
   categoryId: string,
 ): Promise<void> {
-  const currentAssignments = state.imageCategories.get(imagePath) || [];
+  const imageCategories = store.get(imageCategoriesAtom);
+  const currentAssignments = imageCategories.get(imagePath) || [];
   const existingIndex = currentAssignments.findIndex(
     (assignment) => assignment.category_id === categoryId
   );
   
+  const updatedImageCategories = new Map(imageCategories);
   if (existingIndex >= 0) {
     // Remove category
-    state.imageCategories.set(
+    updatedImageCategories.set(
       imagePath,
       currentAssignments.filter((_, index) => index !== existingIndex),
     );
   } else {
     // Add category with current datetime
-    state.imageCategories.set(imagePath, [
+    updatedImageCategories.set(imagePath, [
       ...currentAssignments,
       {
         category_id: categoryId,
@@ -385,16 +409,17 @@ export async function toggleImageCategory(
       },
     ]);
   }
+  store.set(imageCategoriesAtom, updatedImageCategories);
   
-  state.notify();
   await saveHitoConfig();
   
   // Only navigate away if suppressCategoryRefilter is false (not called from modal assignment)
-  if (!state.suppressCategoryRefilter) {
-    const filters = state.filterOptions;
-    if (filters.categoryId && state.currentModalImagePath) {
-      const currentImagePath = state.currentModalImagePath;
-      if (currentImagePath === imagePath) {
+  const suppressCategoryRefilter = store.get(suppressCategoryRefilterAtom);
+  if (!suppressCategoryRefilter) {
+    const filters = store.get(filterOptionsAtom);
+    const currentModalImagePath = store.get(currentModalImagePathAtom);
+    if (filters.categoryId && currentModalImagePath) {
+      if (currentModalImagePath === imagePath) {
         // Check if the image would still match the filter after the toggle
         const stillMatches = imageMatchesCategoryFilter(imagePath, filters.categoryId);
         if (!stillMatches) {
@@ -413,28 +438,31 @@ export async function assignImageCategory(
   imagePath: string,
   categoryId: string,
 ): Promise<void> {
-  const currentAssignments = state.imageCategories.get(imagePath) || [];
+  const imageCategories = store.get(imageCategoriesAtom);
+  const currentAssignments = imageCategories.get(imagePath) || [];
   const exists = currentAssignments.some(
     (assignment) => assignment.category_id === categoryId
   );
 
   if (!exists) {
-    state.imageCategories.set(imagePath, [
+    const updatedImageCategories = new Map(imageCategories);
+    updatedImageCategories.set(imagePath, [
       ...currentAssignments,
       {
         category_id: categoryId,
         assigned_at: new Date().toISOString(),
       },
     ]);
-    state.notify();
+    store.set(imageCategoriesAtom, updatedImageCategories);
     await saveHitoConfig();
     
     // Only navigate away if suppressCategoryRefilter is false (not called from modal assignment)
-    if (!state.suppressCategoryRefilter) {
-      const filters = state.filterOptions;
-      if (filters.categoryId && state.currentModalImagePath) {
-        const currentImagePath = state.currentModalImagePath;
-        if (currentImagePath === imagePath) {
+    const suppressCategoryRefilter = store.get(suppressCategoryRefilterAtom);
+    if (!suppressCategoryRefilter) {
+      const filters = store.get(filterOptionsAtom);
+      const currentModalImagePath = store.get(currentModalImagePathAtom);
+      if (filters.categoryId && currentModalImagePath) {
+        if (currentModalImagePath === imagePath) {
           // Check if the image would still match the filter after the assign
           // If filtering by "uncategorized", adding a category removes it from the filter
           const stillMatches = imageMatchesCategoryFilter(imagePath, filters.categoryId);
@@ -455,17 +483,19 @@ export async function assignImageCategory(
 export async function assignCategoryToCurrentImage(
   categoryId: string,
 ): Promise<void> {
-  if (!state.currentModalImagePath) {
+  const currentModalImagePath = store.get(currentModalImagePathAtom);
+  if (!currentModalImagePath) {
     return;
   }
 
-  const currentImagePath = state.currentModalImagePath;
+  const currentImagePath = currentModalImagePath;
   
   // Cache a snapshot of imageCategories before the change for deferred filtering
-  state.cachedImageCategoriesForRefilter = new Map(state.imageCategories);
+  const imageCategories = store.get(imageCategoriesAtom);
+  store.set(cachedImageCategoriesForRefilterAtom, new Map(imageCategories));
   
   // Suppress immediate re-filtering - will happen on next navigation
-  state.suppressCategoryRefilter = true;
+  store.set(suppressCategoryRefilterAtom, true);
   await assignImageCategory(currentImagePath, categoryId);
   // Keep suppress flag set - it will be cleared on next navigation
 }
@@ -477,17 +507,19 @@ export async function assignCategoryToCurrentImage(
 export async function toggleCategoryForCurrentImage(
   categoryId: string,
 ): Promise<void> {
-  if (!state.currentModalImagePath) {
+  const currentModalImagePath = store.get(currentModalImagePathAtom);
+  if (!currentModalImagePath) {
     return;
   }
 
-  const currentImagePath = state.currentModalImagePath;
+  const currentImagePath = currentModalImagePath;
   
   // Cache a snapshot of imageCategories before the change for deferred filtering
-  state.cachedImageCategoriesForRefilter = new Map(state.imageCategories);
+  const imageCategories = store.get(imageCategoriesAtom);
+  store.set(cachedImageCategoriesForRefilterAtom, new Map(imageCategories));
   
   // Suppress immediate re-filtering - will happen on next navigation
-  state.suppressCategoryRefilter = true;
+  store.set(suppressCategoryRefilterAtom, true);
   await toggleImageCategory(currentImagePath, categoryId);
   // Keep suppress flag set - it will be cleared on next navigation
 }
@@ -500,7 +532,8 @@ export async function toggleCategoryForCurrentImage(
  */
 export function isCategoryNameDuplicate(name: string, excludeId?: string): boolean {
   const normalizedName = name.trim().toLowerCase();
-  return state.categories.some((category) => {
+  const categories = store.get(categoriesAtom);
+  return categories.some((category) => {
     // Skip the category being edited
     if (excludeId && category.id === excludeId) {
       return false;
@@ -514,9 +547,8 @@ export function isCategoryNameDuplicate(name: string, excludeId?: string): boole
  * Show the add/edit category dialog.
  */
 export function showCategoryDialog(existingCategory?: Category): void {
-  state.categoryDialogVisible = true;
-  state.categoryDialogCategory = existingCategory;
-  state.notify();
+  store.set(categoryDialogVisibleAtom, true);
+  store.set(categoryDialogCategoryAtom, existingCategory);
 }
 
 /**
@@ -535,19 +567,23 @@ export async function deleteCategory(categoryId: string): Promise<void> {
   }
 
   // Remove category from all images
-  state.imageCategories.forEach((assignments, imagePath) => {
+  const imageCategories = store.get(imageCategoriesAtom);
+  const updatedImageCategories = new Map(imageCategories);
+  imageCategories.forEach((assignments, imagePath) => {
     const updatedAssignments = assignments.filter(
       (assignment) => assignment.category_id !== categoryId
     );
     if (updatedAssignments.length === 0) {
-      state.imageCategories.delete(imagePath);
+      updatedImageCategories.delete(imagePath);
     } else {
-      state.imageCategories.set(imagePath, updatedAssignments);
+      updatedImageCategories.set(imagePath, updatedAssignments);
     }
   });
+  store.set(imageCategoriesAtom, updatedImageCategories);
 
   // Clean up hotkeys that reference this category
-  state.hotkeys.forEach((hotkey) => {
+  const hotkeys = store.get(hotkeysAtom);
+  const updatedHotkeys = hotkeys.map((hotkey) => {
     if (hotkey.action) {
       // Check for all action patterns that reference this category
       if (
@@ -556,14 +592,16 @@ export async function deleteCategory(categoryId: string): Promise<void> {
         hotkey.action.startsWith(`assign_category_${categoryId}`)
       ) {
         // Clear the action, allowing hotkeys without actions
-        hotkey.action = "";
+        return { ...hotkey, action: "" };
       }
     }
+    return hotkey;
   });
+  store.set(hotkeysAtom, updatedHotkeys);
 
   // Remove category
-  state.categories = state.categories.filter((c) => c.id !== categoryId);
-  state.notify();
+  const categories = store.get(categoriesAtom);
+  store.set(categoriesAtom, categories.filter((c) => c.id !== categoryId));
 
   await saveHitoConfig();
 }
