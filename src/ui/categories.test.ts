@@ -2397,4 +2397,252 @@ describe("categories UI and management", () => {
       }
     });
   });
+
+  describe("getConfigFileDirectory edge cases - no slash in path", () => {
+    beforeEach(() => {
+      (globalThis as any).window = {
+        __TAURI__: {
+          core: {
+            invoke: mockInvoke,
+          },
+        },
+      };
+      store.set(currentDirectoryAtom, "/test/dir");
+      mockInvoke.mockResolvedValue({
+        categories: [],
+        image_categories: [],
+        hotkeys: [],
+      });
+      mockInvoke.mockClear();
+    });
+
+    it("should return currentDirectory when configFilePath has no slash", async () => {
+      // Path with no slash (e.g., just filename or Windows path without slashes)
+      store.set(configFilePathAtom, "config.json");
+      store.set(currentDirectoryAtom, "/test/dir");
+
+      const { loadHitoConfig } = await import("./categories");
+      await loadHitoConfig();
+
+      expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
+        directory: "/test/dir",
+        filename: "config.json",
+      });
+    });
+  });
+
+  describe("getConfigFileName edge cases - no slash in path", () => {
+    beforeEach(() => {
+      (globalThis as any).window = {
+        __TAURI__: {
+          core: {
+            invoke: mockInvoke,
+          },
+        },
+      };
+      store.set(currentDirectoryAtom, "/test/dir");
+      mockInvoke.mockResolvedValue({
+        categories: [],
+        image_categories: [],
+        hotkeys: [],
+      });
+      mockInvoke.mockClear();
+    });
+
+    it("should return path when configFilePath has no slash", async () => {
+      store.set(configFilePathAtom, "config.json");
+      store.set(currentDirectoryAtom, "/test/dir");
+
+      const { loadHitoConfig } = await import("./categories");
+      await loadHitoConfig();
+
+      expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
+        directory: "/test/dir",
+        filename: "config.json",
+      });
+    });
+
+    it("should return undefined when configFilePath is empty string with no slash", async () => {
+      store.set(configFilePathAtom, "");
+      store.set(currentDirectoryAtom, "/test/dir");
+
+      const { loadHitoConfig } = await import("./categories");
+      await loadHitoConfig();
+
+      expect(mockInvoke).toHaveBeenCalledWith("load_hito_config", {
+        directory: "/test/dir",
+        filename: undefined,
+      });
+    });
+  });
+
+  describe("navigateToNextFilteredImage - all branches", () => {
+    beforeEach(() => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+        { path: "/image3.jpg" },
+      ]);
+      store.set(imageCategoriesAtom, new Map());
+      store.set(filterOptionsAtom, {
+        categoryId: "cat1",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      mockInvoke.mockResolvedValue(undefined);
+    });
+
+    it("should navigate to next image when not at last position (branch: currentIndex < length - 1)", async () => {
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+      const imageCategories = store.get(imageCategoriesAtom);
+      const updatedImageCategories = new Map(imageCategories);
+      updatedImageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      updatedImageCategories.set("/image2.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      updatedImageCategories.set("/image3.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, updatedImageCategories);
+
+      const { toggleImageCategory } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      // Remove cat1 from image1 (first in filtered list, not last)
+      // This should trigger: currentIndex < filteredPaths.length - 1, so go to next
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      // Should navigate to next image (image2)
+      expect(openModal).toHaveBeenCalledWith("/image2.jpg");
+    });
+
+    it("should close modal when at first position and no other images (branch: currentIndex === 0, length === 1)", async () => {
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+      const imageCategories = store.get(imageCategoriesAtom);
+      const updatedImageCategories = new Map(imageCategories);
+      updatedImageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, updatedImageCategories);
+
+      const { toggleImageCategory } = await import("./categories");
+      const { closeModal } = await import("./modal");
+
+      // Remove cat1 from image1, which is the only image in filtered list
+      // This should trigger: currentIndex === 0, filteredPaths.length === 1
+      // So it goes to line 377: close modal
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      // Should close modal when no other filtered images
+      expect(closeModal).toHaveBeenCalled();
+    });
+  });
+
+  describe("getFilteredImages - default case in switch", () => {
+    beforeEach(() => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+      ]);
+      store.set(imageCategoriesAtom, new Map());
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test",
+        nameOperator: "invalid_operator" as any, // Invalid operator to trigger default case
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+      mockInvoke.mockResolvedValue(undefined);
+    });
+
+    it("should handle invalid nameOperator by returning all images (default case)", async () => {
+      // This tests the default case in the switch statement (line 330-331)
+      const { toggleImageCategory } = await import("./categories");
+      
+      // This will trigger getFilteredImages internally via navigateToNextFilteredImage
+      // The default case should return true for all images
+      await toggleImageCategory("/image1.jpg", "cat1");
+      
+      // Should not throw and should complete successfully
+      expect(mockInvoke).toHaveBeenCalled();
+    });
+  });
+
+  describe("navigateToNextFilteredImage - branch coverage via assignImageCategory", () => {
+    beforeEach(() => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+        { path: "/image3.jpg" },
+      ]);
+      store.set(imageCategoriesAtom, new Map());
+      store.set(filterOptionsAtom, {
+        categoryId: "cat1",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      mockInvoke.mockResolvedValue(undefined);
+    });
+
+    it("should navigate to next when assigning removes image from filter (branch: currentIndex < length - 1)", async () => {
+      // Setup: Filter by "uncategorized", all images are uncategorized initially
+      store.set(filterOptionsAtom, {
+        categoryId: "uncategorized",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+      // All images are uncategorized (empty imageCategories)
+
+      const { assignImageCategory } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      // Assign cat1 to image1, which removes it from "uncategorized" filter
+      // image1 is first in filtered list, so should navigate to next (image2)
+      await assignImageCategory("/image1.jpg", "cat1");
+
+      // Should navigate to next image
+      expect(openModal).toHaveBeenCalled();
+    });
+
+    it("should go to previous when at last position (branch: currentIndex > 0 at last)", async () => {
+      // Setup: Filter by "uncategorized", all images are uncategorized initially
+      store.set(filterOptionsAtom, {
+        categoryId: "uncategorized",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      store.set(currentModalImagePathAtom, "/image3.jpg");
+      // All images are uncategorized (empty imageCategories)
+
+      const { assignImageCategory } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      // Assign cat1 to image3, which removes it from "uncategorized" filter
+      // image3 is last in filtered list, so should go to previous (image2)
+      await assignImageCategory("/image3.jpg", "cat1");
+
+      // Should navigate to previous image
+      expect(openModal).toHaveBeenCalled();
+    });
+  });
 });

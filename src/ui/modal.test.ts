@@ -435,12 +435,14 @@ describe("modal", () => {
       expect(store.get(allImagePathsAtom).find((img: ImagePath) => img.path === "/test/image2.png")).toBeUndefined();
     });
 
-    it("should close modal when deleting last image in filtered list", async () => {
+    it("should close modal when deleting last image in filtered list (branch: isLastImage, empty list)", async () => {
       const { invoke } = window.__TAURI__!.core;
       const { getFilteredAndSortedImagesSync } = await import("../utils/filteredImages");
-      vi.mocked(getFilteredAndSortedImagesSync).mockReturnValue([
-        { path: "/test/image1.png" },
-      ]);
+      // First call: before deletion - one image (isLastImage = true)
+      // Second call: after deletion - empty list
+      vi.mocked(getFilteredAndSortedImagesSync)
+        .mockReturnValueOnce([{ path: "/test/image1.png" }])
+        .mockReturnValueOnce([]);
       store.set(allImagePathsAtom, [
         { path: "/test/image1.png" },
         { path: "/test/image2.png" }, // Not in filtered list
@@ -769,6 +771,24 @@ describe("modal", () => {
       // Should close modal when filtered list is empty (isOnlyImage is true)
       // closeModal sets currentModalImagePathAtom to ""
       // The function returns early after closeModal, so state should be updated
+      expect(store.get(currentModalImagePathAtom)).toBe("");
+    });
+
+    it("should close modal when deletedIndex is out of bounds and list becomes empty (branch: deletedIndex >= length, empty list)", async () => {
+      const { invoke } = window.__TAURI__!.core;
+      const { getFilteredAndSortedImagesSync } = await import("../utils/filteredImages");
+      // First call: before deletion - one image
+      // Second call: after deletion - empty list (deletedIndex will be >= length)
+      vi.mocked(getFilteredAndSortedImagesSync)
+        .mockReturnValueOnce([{ path: "/test/image1.png" }])
+        .mockReturnValueOnce([]);
+      store.set(allImagePathsAtom, [{ path: "/test/image1.png" }]);
+      store.set(currentModalImagePathAtom, "/test/image1.png");
+      vi.mocked(invoke).mockResolvedValueOnce(undefined);
+
+      await deleteCurrentImage();
+
+      // Should close modal when list becomes empty (line 267-268)
       expect(store.get(currentModalImagePathAtom)).toBe("");
     });
   });
