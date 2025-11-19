@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { state } from "../state";
 
 type SortOption = "name" | "dateCreated" | "lastCategorized" | "size";
@@ -18,14 +18,52 @@ export function ImageGridSortFilter() {
   const [sortBy, setSortBy] = useState<SortOption>(state.sortOption);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">(state.sortDirection);
   const [filters, setFilters] = useState<FilterOptions>(state.filterOptions);
+  const filterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Apply sort and filter to state
+  // Synchronize local state with global state changes
+  useEffect(() => {
+    const unsubscribe = state.subscribe(() => {
+      setSortBy(state.sortOption);
+      setSortDirection(state.sortDirection);
+      setFilters(state.filterOptions);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Apply sort to state immediately
   useEffect(() => {
     state.sortOption = sortBy;
     state.sortDirection = sortDirection;
-    state.filterOptions = filters;
     state.notify();
-  }, [sortBy, sortDirection, filters]);
+  }, [sortBy, sortDirection]);
+
+  // Debounced filter updater
+  const updateFilters = useCallback((newFilters: FilterOptions) => {
+    // Clear any pending timeout
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
+    }
+
+    // Set a new timeout to update filters after 250ms
+    filterTimeoutRef.current = setTimeout(() => {
+      state.filterOptions = newFilters;
+      state.notify();
+      filterTimeoutRef.current = null;
+    }, 250);
+  }, []);
+
+  // Apply filters to state with debounce
+  useEffect(() => {
+    updateFilters(filters);
+    
+    // Cleanup timeout on unmount or when filters change before timeout fires
+    return () => {
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+        filterTimeoutRef.current = null;
+      }
+    };
+  }, [filters, updateFilters]);
 
   const clearFilters = () => {
     setFilters({

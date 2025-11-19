@@ -13,7 +13,7 @@ export function ImageGridStats() {
       // Count images with at least one category
             let withCategory = 0;
             images.forEach((imagePathObj) => {
-              const assignments = state.imageCategories.get(imagePathObj.path);
+              const assignments = state.imageCategories?.get(imagePathObj.path);
               if (assignments && assignments.length > 0) {
                 withCategory++;
               }

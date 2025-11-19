@@ -62,9 +62,8 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
     
     if (selectionMode) {
       e.stopPropagation();
-      const toggleFn = (state as any).toggleImageSelection;
-      if (toggleFn) {
-        toggleFn(imagePath);
+      if (state.toggleImageSelection) {
+        state.toggleImageSelection(imagePath);
       }
     } else {
       // Open modal with image path (it will find the image in the filtered/sorted list)
@@ -93,9 +92,8 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
             checked={isSelected}
             onChange={(e) => {
               e.stopPropagation();
-              const toggleFn = (state as any).toggleImageSelection;
-              if (toggleFn) {
-                toggleFn(imagePath);
+              if (state.toggleImageSelection) {
+                state.toggleImageSelection(imagePath);
               }
             }}
             onClick={(e) => e.stopPropagation()}

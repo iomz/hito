@@ -1,9 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { state } from "../state";
 
 export function ImageGridSelection() {
   const [selectionMode, setSelectionMode] = useState(state.selectionMode);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set(state.selectedImages));
+  
+  // Use refs to track current values for subscription callback
+  const selectionModeRef = useRef(selectionMode);
+  const selectedImagesRef = useRef(selectedImages);
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    selectionModeRef.current = selectionMode;
+  }, [selectionMode]);
+  
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
 
   // Reset selection when selection mode is turned off
   useEffect(() => {
@@ -12,10 +25,42 @@ export function ImageGridSelection() {
     }
   }, [selectionMode]);
 
-  // Expose selection toggle function for ImageGridItem
+  // Subscribe to global state changes and update local state
   useEffect(() => {
-    (state as any).toggleImageSelection = (imagePath: string) => {
-      if (!selectionMode) return;
+    const updateFromGlobalState = () => {
+      // Update selectionMode if it changed
+      if (state.selectionMode !== selectionModeRef.current) {
+        setSelectionMode(state.selectionMode);
+      }
+      
+      // Update selectedImages if it changed (compare Set contents, not references)
+      const globalSet = state.selectedImages;
+      const localSet = selectedImagesRef.current;
+      const setsAreEqual = 
+        globalSet.size === localSet.size &&
+        Array.from(globalSet).every(item => localSet.has(item));
+      
+      if (!setsAreEqual) {
+        setSelectedImages(new Set(globalSet));
+      }
+    };
+    
+    // Update immediately on mount
+    updateFromGlobalState();
+    
+    // Subscribe to state changes
+    const unsubscribe = state.subscribe(updateFromGlobalState);
+    
+    return unsubscribe;
+  }, []);
+
+  // Expose selection toggle function for ImageGridItem
+  // TODO: Refactor this pattern to use React Context or a proper state manager (e.g., Zustand, Jotai)
+  // to avoid mutating shared state objects and prevent memory leaks from component-bound functions.
+  useEffect(() => {
+    state.toggleImageSelection = (imagePath: string) => {
+      // Use ref to read current selectionMode value to avoid stale closure
+      if (!selectionModeRef.current) return;
       
       setSelectedImages((prev) => {
         const next = new Set(prev);
@@ -27,18 +72,30 @@ export function ImageGridSelection() {
         return next;
       });
     };
-  }, [selectionMode]);
+    
+    // Cleanup: remove the function to prevent memory leak
+    return () => {
+      state.toggleImageSelection = undefined;
+    };
+  }, []); // Empty deps - we use selectionModeRef to read current value
 
   // Sync to state
   useEffect(() => {
-    state.selectionMode = selectionMode;
-    state.notify();
-  }, [selectionMode]);
-
-  useEffect(() => {
-    state.selectedImages = selectedImages;
-    state.notify();
-  }, [selectedImages]);
+    // Compare Set contents, not references
+    const setsAreEqual = 
+      state.selectedImages.size === selectedImages.size &&
+      Array.from(state.selectedImages).every(item => selectedImages.has(item));
+    
+    const changed = 
+      state.selectionMode !== selectionMode ||
+      !setsAreEqual;
+    
+    if (changed) {
+      state.selectionMode = selectionMode;
+      state.selectedImages = selectedImages;
+      state.notify();
+    }
+  }, [selectionMode, selectedImages]);
 
   const selectAll = () => {
     const images = Array.isArray(state.allImagePaths) ? state.allImagePaths : [];
