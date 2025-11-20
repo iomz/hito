@@ -755,3 +755,765 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_get_parent_directory() {
+        // Test normal path
+        assert_eq!(
+            get_parent_directory("/tmp/project/src/main.rs".to_string()).unwrap(),
+            "/tmp/project/src"
+        );
+
+        // Test Windows-style path
+        #[cfg(windows)]
+        {
+            assert_eq!(
+                get_parent_directory("C:\\Users\\test\\file.txt".to_string()).unwrap(),
+                "C:\\Users\\test"
+            );
+        }
+
+        // Test path with no parent (root)
+        assert!(get_parent_directory("/".to_string()).is_err());
+
+        // Test single filename
+        assert!(get_parent_directory("file.txt".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_sort_images_by_name() {
+        let images = vec![
+            ImagePath {
+                path: "/test/zebra.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/apple.jpg".to_string(),
+                size: Some(2000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/banana.jpg".to_string(),
+                size: Some(1500),
+                created_at: None,
+            },
+        ];
+
+        // Test ascending sort
+        let result = sort_images(
+            images.clone(),
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].path, "/test/apple.jpg");
+        assert_eq!(result[1].path, "/test/banana.jpg");
+        assert_eq!(result[2].path, "/test/zebra.jpg");
+
+        // Test descending sort
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "descending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].path, "/test/zebra.jpg");
+        assert_eq!(result[1].path, "/test/banana.jpg");
+        assert_eq!(result[2].path, "/test/apple.jpg");
+    }
+
+    #[test]
+    fn test_sort_images_by_size() {
+        let images = vec![
+            ImagePath {
+                path: "/test/large.jpg".to_string(),
+                size: Some(3000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/small.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/medium.jpg".to_string(),
+                size: Some(2000),
+                created_at: None,
+            },
+        ];
+
+        // Test ascending sort
+        let result = sort_images(
+            images.clone(),
+            "size".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].size, Some(1000));
+        assert_eq!(result[1].size, Some(2000));
+        assert_eq!(result[2].size, Some(3000));
+
+        // Test descending sort
+        let result = sort_images(
+            images,
+            "size".to_string(),
+            "descending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].size, Some(3000));
+        assert_eq!(result[1].size, Some(2000));
+        assert_eq!(result[2].size, Some(1000));
+    }
+
+    #[test]
+    fn test_sort_images_by_date_created() {
+        let images = vec![
+            ImagePath {
+                path: "/test/new.jpg".to_string(),
+                size: Some(1000),
+                created_at: Some("2024-01-03T00:00:00Z".to_string()),
+            },
+            ImagePath {
+                path: "/test/old.jpg".to_string(),
+                size: Some(2000),
+                created_at: Some("2024-01-01T00:00:00Z".to_string()),
+            },
+            ImagePath {
+                path: "/test/middle.jpg".to_string(),
+                size: Some(1500),
+                created_at: Some("2024-01-02T00:00:00Z".to_string()),
+            },
+        ];
+
+        // Test ascending sort
+        let result = sort_images(
+            images.clone(),
+            "dateCreated".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].path, "/test/old.jpg");
+        assert_eq!(result[1].path, "/test/middle.jpg");
+        assert_eq!(result[2].path, "/test/new.jpg");
+
+        // Test descending sort
+        let result = sort_images(
+            images,
+            "dateCreated".to_string(),
+            "descending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].path, "/test/new.jpg");
+        assert_eq!(result[1].path, "/test/middle.jpg");
+        assert_eq!(result[2].path, "/test/old.jpg");
+    }
+
+    #[test]
+    fn test_sort_images_by_last_categorized() {
+        let images = vec![
+            ImagePath {
+                path: "/test/img1.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/img2.jpg".to_string(),
+                size: Some(2000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/img3.jpg".to_string(),
+                size: Some(1500),
+                created_at: None,
+            },
+        ];
+
+        let image_categories = vec![
+            (
+                "/test/img1.jpg".to_string(),
+                vec![CategoryAssignment {
+                    category_id: "cat1".to_string(),
+                    assigned_at: "2024-01-03T00:00:00Z".to_string(),
+                }],
+            ),
+            (
+                "/test/img2.jpg".to_string(),
+                vec![CategoryAssignment {
+                    category_id: "cat1".to_string(),
+                    assigned_at: "2024-01-01T00:00:00Z".to_string(),
+                }],
+            ),
+            // img3 has no categories (uncategorized)
+        ];
+
+        // Test ascending sort (uncategorized first, then by date)
+        let result = sort_images(
+            images.clone(),
+            "lastCategorized".to_string(),
+            "ascending".to_string(),
+            image_categories.clone(),
+            None,
+        )
+        .unwrap();
+
+        // img3 (uncategorized, timestamp 0) should be first
+        assert_eq!(result[0].path, "/test/img3.jpg");
+        assert_eq!(result[1].path, "/test/img2.jpg"); // older category date
+        assert_eq!(result[2].path, "/test/img1.jpg"); // newer category date
+
+        // Test descending sort
+        let result = sort_images(
+            images,
+            "lastCategorized".to_string(),
+            "descending".to_string(),
+            image_categories,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].path, "/test/img1.jpg"); // newest category date
+        assert_eq!(result[1].path, "/test/img2.jpg"); // older category date
+        assert_eq!(result[2].path, "/test/img3.jpg"); // uncategorized last
+    }
+
+    #[test]
+    fn test_filter_by_category() {
+        let images = vec![
+            ImagePath {
+                path: "/test/img1.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/img2.jpg".to_string(),
+                size: Some(2000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/img3.jpg".to_string(),
+                size: Some(1500),
+                created_at: None,
+            },
+        ];
+
+        let image_categories = vec![
+            (
+                "/test/img1.jpg".to_string(),
+                vec![CategoryAssignment {
+                    category_id: "cat1".to_string(),
+                    assigned_at: "2024-01-01T00:00:00Z".to_string(),
+                }],
+            ),
+            (
+                "/test/img2.jpg".to_string(),
+                vec![CategoryAssignment {
+                    category_id: "cat2".to_string(),
+                    assigned_at: "2024-01-01T00:00:00Z".to_string(),
+                }],
+            ),
+            // img3 has no categories
+        ];
+
+        // Filter by category
+        let filter_options = FilterOptions {
+            category_id: Some("cat1".to_string()),
+            name_pattern: None,
+            name_operator: None,
+            size_operator: None,
+            size_value: None,
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images.clone(),
+            "name".to_string(),
+            "ascending".to_string(),
+            image_categories.clone(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/img1.jpg");
+
+        // Filter for uncategorized
+        let filter_options = FilterOptions {
+            category_id: Some("uncategorized".to_string()),
+            name_pattern: None,
+            name_operator: None,
+            size_operator: None,
+            size_value: None,
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            image_categories,
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/img3.jpg");
+    }
+
+    #[test]
+    fn test_filter_by_name() {
+        let images = vec![
+            ImagePath {
+                path: "/test/apple.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/banana.jpg".to_string(),
+                size: Some(2000),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/grape.jpg".to_string(),
+                size: Some(1500),
+                created_at: None,
+            },
+        ];
+
+        // Test contains filter
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: Some("an".to_string()),
+            name_operator: Some("contains".to_string()),
+            size_operator: None,
+            size_value: None,
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images.clone(),
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        // "an" matches "banana" but not "grape" or "apple"
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/banana.jpg");
+
+        // Test startsWith filter
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: Some("app".to_string()),
+            name_operator: Some("startsWith".to_string()),
+            size_operator: None,
+            size_value: None,
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images.clone(),
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/apple.jpg");
+
+        // Test endsWith filter
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: Some("ana.jpg".to_string()),
+            name_operator: Some("endsWith".to_string()),
+            size_operator: None,
+            size_value: None,
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images.clone(),
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/banana.jpg");
+
+        // Test exact match filter
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: Some("grape.jpg".to_string()),
+            name_operator: Some("exact".to_string()),
+            size_operator: None,
+            size_value: None,
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/grape.jpg");
+    }
+
+    #[test]
+    fn test_filter_by_size() {
+        let images = vec![
+            ImagePath {
+                path: "/test/small.jpg".to_string(),
+                size: Some(1024), // 1 KB
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/medium.jpg".to_string(),
+                size: Some(5120), // 5 KB
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/large.jpg".to_string(),
+                size: Some(10240), // 10 KB
+                created_at: None,
+            },
+        ];
+
+        // Test largerThan filter
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: None,
+            name_operator: None,
+            size_operator: Some("largerThan".to_string()),
+            size_value: Some("3".to_string()), // 3 KB
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images.clone(),
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().any(|img| img.path == "/test/medium.jpg"));
+        assert!(result.iter().any(|img| img.path == "/test/large.jpg"));
+
+        // Test lessThan filter
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: None,
+            name_operator: None,
+            size_operator: Some("lessThan".to_string()),
+            size_value: Some("3".to_string()), // 3 KB
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images.clone(),
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/small.jpg");
+
+        // Test between filter
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: None,
+            name_operator: None,
+            size_operator: Some("between".to_string()),
+            size_value: Some("2".to_string()), // 2 KB
+            size_value2: Some("8".to_string()), // 8 KB
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/medium.jpg");
+    }
+
+    #[test]
+    fn test_combined_filters() {
+        let images = vec![
+            ImagePath {
+                path: "/test/apple.jpg".to_string(),
+                size: Some(1024),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/banana.jpg".to_string(),
+                size: Some(5120),
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/grape.jpg".to_string(),
+                size: Some(10240),
+                created_at: None,
+            },
+        ];
+
+        let image_categories = vec![(
+            "/test/apple.jpg".to_string(),
+            vec![CategoryAssignment {
+                category_id: "fruit".to_string(),
+                assigned_at: "2024-01-01T00:00:00Z".to_string(),
+            }],
+        )];
+
+        // Combine category and size filters
+        let filter_options = FilterOptions {
+            category_id: Some("fruit".to_string()),
+            name_pattern: None,
+            name_operator: None,
+            size_operator: Some("lessThan".to_string()),
+            size_value: Some("5".to_string()), // 5 KB
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            image_categories,
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/apple.jpg");
+    }
+
+    #[test]
+    fn test_list_images_with_temp_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_dir = temp_dir.path();
+
+        // Create subdirectories
+        fs::create_dir_all(test_dir.join("subdir1")).unwrap();
+        fs::create_dir_all(test_dir.join("subdir2")).unwrap();
+
+        // Create image files
+        let mut file1 = fs::File::create(test_dir.join("image1.jpg")).unwrap();
+        file1.write_all(b"fake image data").unwrap();
+        drop(file1);
+
+        let mut file2 = fs::File::create(test_dir.join("image2.png")).unwrap();
+        file2.write_all(b"fake image data").unwrap();
+        drop(file2);
+
+        // Create non-image file (should be ignored)
+        let mut file3 = fs::File::create(test_dir.join("text.txt")).unwrap();
+        file3.write_all(b"not an image").unwrap();
+        drop(file3);
+
+        let result = list_images(test_dir.to_str().unwrap().to_string()).unwrap();
+
+        // Should find 2 images
+        assert_eq!(result.images.len(), 2);
+        assert!(result.images.iter().any(|img| img.path.contains("image1.jpg")));
+        assert!(result.images.iter().any(|img| img.path.contains("image2.png")));
+
+        // Should find 2 directories
+        assert_eq!(result.directories.len(), 2);
+        assert!(result
+            .directories
+            .iter()
+            .any(|dir| dir.path.contains("subdir1")));
+        assert!(result
+            .directories
+            .iter()
+            .any(|dir| dir.path.contains("subdir2")));
+    }
+
+    #[test]
+    fn test_list_images_nonexistent_path() {
+        let result = list_images("/nonexistent/path/that/does/not/exist".to_string());
+        match result {
+            Err(e) => assert!(e.contains("does not exist")),
+            Ok(_) => panic!("Expected error for nonexistent path"),
+        }
+    }
+
+    #[test]
+    fn test_list_images_not_a_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("file.txt");
+        fs::File::create(&test_file).unwrap();
+
+        let result = list_images(test_file.to_str().unwrap().to_string());
+        match result {
+            Err(e) => assert!(e.contains("not a directory")),
+            Ok(_) => panic!("Expected error for file path"),
+        }
+    }
+
+    #[test]
+    fn test_load_image_with_temp_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.png");
+
+        // Create a minimal PNG file (1x1 pixel PNG)
+        let png_data = vec![
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1 dimensions
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, // ...more PNG data
+        ];
+        fs::write(&test_file, &png_data).unwrap();
+
+        let result = load_image(test_file.to_str().unwrap().to_string()).unwrap();
+
+        assert!(result.starts_with("data:image/png;base64,"));
+        assert!(result.len() > 30); // Should have base64 data
+    }
+
+    #[test]
+    fn test_load_image_nonexistent() {
+        let result = load_image("/nonexistent/image.jpg".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_load_image_mime_types() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Test different image extensions
+        let extensions = vec![
+            ("jpg", "image/jpeg"),
+            ("jpeg", "image/jpeg"),
+            ("png", "image/png"),
+            ("gif", "image/gif"),
+            ("bmp", "image/bmp"),
+            ("webp", "image/webp"),
+            ("svg", "image/svg+xml"),
+            ("ico", "image/x-icon"),
+        ];
+
+        for (ext, expected_mime) in extensions {
+            let test_file = temp_dir.path().join(format!("test.{}", ext));
+            fs::File::create(&test_file).unwrap();
+
+            let result = load_image(test_file.to_str().unwrap().to_string()).unwrap();
+            assert!(
+                result.starts_with(&format!("data:{};base64,", expected_mime)),
+                "Failed for extension: {}",
+                ext
+            );
+        }
+    }
+
+    #[test]
+    fn test_hito_file_serialization() {
+        let hito_file = HitoFile {
+            image_categories: vec![(
+                "/test/image.jpg".to_string(),
+                vec![CategoryAssignment {
+                    category_id: "cat1".to_string(),
+                    assigned_at: "2024-01-01T00:00:00Z".to_string(),
+                }],
+            )],
+        };
+
+        let json = serde_json::to_string_pretty(&hito_file).unwrap();
+        let deserialized: HitoFile = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.image_categories.len(), 1);
+        assert_eq!(
+            deserialized.image_categories[0].0,
+            "/test/image.jpg"
+        );
+        assert_eq!(
+            deserialized.image_categories[0].1[0].category_id,
+            "cat1"
+        );
+    }
+
+    #[test]
+    fn test_app_data_serialization() {
+        let app_data = AppData {
+            categories: vec![CategoryData {
+                id: "cat1".to_string(),
+                name: "Test Category".to_string(),
+                color: "#FF0000".to_string(),
+            }],
+            hotkeys: vec![HotkeyData {
+                id: "hotkey1".to_string(),
+                key: "j".to_string(),
+                modifiers: vec!["Control".to_string()],
+                action: "next".to_string(),
+            }],
+            data_file_paths: Some({
+                let mut map = DataFileMap::new();
+                map.insert("/test/dir".to_string(), "/custom/path.json".to_string());
+                map
+            }),
+        };
+
+        let json = serde_json::to_string_pretty(&app_data).unwrap();
+        let deserialized: AppData = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.categories.len(), 1);
+        assert_eq!(deserialized.hotkeys.len(), 1);
+        assert!(deserialized.data_file_paths.is_some());
+        assert_eq!(
+            deserialized
+                .data_file_paths
+                .as_ref()
+                .unwrap()
+                .get("/test/dir"),
+            Some(&"/custom/path.json".to_string())
+        );
+    }
+}

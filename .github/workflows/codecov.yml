@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
+      
+      # TypeScript/JavaScript coverage
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -20,13 +22,26 @@ jobs:
           run_install: true
       - name: Build TypeScript
         run: pnpm build
-      - name: Run coverage
+      - name: Run TypeScript coverage
         run: pnpm test:coverage
+      
+      # Rust coverage
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Ensure coverage directory exists
+        run: mkdir -p coverage
+      - name: Generate Rust coverage
+        working-directory: src-tauri
+        run: cargo llvm-cov --lib --lcov --output-path ../coverage/rust-lcov.info
+      
+      # Upload coverage reports to Codecov
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/coverage-final.json,./coverage/lcov.info
-          flags: unittests
+          files: ./coverage/coverage-final.json,./coverage/lcov.info,./coverage/rust-lcov.info
+          flags: unittests,rust
           name: codecov-umbrella
           fail_ci_if_error: false

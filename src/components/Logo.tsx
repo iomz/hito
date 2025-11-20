@@ -17,10 +17,12 @@ export function Logo() {
         border: 'none', 
         padding: 0,
         cursor: 'pointer',
-        boxShadow: 'none'
+        boxShadow: 'none',
+        display: 'inline-block',
+        width: 'auto'
       }}
     >
-      <h1>Hito</h1>
+      <h1 style={{ width: 'auto', maxWidth: 'fit-content' }}>Hito</h1>
     </button>
   );
 }

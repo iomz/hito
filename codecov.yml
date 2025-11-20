@@ -8,20 +8,15 @@ coverage:
   range: "70...100"
 
   ignore:
-    # Rust backend is excluded from coverage for the following reasons:
-    # 1. The Rust code consists primarily of thin wrappers around standard library functions
-    #    (fs::read_dir, fs::read, trash::delete, etc.) with error handling
-    # 2. Rust's type system provides compile-time safety that catches many errors
-    # 3. Integration testing is already covered by JavaScript tests that exercise
-    #    these functions through Tauri's invoke API
-    # 4. The Rust code is relatively simple and well-documented
+    # Rust backend is now included in coverage:
+    # - Comprehensive Rust tests have been added (17 tests covering sorting, filtering, file I/O)
+    # - The Rust code contains business logic (sort_images with complex filtering)
+    # - Algorithms and data structures that benefit from coverage tracking
+    # - File I/O operations with error handling that should be tested
     #
-    # Rust tests should be added if:
-    # - The Rust code becomes more complex (business logic, algorithms)
-    # - Rust-only features are added that aren't exercised by frontend tests
-    # - Edge cases need testing that are difficult to test via integration tests
-    # - Faster feedback loops are needed for Rust changes
-    - "src-tauri/**"
+    # Exclude Rust build artifacts and generated files
+    - "src-tauri/target/**"
+    - "src-tauri/gen/**"
     - "node_modules/**"
     - "**/*.d.ts"
     - "**/*.config.*"
