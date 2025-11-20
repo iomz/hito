@@ -1,6 +1,6 @@
 [package]
-name = "Hito"
-version = "0.3.3"
+name = "hito"
+version = "0.3.4"
 description = "A Tauri App for Human Intelligence Tasks organizer"
 authors = ["iomz@sazanka.io"]
 edition = "2021"

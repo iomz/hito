@@ -1,3 +1,4 @@
+---
 codecov:
   require_ci_to_pass: true
 
@@ -5,7 +6,7 @@ coverage:
   precision: 2
   round: down
   range: "70...100"
-  
+
   ignore:
     # Rust backend is excluded from coverage for the following reasons:
     # 1. The Rust code consists primarily of thin wrappers around standard library functions
@@ -14,7 +15,7 @@ coverage:
     # 3. Integration testing is already covered by JavaScript tests that exercise
     #    these functions through Tauri's invoke API
     # 4. The Rust code is relatively simple and well-documented
-    # 
+    #
     # Rust tests should be added if:
     # - The Rust code becomes more complex (business logic, algorithms)
     # - Rust-only features are added that aren't exercised by frontend tests
@@ -36,14 +37,14 @@ coverage:
     # 2. Business logic is tested in .ts files (handlers, core, utils, ui modules)
     # 3. React component testing requires significant setup and mocking overhead
     # 4. TypeScript provides compile-time safety for component props and types
-    # 
+    #
     # React component tests should be added if:
     # - Components contain complex business logic that isn't tested elsewhere
     # - Components have complex user interactions that need integration testing
     # - Components have state management logic that's difficult to test via integration
     # - Examples: notification.test.tsx (tests timer logic and state management)
     - "**/*.tsx"
-  
+
   status:
     project:
       default:
@@ -52,4 +53,3 @@ coverage:
     patch:
       default:
         target: 70%
-
