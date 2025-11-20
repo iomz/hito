@@ -49,13 +49,12 @@ struct DirectoryContents {
 /// # Examples
 ///
 /// ```
-/// let parent = get_parent_directory("/tmp/project/src/main.rs".to_string()).unwrap();
+/// let parent = get_parent_directory(PathBuf::from("/tmp/project/src/main.rs")).unwrap();
 /// assert_eq!(parent, "/tmp/project/src");
 /// ```
 #[tauri::command]
-fn get_parent_directory(file_path: String) -> Result<String, String> {
-    let path = Path::new(&file_path);
-    if let Some(parent) = path.parent() {
+fn get_parent_directory(file_path: PathBuf) -> Result<String, String> {
+    if let Some(parent) = file_path.parent() {
         if let Some(parent_str) = parent.to_str() {
             Ok(parent_str.to_string())
         } else {
@@ -767,7 +766,7 @@ mod tests {
     fn test_get_parent_directory() {
         // Test normal path
         assert_eq!(
-            get_parent_directory("/tmp/project/src/main.rs".to_string()).unwrap(),
+            get_parent_directory(PathBuf::from("/tmp/project/src/main.rs")).unwrap(),
             "/tmp/project/src"
         );
 
@@ -775,16 +774,16 @@ mod tests {
         #[cfg(windows)]
         {
             assert_eq!(
-                get_parent_directory("C:\\Users\\test\\file.txt".to_string()).unwrap(),
+                get_parent_directory(PathBuf::from("C:\\Users\\test\\file.txt")).unwrap(),
                 "C:\\Users\\test"
             );
         }
 
         // Test path with no parent (root)
-        assert!(get_parent_directory("/".to_string()).is_err());
+        assert!(get_parent_directory(PathBuf::from("/")).is_err());
 
         // Test single filename
-        assert!(get_parent_directory("file.txt".to_string()).is_ok());
+        assert!(get_parent_directory(PathBuf::from("file.txt")).is_ok());
     }
 
     #[test]
@@ -1516,4 +1515,472 @@ mod tests {
             Some(&"/custom/path.json".to_string())
         );
     }
+
+    #[test]
+    fn test_delete_image() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.jpg");
+        
+        // Create a test file
+        fs::File::create(&test_file).unwrap();
+        assert!(test_file.exists());
+
+        // Delete the image
+        let result = delete_image(test_file.to_str().unwrap().to_string());
+        assert!(result.is_ok());
+        
+        // Verify the file was actually removed from the original path
+        // On all supported platforms (macOS, Linux, Windows), moving to trash removes
+        // the file from its original location, so it should no longer exist here
+        assert!(!test_file.exists(), "File should be removed from original path after deletion");
+    }
+
+    #[test]
+    fn test_delete_image_nonexistent() {
+        let result = delete_image("/nonexistent/image.jpg".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_delete_image_not_a_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_dir = temp_dir.path().join("subdir");
+        fs::create_dir_all(&test_dir).unwrap();
+
+        let result = delete_image(test_dir.to_str().unwrap().to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a file"));
+    }
+
+    #[test]
+    fn test_load_hito_config_nonexistent() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = load_hito_config(temp_dir.path().to_str().unwrap().to_string(), None).unwrap();
+        assert_eq!(result.image_categories.len(), 0);
+    }
+
+    #[test]
+    fn test_load_hito_config_with_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let hito_file = temp_dir.path().join(".hito.json");
+        
+        let test_data = HitoFile {
+            image_categories: vec![(
+                "/test/image.jpg".to_string(),
+                vec![CategoryAssignment {
+                    category_id: "cat1".to_string(),
+                    assigned_at: "2024-01-01T00:00:00Z".to_string(),
+                }],
+            )],
+        };
+        
+        let json = serde_json::to_string_pretty(&test_data).unwrap();
+        fs::write(&hito_file, json).unwrap();
+
+        let result = load_hito_config(temp_dir.path().to_str().unwrap().to_string(), None).unwrap();
+        assert_eq!(result.image_categories.len(), 1);
+        assert_eq!(result.image_categories[0].0, "/test/image.jpg");
+    }
+
+    #[test]
+    fn test_load_hito_config_custom_filename() {
+        let temp_dir = TempDir::new().unwrap();
+        let custom_file = temp_dir.path().join("custom.json");
+        
+        let test_data = HitoFile {
+            image_categories: vec![(
+                "/test/image.jpg".to_string(),
+                vec![CategoryAssignment {
+                    category_id: "cat1".to_string(),
+                    assigned_at: "2024-01-01T00:00:00Z".to_string(),
+                }],
+            )],
+        };
+        
+        let json = serde_json::to_string_pretty(&test_data).unwrap();
+        fs::write(&custom_file, json).unwrap();
+
+        let result = load_hito_config(
+            temp_dir.path().to_str().unwrap().to_string(),
+            Some("custom.json".to_string()),
+        ).unwrap();
+        assert_eq!(result.image_categories.len(), 1);
+    }
+
+    #[test]
+    fn test_load_hito_config_invalid_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let hito_file = temp_dir.path().join(".hito.json");
+        fs::write(&hito_file, "invalid json").unwrap();
+
+        let result = load_hito_config(temp_dir.path().to_str().unwrap().to_string(), None);
+        match result {
+            Err(e) => assert!(e.contains("Failed to parse")),
+            Ok(_) => panic!("Expected error for invalid JSON"),
+        }
+    }
+
+    #[test]
+    fn test_save_hito_config() {
+        let temp_dir = TempDir::new().unwrap();
+        let hito_file = temp_dir.path().join(".hito.json");
+
+        let image_categories = vec![(
+            "/test/image.jpg".to_string(),
+            vec![CategoryAssignment {
+                category_id: "cat1".to_string(),
+                assigned_at: "2024-01-01T00:00:00Z".to_string(),
+            }],
+        )];
+
+        let result = save_hito_config(
+            temp_dir.path().to_str().unwrap().to_string(),
+            image_categories,
+            None,
+        );
+        assert!(result.is_ok());
+        assert!(hito_file.exists());
+
+        // Verify the file content
+        let content = fs::read_to_string(&hito_file).unwrap();
+        let loaded: HitoFile = serde_json::from_str(&content).unwrap();
+        assert_eq!(loaded.image_categories.len(), 1);
+    }
+
+    #[test]
+    fn test_save_hito_config_custom_filename() {
+        let temp_dir = TempDir::new().unwrap();
+        let custom_file = temp_dir.path().join("custom.json");
+
+        let image_categories = vec![(
+            "/test/image.jpg".to_string(),
+            vec![CategoryAssignment {
+                category_id: "cat1".to_string(),
+                assigned_at: "2024-01-01T00:00:00Z".to_string(),
+            }],
+        )];
+
+        let result = save_hito_config(
+            temp_dir.path().to_str().unwrap().to_string(),
+            image_categories,
+            Some("custom.json".to_string()),
+        );
+        assert!(result.is_ok());
+        assert!(custom_file.exists());
+    }
+
+    #[test]
+    fn test_sort_images_unknown_option() {
+        let images = vec![
+            ImagePath {
+                path: "/test/img1.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+        ];
+
+        // Test with unknown sort option
+        let result = sort_images(
+            images.clone(),
+            "unknown".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        // Should return images as-is (no sorting applied)
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "/test/img1.jpg");
+    }
+
+    #[test]
+    fn test_list_images_files_without_extension() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_dir = temp_dir.path();
+
+        // Create file without extension (should be ignored)
+        let mut file1 = fs::File::create(test_dir.join("noextension")).unwrap();
+        file1.write_all(b"fake data").unwrap();
+        drop(file1);
+
+        // Create image file
+        let mut file2 = fs::File::create(test_dir.join("image.jpg")).unwrap();
+        file2.write_all(b"fake image").unwrap();
+        drop(file2);
+
+        let result = list_images(test_dir.to_str().unwrap().to_string()).unwrap();
+
+        // Should only find the image file
+        assert_eq!(result.images.len(), 1);
+        assert!(result.images[0].path.contains("image.jpg"));
+    }
+
+    #[test]
+    fn test_list_images_empty_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = list_images(temp_dir.path().to_str().unwrap().to_string()).unwrap();
+
+        assert_eq!(result.images.len(), 0);
+        assert_eq!(result.directories.len(), 0);
+    }
+
+    #[test]
+    fn test_load_image_read_error() {
+        // Test with a directory instead of a file (should fail with "not a file")
+        let temp_dir = TempDir::new().unwrap();
+        let test_dir = temp_dir.path().join("subdir");
+        fs::create_dir_all(&test_dir).unwrap();
+
+        let result = load_image(test_dir.to_str().unwrap().to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a file"));
+    }
+
+    #[test]
+    fn test_filter_empty_name_pattern() {
+        let images = vec![
+            ImagePath {
+                path: "/test/image.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+        ];
+
+        // Filter with empty name pattern (should not filter anything)
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: Some("".to_string()),
+            name_operator: Some("contains".to_string()),
+            size_operator: None,
+            size_value: None,
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_filter_empty_category_id() {
+        let images = vec![
+            ImagePath {
+                path: "/test/image.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+        ];
+
+        // Filter with empty category_id (should not filter anything)
+        let filter_options = FilterOptions {
+            category_id: Some("".to_string()),
+            name_pattern: None,
+            name_operator: None,
+            size_operator: None,
+            size_value: None,
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_filter_empty_size_value() {
+        let images = vec![
+            ImagePath {
+                path: "/test/image.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+        ];
+
+        // Filter with empty size_value (should not filter anything)
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: None,
+            name_operator: None,
+            size_operator: Some("largerThan".to_string()),
+            size_value: Some("".to_string()),
+            size_value2: None,
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_filter_between_with_empty_size_value2() {
+        let images = vec![
+            ImagePath {
+                path: "/test/image.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+        ];
+
+        // Filter with "between" but empty size_value2 (should not filter)
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: None,
+            name_operator: None,
+            size_operator: Some("between".to_string()),
+            size_value: Some("2".to_string()),
+            size_value2: Some("".to_string()),
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_filter_between_with_invalid_size_value2() {
+        let images = vec![
+            ImagePath {
+                path: "/test/image.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+        ];
+
+        // Filter with "between" but invalid size_value2 (should not filter)
+        let filter_options = FilterOptions {
+            category_id: None,
+            name_pattern: None,
+            name_operator: None,
+            size_operator: Some("between".to_string()),
+            size_value: Some("2".to_string()),
+            size_value2: Some("invalid".to_string()),
+        };
+
+        let result = sort_images(
+            images,
+            "name".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            Some(filter_options),
+        )
+        .unwrap();
+
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_sort_images_with_none_size() {
+        let images = vec![
+            ImagePath {
+                path: "/test/img1.jpg".to_string(),
+                size: None, // No size
+                created_at: None,
+            },
+            ImagePath {
+                path: "/test/img2.jpg".to_string(),
+                size: Some(1000),
+                created_at: None,
+            },
+        ];
+
+        // Sort by size - images with None should be treated as 0
+        let result = sort_images(
+            images,
+            "size".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].size, None);
+        assert_eq!(result[1].size, Some(1000));
+    }
+
+    #[test]
+    fn test_sort_images_date_created_with_none() {
+        let images = vec![
+            ImagePath {
+                path: "/test/img1.jpg".to_string(),
+                size: Some(1000),
+                created_at: None, // No date
+            },
+            ImagePath {
+                path: "/test/img2.jpg".to_string(),
+                size: Some(2000),
+                created_at: Some("2024-01-01T00:00:00Z".to_string()),
+            },
+        ];
+
+        // Sort by date - images with None should be last
+        let result = sort_images(
+            images,
+            "dateCreated".to_string(),
+            "ascending".to_string(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result[0].path, "/test/img2.jpg");
+        assert_eq!(result[1].path, "/test/img1.jpg");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_get_parent_directory_invalid_utf8_path() {
+        // This test verifies the error handling for paths that can't be converted to UTF-8
+        // We use OsStrExt::from_bytes to create an OsStr with invalid UTF-8 bytes
+        use std::os::unix::ffi::OsStrExt;
+        
+        // Create a path with invalid UTF-8 bytes (0xFF 0xFE is not valid UTF-8)
+        let invalid_utf8_bytes = b"/test/\xFF\xFE/file.txt";
+        let os_str = std::ffi::OsStr::from_bytes(invalid_utf8_bytes);
+        let path_buf = PathBuf::from(os_str);
+        
+        // The function should return an error because the parent path contains invalid UTF-8
+        let result = get_parent_directory(path_buf);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Failed to convert path to string");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_get_parent_directory_valid_utf8_path() {
+        // This test verifies that normal UTF-8 paths work correctly
+        let result = get_parent_directory(PathBuf::from("/valid/path/file.txt"));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "/valid/path");
+    }
+
 }
