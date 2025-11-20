@@ -22,6 +22,10 @@ vi.mock("./modal", () => ({
   deleteCurrentImage: vi.fn(),
 }));
 
+vi.mock("./error", () => ({
+  showError: vi.fn(),
+}));
+
 vi.mock("../utils/dialog", () => ({
   confirm: vi.fn().mockResolvedValue(true),
 }));
@@ -1073,6 +1077,7 @@ describe("hotkeys", () => {
 
       const { confirm } = await import("../utils/dialog");
       const { saveAppData } = await import("./categories");
+      const { showError } = await import("./error");
       vi.mocked(confirm).mockResolvedValue(true);
       vi.mocked(saveAppData).mockRejectedValueOnce(new Error("Save failed"));
 
@@ -1085,6 +1090,8 @@ describe("hotkeys", () => {
       expect(store.get(hotkeysAtom)).toHaveLength(0);
       // Error should be logged
       expect(consoleSpy).toHaveBeenCalled();
+      // Error should be shown to user
+      expect(showError).toHaveBeenCalledWith("Failed to save hotkeys");
       consoleSpy.mockRestore();
     });
   });

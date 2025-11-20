@@ -251,7 +251,9 @@ describe("browse", () => {
     it("should handle Tauri API unavailable", async () => {
       // Mock get_data_file_path to be called before the check
       vi.mocked(invokeTauri).mockResolvedValueOnce(null); // get_data_file_path
-      vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(false);
+      vi.mocked(isTauriInvokeAvailable)
+        .mockReturnValueOnce(true)  // allow get_data_file_path
+        .mockReturnValueOnce(false); // fail the main list_images availability check
 
       await browseImages("/test/path");
 

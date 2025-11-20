@@ -6,13 +6,17 @@
   "scripts": {
     "tauri": "tauri",
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "pnpm version:sync && tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "test:ci": "vitest run --coverage --reporter=verbose"
+    "test:ci": "vitest run --coverage --reporter=verbose",
+    "version:sync": "node scripts/sync-version.js",
+    "version:patch": "pnpm version patch && pnpm version:sync",
+    "version:minor": "pnpm version minor && pnpm version:sync",
+    "version:major": "pnpm version major && pnpm version:sync"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
