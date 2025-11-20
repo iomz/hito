@@ -638,7 +638,11 @@ describe("filteredImages", () => {
         { path: "/test/banana" },
         { path: "/test/zebra" },
       ]);
-      expect(result.images).toHaveLength(2);
+      // Images should be sorted by name ascending (image1, image2)
+      expect(result.images.map((img) => img.path)).toEqual([
+        "/test/image1.png",
+        "/test/image2.png",
+      ]);
     });
 
     it("should sort directories by name descending when sortDirection is descending", () => {
@@ -660,6 +664,8 @@ describe("filteredImages", () => {
         { path: "/test/banana" },
         { path: "/test/apple" },
       ]);
+      // Images should be empty when allImagePathsAtom is empty
+      expect(result.images).toEqual([]);
     });
 
     it("should sort directories by name when sortOption is lastCategorized", () => {
@@ -761,8 +767,12 @@ describe("filteredImages", () => {
 
       // Directories should be first, then images
       expect(result.directories).toHaveLength(1);
-      expect(result.images).toHaveLength(2);
       expect(result.directories[0].path).toBe("/test/folder");
+      // Images should be sorted by name ascending (image1, image2)
+      expect(result.images.map((img) => img.path)).toEqual([
+        "/test/image1.png",
+        "/test/image2.png",
+      ]);
     });
   });
 });

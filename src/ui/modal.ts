@@ -98,6 +98,24 @@ export function closeModal(): void {
 }
 
 /**
+ * Calculates a bounded target index for navigation, ensuring it stays within valid array bounds.
+ * 
+ * @param direction - Navigation direction: +1 for next, -1 for previous
+ * @param oldIndex - The original index before filtering/re-sorting
+ * @param filteredImagesLength - Length of the filtered images array
+ * @returns A bounded index within [0, filteredImagesLength - 1]
+ */
+function calculateBoundedTargetIndex(
+  direction: 1 | -1,
+  oldIndex: number,
+  filteredImagesLength: number
+): number {
+  return direction === 1
+    ? Math.min(oldIndex, filteredImagesLength - 1)
+    : Math.min(Math.max(0, oldIndex - 1), filteredImagesLength - 1);
+}
+
+/**
  * Internal helper for navigation with suppression-aware logic.
  * Handles the "remember neighbor then navigate after refilter" algorithm.
  * 
@@ -142,21 +160,17 @@ function navigateWithSuppressionAwareness(direction: 1 | -1): void {
         openModal(filteredImages[newIndex].path);
       } else if (filteredImages.length > 0) {
         // Old neighbor image no longer in filtered list, fall back to position-based navigation
-        const targetIndex = direction === 1
-          ? Math.min(oldIndex, filteredImages.length - 1)
-          : Math.min(Math.max(0, oldIndex - 1), filteredImages.length - 1);
+        const targetIndex = calculateBoundedTargetIndex(direction, oldIndex, filteredImages.length);
         openModal(filteredImages[targetIndex].path);
       }
     } else if (oldIndex < 0 && filteredImages.length > 0) {
-      // Image was removed from filtered list (not found in old list)
+      // Current image was not in old filtered list (kept visible via suppression)
       // Navigate to first image for next direction, last image for previous direction
       const fallbackIndex = direction === 1 ? 0 : filteredImages.length - 1;
       openModal(filteredImages[fallbackIndex].path);
     } else if (oldIndex >= 0 && filteredImages.length > 0) {
       // We were at the boundary in old order (oldNeighborPath is null), preserve position
-      const targetIndex = direction === 1
-        ? Math.min(oldIndex, filteredImages.length - 1)
-        : Math.min(Math.max(0, oldIndex - 1), filteredImages.length - 1);
+      const targetIndex = calculateBoundedTargetIndex(direction, oldIndex, filteredImages.length);
       openModal(filteredImages[targetIndex].path);
     }
     // If oldIndex < 0 and filteredImages is empty, don't navigate
