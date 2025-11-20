@@ -3,7 +3,7 @@ import {
   categoriesAtom,
   imageCategoriesAtom,
   hotkeysAtom,
-  configFilePathAtom,
+  dataFilePathAtom,
   currentDirectoryAtom,
   allImagePathsAtom,
   filterOptionsAtom,
@@ -19,16 +19,19 @@ import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 import { normalizePath } from "../utils/state";
 
 interface HitoFile {
-  categories?: Category[];
   image_categories?: Array<[string, CategoryAssignment[]]>;
+}
+
+interface AppData {
+  categories?: Category[];
   hotkeys?: HotkeyConfig[];
 }
 
-function getConfigFileDirectory(): string {
-  const configFilePath = store.get(configFilePathAtom);
+function getDataFileDirectory(): string {
+  const dataFilePath = store.get(dataFilePathAtom);
   const currentDirectory = store.get(currentDirectoryAtom);
-  if (configFilePath) {
-    const path = normalizePath(configFilePath);
+  if (dataFilePath) {
+    const path = normalizePath(dataFilePath);
     const lastSlash = path.lastIndexOf("/");
     if (lastSlash >= 0) {
       return path.substring(0, lastSlash);
@@ -38,10 +41,10 @@ function getConfigFileDirectory(): string {
   return currentDirectory;
 }
 
-function getConfigFileName(): string | undefined {
-  const configFilePath = store.get(configFilePathAtom);
-  if (configFilePath) {
-    const path = normalizePath(configFilePath);
+function getDataFileName(): string | undefined {
+  const dataFilePath = store.get(dataFilePathAtom);
+  if (dataFilePath) {
+    const path = normalizePath(dataFilePath);
     const lastSlash = path.lastIndexOf("/");
     if (lastSlash >= 0) {
       const filename = path.substring(lastSlash + 1);
@@ -74,52 +77,61 @@ function createDefaultHotkeys(): HotkeyConfig[] {
 }
 
 /**
- * Load categories, image assignments, and hotkeys from .hito.json in the current directory.
+ * Initialize default hotkeys if the store is empty.
+ * @param abortSignal - Optional AbortSignal to cancel the operation
+ * @returns true if default hotkeys were set, false otherwise
  */
-export async function loadHitoConfig(): Promise<void> {
-  const configDir = getConfigFileDirectory();
-  const currentDirectory = store.get(currentDirectoryAtom);
-  const configFilePath = store.get(configFilePathAtom);
-  if (!configDir || configDir.trim() === "") {
-    console.warn("[loadHitoConfig] Config directory is empty or not set. currentDirectory:", currentDirectory, "configFilePath:", configFilePath);
-    return;
+function initializeDefaultHotkeysIfEmpty(abortSignal?: AbortSignal): boolean {
+  const hotkeys = store.get(hotkeysAtom);
+  if (!hotkeys || hotkeys.length === 0) {
+    if (abortSignal?.aborted) {
+      return false;
+    }
+    store.set(hotkeysAtom, createDefaultHotkeys());
+    return true;
   }
+  return false;
+}
 
+/**
+ * Load categories and hotkeys from app data directory.
+ * @param abortSignal - Optional AbortSignal to cancel the operation
+ */
+export async function loadAppData(abortSignal?: AbortSignal): Promise<void> {
   try {
     if (!isTauriInvokeAvailable()) {
-      console.warn("[loadHitoConfig] Tauri invoke not available");
+      console.warn("[loadAppData] Tauri invoke not available");
       return;
     }
 
-    const configFileName = getConfigFileName();
-    console.log("[loadHitoConfig] Loading config:", { directory: configDir, filename: configFileName });
+    if (abortSignal?.aborted) {
+      return;
+    }
+
+    console.log("[loadAppData] Loading app data");
     
-    const data = await invokeTauri<HitoFile>("load_hito_config", {
-      directory: configDir,
-      filename: configFileName,
-    });
+    const data = await invokeTauri<AppData>("load_app_data");
     
-    console.log("[loadHitoConfig] Loaded config:", {
+    if (abortSignal?.aborted) {
+      return;
+    }
+
+    console.log("[loadAppData] Loaded app data:", {
       categoriesCount: data.categories?.length || 0,
-      imageCategoriesCount: data.image_categories?.length || 0,
       hotkeysCount: data.hotkeys?.length || 0,
     });
+
+    if (abortSignal?.aborted) {
+      return;
+    }
 
     if (data.categories) {
       store.set(categoriesAtom, data.categories);
     }
 
-    if (data.image_categories) {
-      store.set(imageCategoriesAtom, new Map(data.image_categories));
+    if (abortSignal?.aborted) {
+      return;
     }
-
-    // Check if file exists - if all arrays are empty/undefined, file doesn't exist
-    const hasCategories = Boolean(data.categories && data.categories.length > 0);
-    const hasImageCategories = Boolean(data.image_categories && data.image_categories.length > 0);
-    const hasHotkeys = Boolean(data.hotkeys && data.hotkeys.length > 0);
-    const fileExists = hasCategories || hasImageCategories || hasHotkeys;
-    
-    console.log("[loadHitoConfig] File exists check:", { hasCategories, hasImageCategories, hasHotkeys, fileExists });
 
     if (data.hotkeys && data.hotkeys.length > 0) {
       // Ensure hotkeys have all required fields
@@ -129,17 +141,96 @@ export async function loadHitoConfig(): Promise<void> {
         modifiers: Array.isArray(h.modifiers) ? h.modifiers : [],
         action: h.action || "",
       })));
-    } else if (!fileExists) {
-      // File doesn't exist - create default hotkeys
-      store.set(hotkeysAtom, createDefaultHotkeys());
-      
-      // Save the default hotkeys to create the .hito.json file
-      try {
-        await saveHitoConfig();
-        console.log("[loadHitoConfig] Default hotkeys saved successfully");
-      } catch (saveError) {
-        console.error("[loadHitoConfig] Failed to save default hotkeys:", saveError);
+    } else {
+      // No hotkeys in app data - create default hotkeys
+      if (initializeDefaultHotkeysIfEmpty(abortSignal)) {
+        // Save the default hotkeys to app data
+        try {
+          await saveAppData();
+          if (abortSignal?.aborted) {
+            return;
+          }
+          console.log("[loadAppData] Default hotkeys saved successfully");
+        } catch (saveError) {
+          if (abortSignal?.aborted) {
+            return;
+          }
+          console.error("[loadAppData] Failed to save default hotkeys:", saveError);
+        }
       }
+    }
+  } catch (error) {
+    if (abortSignal?.aborted) {
+      return;
+    }
+    console.error("[loadAppData] Failed to load app data:", error);
+    // Initialize with defaults if loading fails
+    initializeDefaultHotkeysIfEmpty(abortSignal);
+  }
+}
+
+/**
+ * Save categories and hotkeys to app data directory.
+ */
+export async function saveAppData(): Promise<void> {
+  try {
+    if (!isTauriInvokeAvailable()) {
+      console.warn("[saveAppData] Tauri invoke not available");
+      return;
+    }
+
+    const categories = store.get(categoriesAtom);
+    const hotkeys = store.get(hotkeysAtom);
+
+    console.log("[saveAppData] Saving app data:", {
+      categoriesCount: categories.length,
+      hotkeysCount: hotkeys.length,
+    });
+
+    await invokeTauri("save_app_data", {
+      categories: categories,
+      hotkeys: hotkeys,
+    });
+
+    console.log("[saveAppData] App data saved successfully");
+  } catch (error) {
+    console.error("[saveAppData] Failed to save app data:", error);
+    throw error; // Re-throw to allow callers to handle it
+  }
+}
+
+/**
+ * Load image category assignments from .hito.json in the current directory.
+ */
+export async function loadHitoConfig(): Promise<void> {
+  const dataDir = getDataFileDirectory();
+  const currentDirectory = store.get(currentDirectoryAtom);
+  const dataFilePath = store.get(dataFilePathAtom);
+  if (!dataDir || dataDir.trim() === "") {
+    console.warn("[loadHitoConfig] Data directory is empty or not set. currentDirectory:", currentDirectory, "dataFilePath:", dataFilePath);
+    return;
+  }
+
+  try {
+    if (!isTauriInvokeAvailable()) {
+      console.warn("[loadHitoConfig] Tauri invoke not available");
+      return;
+    }
+
+    const dataFileName = getDataFileName();
+    console.log("[loadHitoConfig] Loading data file:", { directory: dataDir, filename: dataFileName });
+    
+    const data = await invokeTauri<HitoFile>("load_hito_config", {
+      directory: dataDir,
+      filename: dataFileName,
+    });
+    
+    console.log("[loadHitoConfig] Loaded data file:", {
+      imageCategoriesCount: data.image_categories?.length || 0,
+    });
+
+    if (data.image_categories) {
+      store.set(imageCategoriesAtom, new Map(data.image_categories));
     }
   } catch (error) {
     // Check if this is a file-not-found error
@@ -151,21 +242,9 @@ export async function loadHitoConfig(): Promise<void> {
       errorMessage.toLowerCase().includes('not found');
     
     if (isFileNotFound) {
-      // File doesn't exist - create default hotkeys
-      console.log("[loadHitoConfig] Config file not found, creating default hotkeys");
-      const hotkeys = store.get(hotkeysAtom);
-      if (!hotkeys || hotkeys.length === 0) {
-        store.set(hotkeysAtom, createDefaultHotkeys());
-        
-        // Save the default hotkeys to create the .hito.json file
-        try {
-          await saveHitoConfig();
-          console.log("[loadHitoConfig] Default hotkeys saved successfully");
-        } catch (saveError) {
-          console.error("[loadHitoConfig] Failed to save default hotkeys:", saveError);
-          // Don't rethrow - we've already set the defaults in state
-        }
-      }
+      // File doesn't exist - clear assignments
+      console.log("[loadHitoConfig] Data file not found, clearing assignments");
+      store.set(imageCategoriesAtom, new Map());
     } else {
       // Other errors (permission, parse, network, etc.) - log and rethrow
       console.error("[loadHitoConfig] Failed to load .hito.json:", error);
@@ -174,12 +253,15 @@ export async function loadHitoConfig(): Promise<void> {
   }
 }
 
+/**
+ * Save image category assignments to .hito.json in the current directory.
+ */
 export async function saveHitoConfig(): Promise<void> {
-  const configDir = getConfigFileDirectory();
+  const dataDir = getDataFileDirectory();
   const currentDirectory = store.get(currentDirectoryAtom);
-  const configFilePath = store.get(configFilePathAtom);
-  if (!configDir || configDir.trim() === "") {
-    console.warn("[saveHitoConfig] Config directory is empty or not set. currentDirectory:", currentDirectory, "configFilePath:", configFilePath);
+  const dataFilePath = store.get(dataFilePathAtom);
+  if (!dataDir || dataDir.trim() === "") {
+    console.warn("[saveHitoConfig] Data directory is empty or not set. currentDirectory:", currentDirectory, "dataFilePath:", dataFilePath);
     return;
   }
 
@@ -190,28 +272,22 @@ export async function saveHitoConfig(): Promise<void> {
     }
 
     const imageCategories = store.get(imageCategoriesAtom);
-    const categories = store.get(categoriesAtom);
-    const hotkeys = store.get(hotkeysAtom);
     const imageCategoriesArray = Array.from(imageCategories.entries());
-    const configFileName = getConfigFileName();
+    const dataFileName = getDataFileName();
 
-    console.log("[saveHitoConfig] Saving config:", {
-      directory: configDir,
-      filename: configFileName,
-      categoriesCount: categories.length,
+    console.log("[saveHitoConfig] Saving data file:", {
+      directory: dataDir,
+      filename: dataFileName,
       imageCategoriesCount: imageCategoriesArray.length,
-      hotkeysCount: hotkeys.length,
     });
 
     await invokeTauri("save_hito_config", {
-      directory: configDir,
-      categories: categories,
+      directory: dataDir,
       imageCategories: imageCategoriesArray,
-      hotkeys: hotkeys,
-      filename: configFileName,
+      filename: dataFileName,
     });
 
-    console.log("[saveHitoConfig] Config saved successfully");
+    console.log("[saveHitoConfig] Data file saved successfully");
   } catch (error) {
     console.error("Failed to save .hito.json:", error);
     throw error; // Re-throw to allow callers to handle it
@@ -240,8 +316,9 @@ export function generateCategoryColor(): string {
 
 /**
  * Check if an image matches the current category filter.
+ * @internal - Exported for testing only
  */
-function imageMatchesCategoryFilter(imagePath: string, filterCategoryId: string | "uncategorized" | ""): boolean {
+export function imageMatchesCategoryFilter(imagePath: string, filterCategoryId: string | "uncategorized" | ""): boolean {
   if (!filterCategoryId || filterCategoryId === "") {
     return true; // No filter, all images match
   }
@@ -267,23 +344,44 @@ function imageMatchesCategoryFilter(imagePath: string, filterCategoryId: string 
 
 /**
  * Get the filtered list of images based on current filter options.
+ * @internal - Exported for testing only
  */
-function getFilteredImages(): string[] {
+export function getFilteredImages(): string[] {
   const allImagePaths = store.get(allImagePathsAtom);
   const rawImages = Array.isArray(allImagePaths) ? [...allImagePaths] : [];
   
-  // Normalize images to a consistent shape: detect type and convert strings to objects
-  // Normalize: convert strings to objects with path property, or use objects as-is
-  let images: Array<{ path: string }> = rawImages.map((item) => {
-    if (typeof item === "string") {
-      return { path: item };
-    } else if (typeof item === "object" && item !== null && "path" in item) {
-      return { path: item.path };
-    } else {
-      // Fallback: try to coerce to string or use empty string
-      return { path: String(item) };
-    }
-  });
+  // Normalize images to a consistent shape: strictly validate and filter invalid entries
+  // Only include entries where item is a non-empty string or an object with a non-empty string "path" property
+  const discardedItems: unknown[] = [];
+  let images: Array<{ path: string }> = rawImages
+    .map((item: unknown): { path: string } | null => {
+      // Handle string items: must be non-empty
+      if (typeof item === "string") {
+        return item.trim() !== "" ? { path: item } : null;
+      }
+      
+      // Handle object items: must have a non-empty string "path" property
+      if (typeof item === "object" && item !== null && "path" in item) {
+        const path = (item as { path: unknown }).path;
+        if (typeof path === "string" && path.trim() !== "") {
+          return { path };
+        }
+      }
+      
+      // Item is invalid: null, undefined, or object without usable path
+      // Collect for debugging instead of coercing to string
+      discardedItems.push(item);
+      return null;
+    })
+    .filter((item): item is { path: string } => item !== null);
+  
+  // Log discarded items for debugging if any were found
+  if (discardedItems.length > 0) {
+    console.warn(
+      `getFilteredImages: Filtered out ${discardedItems.length} invalid image entries:`,
+      discardedItems
+    );
+  }
   
   const filters = store.get(filterOptionsAtom);
 
@@ -321,8 +419,9 @@ function getFilteredImages(): string[] {
 
 /**
  * Navigate to next or previous image in the filtered list.
+ * @internal - Exported for testing only
  */
-async function navigateToNextFilteredImage(currentImagePath: string): Promise<void> {
+export async function navigateToNextFilteredImage(currentImagePath: string): Promise<void> {
   const { openModal } = await import("./modal");
   
   const filteredPaths = getFilteredImages();
@@ -586,7 +685,7 @@ export async function deleteCategory(categoryId: string): Promise<void> {
   const categories = store.get(categoriesAtom);
   store.set(categoriesAtom, categories.filter((c) => c.id !== categoryId));
 
-  await saveHitoConfig();
+  await saveAppData();
 }
 
 /**

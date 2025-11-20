@@ -12,7 +12,7 @@ import type { HotkeyConfig } from "../types";
 
 // Mock dependencies
 vi.mock("./categories", () => ({
-  saveHitoConfig: vi.fn().mockResolvedValue(undefined),
+  saveAppData: vi.fn().mockResolvedValue(undefined),
   toggleCategoryForCurrentImage: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -1072,9 +1072,9 @@ describe("hotkeys", () => {
       ]);
 
       const { confirm } = await import("../utils/dialog");
-      const { saveHitoConfig } = await import("./categories");
+      const { saveAppData } = await import("./categories");
       vi.mocked(confirm).mockResolvedValue(true);
-      vi.mocked(saveHitoConfig).mockRejectedValueOnce(new Error("Save failed"));
+      vi.mocked(saveAppData).mockRejectedValueOnce(new Error("Save failed"));
 
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 

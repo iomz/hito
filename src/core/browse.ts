@@ -7,7 +7,7 @@ import {
   loadedImagesAtom,
   currentModalImagePathAtom,
   currentDirectoryAtom,
-  configFilePathAtom,
+  dataFilePathAtom,
   categoriesAtom,
   imageCategoriesAtom,
   hotkeysAtom,
@@ -17,7 +17,7 @@ import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
 import { showNotification } from "../ui/notification";
 import { showError, clearError } from "../ui/error";
-import { loadHitoConfig } from "../ui/categories";
+import { loadHitoConfig, loadAppData } from "../ui/categories";
 import { ensureImagePathsArray } from "../utils/state";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 
@@ -68,13 +68,23 @@ export async function browseImages(path: string): Promise<void> {
   store.set(currentModalImagePathAtom, "");
   store.set(currentDirectoryAtom, path);
   
-  // Clear categories and hotkeys state before loading new config
-  store.set(categoriesAtom, []);
+  // Clear image categories state before loading new config
+  // Categories and hotkeys are loaded from app data, not cleared
   store.set(imageCategoriesAtom, new Map());
-  store.set(hotkeysAtom, []);
   
-  // Reset config file path to default when browsing new directory
-  store.set(configFilePathAtom, "");
+  // Load saved data file path for this directory, or reset to default
+  let savedDataFilePath = "";
+  if (isTauriInvokeAvailable()) {
+    try {
+      const savedPath = await invokeTauri<string | null>("get_data_file_path", { directory: path });
+      if (savedPath) {
+        savedDataFilePath = savedPath;
+      }
+    } catch (error) {
+      console.warn("[browseImages] Failed to load saved data file path:", error);
+    }
+  }
+  store.set(dataFilePathAtom, savedDataFilePath);
   
   try {
     if (!isTauriInvokeAvailable()) {
@@ -104,7 +114,10 @@ export async function browseImages(path: string): Promise<void> {
     store.set(allDirectoryPathsAtom, directories);
     store.set(allImagePathsAtom, images);
     
-    // Load categories and hotkeys for this directory
+    // Load categories and hotkeys from app data directory
+    await loadAppData();
+    
+    // Load image category assignments for this directory
     await loadHitoConfig();
     
     // Hide spinner after everything is loaded

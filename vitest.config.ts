@@ -5,6 +5,18 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     include: ["src/**/*.{test,spec}.{js,ts,tsx}"],
+    // Prevent zombie processes by ensuring proper cleanup
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: false,
+        isolate: true,
+      },
+    },
+    // Ensure processes are properly terminated
+    teardownTimeout: 10000,
+    hookTimeout: 10000,
+    testTimeout: 10000,
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],

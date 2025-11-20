@@ -14,7 +14,7 @@ export const isHotkeySidebarOpenAtom = atom<boolean>(false);
 export const categoriesAtom = atom<Category[]>([]);
 export const imageCategoriesAtom = atom<Map<string, CategoryAssignment[]>>(new Map<string, CategoryAssignment[]>()); // image path -> category assignments with datetime
 export const currentDirectoryAtom = atom<string>(""); // Current directory being viewed
-export const configFilePathAtom = atom<string>(""); // Custom config file path (empty = default to currentDirectory/.hito.json)
+export const dataFilePathAtom = atom<string>(""); // Custom data file path (empty = default to currentDirectory/.hito.json)
 export const resetCounterAtom = atom<number>(0); // Incremented on reset to force ImageGrid remount
 export const shortcutsOverlayVisibleAtom = atom<boolean>(false); // Whether the keyboard shortcuts overlay is visible
 export const categoryDialogVisibleAtom = atom<boolean>(false); // Whether the category dialog is visible
@@ -71,7 +71,7 @@ export const resetStateAtom = atom(null, (get, set) => {
   set(categoriesAtom, []);
   set(imageCategoriesAtom, new Map<string, CategoryAssignment[]>());
   set(currentDirectoryAtom, "");
-  set(configFilePathAtom, "");
+  set(dataFilePathAtom, "");
   set(resetCounterAtom, (prev) => prev + 1); // Increment to force remounts
   set(shortcutsOverlayVisibleAtom, false);
   set(categoryDialogVisibleAtom, false);
@@ -115,7 +115,7 @@ export const elements = {
   addCategoryBtn: null as HTMLElement | null,
   currentImageCategories: null as HTMLElement | null,
   modalCategories: null as HTMLElement | null,
-  configFilePathInput: null as HTMLInputElement | null,
+  dataFilePathInput: null as HTMLInputElement | null,
   notificationBar: null as HTMLElement | null
 };
 

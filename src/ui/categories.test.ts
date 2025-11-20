@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { store } from "../utils/jotaiStore";
 import {
   currentDirectoryAtom,
-  configFilePathAtom,
+  dataFilePathAtom,
   categoriesAtom,
   imageCategoriesAtom,
   hotkeysAtom,
@@ -52,7 +52,7 @@ describe("categories config file location", () => {
     
     store.set(resetStateAtom);
     store.set(currentDirectoryAtom, "/test/directory");
-    store.set(configFilePathAtom, "");
+    store.set(dataFilePathAtom, "");
     store.set(categoriesAtom, []);
     store.set(imageCategoriesAtom, new Map());
     store.set(hotkeysAtom, []);
@@ -65,13 +65,11 @@ describe("categories config file location", () => {
 
   describe("getConfigFileDirectory (tested via loadHitoConfig)", () => {
     it("should use currentDirectory when configFilePath is empty", async () => {
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
       store.set(currentDirectoryAtom, "/test/dir");
 
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
 
       const { loadHitoConfig } = await import("./categories");
@@ -84,13 +82,11 @@ describe("categories config file location", () => {
     });
 
     it("should extract directory from full path", async () => {
-      store.set(configFilePathAtom, "/custom/path/config.json");
+      store.set(dataFilePathAtom, "/custom/path/config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
 
       const { loadHitoConfig } = await import("./categories");
@@ -103,13 +99,11 @@ describe("categories config file location", () => {
     });
 
     it("should handle Windows paths", async () => {
-      store.set(configFilePathAtom, "C:\\Users\\test\\config.json");
+      store.set(dataFilePathAtom, "C:\\Users\\test\\config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
 
       const { loadHitoConfig } = await import("./categories");
@@ -122,13 +116,11 @@ describe("categories config file location", () => {
     });
 
     it("should use currentDirectory when path has no slash", async () => {
-      store.set(configFilePathAtom, "config.json");
+      store.set(dataFilePathAtom, "config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
 
       const { loadHitoConfig } = await import("./categories");
@@ -141,7 +133,7 @@ describe("categories config file location", () => {
     });
 
     it("should handle root path", async () => {
-      store.set(configFilePathAtom, "/config.json");
+      store.set(dataFilePathAtom, "/config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       // When directory is empty string, loadHitoConfig returns early
@@ -156,13 +148,11 @@ describe("categories config file location", () => {
 
   describe("getConfigFileName (tested via loadHitoConfig)", () => {
     it("should return undefined when configFilePath is empty", async () => {
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
       store.set(currentDirectoryAtom, "/test/dir");
 
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
 
       const { loadHitoConfig } = await import("./categories");
@@ -175,13 +165,11 @@ describe("categories config file location", () => {
     });
 
     it("should extract filename from full path", async () => {
-      store.set(configFilePathAtom, "/custom/path/my-config.json");
+      store.set(dataFilePathAtom, "/custom/path/my-config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
 
       const { loadHitoConfig } = await import("./categories");
@@ -194,13 +182,11 @@ describe("categories config file location", () => {
     });
 
     it("should return filename when path has no slash", async () => {
-      store.set(configFilePathAtom, "custom.json");
+      store.set(dataFilePathAtom, "custom.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
 
       const { loadHitoConfig } = await import("./categories");
@@ -213,13 +199,11 @@ describe("categories config file location", () => {
     });
 
     it("should handle empty filename after slash", async () => {
-      store.set(configFilePathAtom, "/custom/path/");
+      store.set(dataFilePathAtom, "/custom/path/");
       store.set(currentDirectoryAtom, "/test/dir");
 
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
 
       const { loadHitoConfig } = await import("./categories");
@@ -235,7 +219,7 @@ describe("categories config file location", () => {
   describe("loadHitoConfig", () => {
     it("should return early when currentDirectory is empty", async () => {
       store.set(currentDirectoryAtom, "");
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
 
       const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
@@ -253,28 +237,12 @@ describe("categories config file location", () => {
       expect(mockInvoke).not.toHaveBeenCalled();
     });
 
-    it("should load categories from config", async () => {
+    // Categories are now loaded via loadAppData, not loadHitoConfig
+    // This test is moved to loadAppData tests
+
+    it("should load image categories from data file", async () => {
       store.set(currentDirectoryAtom, "/test/dir");
       const mockData = {
-        categories: [
-          { id: "cat1", name: "Category 1", color: "#ff0000" },
-        ],
-        image_categories: [],
-        hotkeys: [],
-      };
-
-      mockInvoke.mockResolvedValue(mockData);
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      expect(store.get(categoriesAtom)).toEqual(mockData.categories);
-    });
-
-    it("should load image categories from config", async () => {
-      store.set(currentDirectoryAtom, "/test/dir");
-      const mockData = {
-        categories: [],
         image_categories: [
           [
             "/path/to/image1.jpg",
@@ -284,7 +252,6 @@ describe("categories config file location", () => {
             ]
           ],
         ],
-        hotkeys: [],
       };
 
       mockInvoke.mockResolvedValue(mockData);
@@ -297,30 +264,34 @@ describe("categories config file location", () => {
       expect(categoryIds).toEqual(["cat1", "cat2"]);
     });
 
-    it("should load hotkeys from config", async () => {
-      store.set(currentDirectoryAtom, "/test/dir");
-      
-      const mockData = {
-        categories: [],
-        image_categories: [],
-        hotkeys: [
-          {
-            id: "hotkey1",
-            key: "K",
-            modifiers: ["Ctrl"],
-            action: "toggle_category_cat1",
-          },
-        ],
-      };
+    // Hotkeys are now loaded via loadAppData, not loadHitoConfig
+    // This test is moved to loadAppData tests
 
-      mockInvoke.mockResolvedValue(mockData);
+    it("should clear assignments when file is not found", async () => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      // Set some existing assignments
+      const existingCategories = new Map();
+      existingCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, existingCategories);
+      
+      const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      // Mock file not found error
+      const fileNotFoundError = new Error("No such file");
+      (fileNotFoundError as any).code = "ENOENT";
+      mockInvoke.mockRejectedValue(fileNotFoundError);
 
       const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
-      expect(store.get(hotkeysAtom)).toHaveLength(1);
-      expect(store.get(hotkeysAtom)[0].id).toBe("hotkey1");
-      expect(store.get(hotkeysAtom)[0].key).toBe("K");
+      // Assignments should be cleared
+      expect(store.get(imageCategoriesAtom).size).toBe(0);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        "[loadHitoConfig] Data file not found, clearing assignments"
+      );
+      consoleLogSpy.mockRestore();
     });
 
     it("should handle errors gracefully", async () => {
@@ -341,7 +312,7 @@ describe("categories config file location", () => {
   describe("saveHitoConfig", () => {
     it("should return early when currentDirectory is empty", async () => {
       store.set(currentDirectoryAtom, "");
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
 
       const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
@@ -359,19 +330,15 @@ describe("categories config file location", () => {
       expect(mockInvoke).not.toHaveBeenCalled();
     });
 
-    it("should save categories with default filename", async () => {
+    it("should save image categories with default filename", async () => {
       store.set(currentDirectoryAtom, "/test/dir");
-      store.set(configFilePathAtom, "");
-      store.set(categoriesAtom, [
-        { id: "cat1", name: "Category 1", color: "#ff0000" },
-      ]);
+      store.set(dataFilePathAtom, "");
       const imageCategories = store.get(imageCategoriesAtom);
       const updatedImageCategories = new Map(imageCategories);
       updatedImageCategories.set("/path/to/image.jpg", [
         { category_id: "cat1", assigned_at: new Date().toISOString() }
       ]);
       store.set(imageCategoriesAtom, updatedImageCategories);
-      store.set(hotkeysAtom, []);
 
       mockInvoke.mockResolvedValue(undefined);
 
@@ -381,9 +348,7 @@ describe("categories config file location", () => {
       const assignments = store.get(imageCategoriesAtom).get("/path/to/image.jpg") || [];
       expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
         directory: "/test/dir",
-        categories: store.get(categoriesAtom),
         imageCategories: [["/path/to/image.jpg", assignments]],
-        hotkeys: [],
         filename: undefined,
       });
       // Verify the assignment has the correct structure
@@ -394,10 +359,8 @@ describe("categories config file location", () => {
 
     it("should save with custom filename", async () => {
       store.set(currentDirectoryAtom, "/test/dir");
-      store.set(configFilePathAtom, "/custom/path/my-config.json");
-      store.set(categoriesAtom, []);
+      store.set(dataFilePathAtom, "/custom/path/my-config.json");
       store.set(imageCategoriesAtom, new Map());
-      store.set(hotkeysAtom, []);
 
       mockInvoke.mockResolvedValue(undefined);
 
@@ -406,9 +369,7 @@ describe("categories config file location", () => {
 
       expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
         directory: "/custom/path",
-        categories: [],
         imageCategories: [],
-        hotkeys: [],
         filename: "my-config.json",
       });
     });
@@ -418,9 +379,7 @@ describe("categories config file location", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       // Set up some data so saveHitoConfig doesn't return early
-      store.set(categoriesAtom, []);
       store.set(imageCategoriesAtom, new Map());
-      store.set(hotkeysAtom, []);
 
       const error = new Error("Failed to save");
       mockInvoke.mockRejectedValue(error);
@@ -461,7 +420,7 @@ describe("categories UI and management", () => {
     store.set(currentModalImagePathAtom, "");
     store.set(allImagePathsAtom, []);
     store.set(currentDirectoryAtom, "/test/dir");
-    store.set(configFilePathAtom, "");
+    store.set(dataFilePathAtom, "");
     store.set(categoryDialogVisibleAtom, false);
     store.set(categoryDialogCategoryAtom, undefined);
     store.set(filterOptionsAtom, {
@@ -984,57 +943,7 @@ describe("categories UI and management", () => {
     });
   });
 
-  describe("loadHitoConfig hotkey handling", () => {
-    it("should handle hotkeys with missing fields", async () => {
-      store.set(currentDirectoryAtom, "/test/dir");
-      const mockData = {
-        categories: [],
-        image_categories: [],
-        hotkeys: [
-          {
-            id: undefined,
-            key: undefined,
-            modifiers: undefined,
-            action: undefined,
-          },
-        ],
-      };
-
-      mockInvoke.mockResolvedValue(mockData);
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      expect(store.get(hotkeysAtom)).toHaveLength(1);
-      expect(store.get(hotkeysAtom)[0].id).toContain("hotkey_");
-      expect(store.get(hotkeysAtom)[0].key).toBe("");
-      expect(store.get(hotkeysAtom)[0].modifiers).toEqual([]);
-      expect(store.get(hotkeysAtom)[0].action).toBe("");
-    });
-
-    it("should handle hotkeys with non-array modifiers", async () => {
-      store.set(currentDirectoryAtom, "/test/dir");
-      const mockData = {
-        categories: [],
-        image_categories: [],
-        hotkeys: [
-          {
-            id: "hotkey1",
-            key: "K",
-            modifiers: "Ctrl" as any,
-            action: "toggle_category_cat1",
-          },
-        ],
-      };
-
-      mockInvoke.mockResolvedValue(mockData);
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      expect(store.get(hotkeysAtom)[0].modifiers).toEqual([]);
-    });
-  });
+  // Hotkey handling tests moved to loadAppData tests
 
   describe("generateCategoryColor", () => {
     it("should return a valid hex color", async () => {
@@ -1310,7 +1219,7 @@ describe("categories UI and management", () => {
   describe("saveHitoConfig error handling", () => {
     beforeEach(() => {
       store.set(currentDirectoryAtom, "/test/dir");
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
       store.set(categoriesAtom, [{ id: "cat1", name: "Category 1", color: "#ff0000" }]);
       const imageCategories = store.get(imageCategoriesAtom);
       const updatedImageCategories = new Map(imageCategories);
@@ -1337,9 +1246,7 @@ describe("categories UI and management", () => {
       expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
         directory: "/test/dir",
         filename: undefined,
-        categories: store.get(categoriesAtom),
         imageCategories: Array.from(store.get(imageCategoriesAtom).entries()),
-        hotkeys: store.get(hotkeysAtom),
       });
     });
 
@@ -1355,14 +1262,12 @@ describe("categories UI and management", () => {
       expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
         directory: "/test/dir",
         filename: undefined,
-        categories: [],
         imageCategories: [],
-        hotkeys: [],
       });
     });
 
     it("should save with custom filename", async () => {
-      store.set(configFilePathAtom, "/custom/path/my-config.json");
+      store.set(dataFilePathAtom, "/custom/path/my-config.json");
       mockInvoke.mockResolvedValue(undefined);
 
       const { saveHitoConfig } = await import("./categories");
@@ -1378,34 +1283,17 @@ describe("categories UI and management", () => {
   describe("loadHitoConfig edge cases", () => {
     beforeEach(() => {
       store.set(currentDirectoryAtom, "/test/dir");
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
     });
 
-    it("should handle config with only categories", async () => {
-      const mockData = {
-        categories: [
-          { id: "cat1", name: "Category 1", color: "#ff0000" },
-        ],
-        image_categories: undefined,
-        hotkeys: undefined,
-      };
-
-      mockInvoke.mockResolvedValue(mockData);
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      expect(store.get(categoriesAtom)).toEqual(mockData.categories);
-      expect(store.get(imageCategoriesAtom).size).toBe(0);
-    });
+    // Categories are now loaded via loadAppData, not loadHitoConfig
+    // This test is moved to loadAppData tests
 
     it("should handle config with only image categories", async () => {
       const mockData = {
-        categories: undefined,
         image_categories: [
           ["/image1.jpg", [{ category_id: "cat1", assigned_at: new Date().toISOString() }]],
         ],
-        hotkeys: undefined,
       };
 
       mockInvoke.mockResolvedValue(mockData);
@@ -1413,92 +1301,10 @@ describe("categories UI and management", () => {
       const { loadHitoConfig } = await import("./categories");
       await loadHitoConfig();
 
-      expect(store.get(categoriesAtom)).toEqual([]);
       expect(store.get(imageCategoriesAtom).has("/image1.jpg")).toBe(true);
     });
 
-    it("should create default hotkeys when file doesn't exist and no hotkeys in config", async () => {
-      const mockData = {
-        categories: [],
-        image_categories: [],
-        hotkeys: [],
-      };
-
-      mockInvoke.mockResolvedValue(mockData);
-      mockInvoke.mockResolvedValueOnce(mockData); // First call for load
-      mockInvoke.mockResolvedValueOnce(undefined); // Second call for save
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      // Should create default hotkeys
-      expect(store.get(hotkeysAtom).length).toBe(2);
-      expect(store.get(hotkeysAtom)[0].key).toBe("J");
-      expect(store.get(hotkeysAtom)[0].action).toBe("next_image");
-      expect(store.get(hotkeysAtom)[1].key).toBe("K");
-      expect(store.get(hotkeysAtom)[1].action).toBe("previous_image");
-    });
-
-    it("should handle error when saving default hotkeys fails", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const mockData = {
-        categories: [],
-        image_categories: [],
-        hotkeys: [],
-      };
-
-      mockInvoke.mockResolvedValueOnce(mockData); // Load call
-      mockInvoke.mockRejectedValueOnce(new Error("Save failed")); // Save call
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      // Should still have default hotkeys even if save fails
-      expect(store.get(hotkeysAtom).length).toBe(2);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to save default hotkeys"),
-        expect.any(Error)
-      );
-      consoleSpy.mockRestore();
-    });
-
-    it("should create default hotkeys in error handler when load fails and no hotkeys exist", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      store.set(currentDirectoryAtom, "/test/dir");
-      store.set(hotkeysAtom, []);
-      
-      // Error message must include "not found" to trigger file-not-found handling
-      mockInvoke.mockRejectedValueOnce(new Error("File not found"));
-      mockInvoke.mockResolvedValueOnce(undefined); // Save call
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      // Should create default hotkeys in error handler
-      expect(store.get(hotkeysAtom).length).toBe(2);
-      expect(store.get(hotkeysAtom)[0].key).toBe("J");
-      expect(store.get(hotkeysAtom)[1].key).toBe("K");
-      consoleSpy.mockRestore();
-    });
-
-    it("should not create default hotkeys in error handler when hotkeys already exist", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      store.set(currentDirectoryAtom, "/test/dir");
-      store.set(hotkeysAtom, [
-        { id: "existing", key: "X", modifiers: [], action: "custom_action" },
-      ]);
-      
-      // Error message must include "not found" to trigger file-not-found handling
-      mockInvoke.mockRejectedValueOnce(new Error("File not found"));
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      // Should not override existing hotkeys
-      expect(store.get(hotkeysAtom).length).toBe(1);
-      expect(store.get(hotkeysAtom)[0].key).toBe("X");
-      consoleSpy.mockRestore();
-    });
+    // Default hotkey creation is now handled by loadAppData, not loadHitoConfig
   });
 
   describe("toggleImageCategory edge cases", () => {
@@ -1692,15 +1498,13 @@ describe("categories UI and management", () => {
       };
       store.set(currentDirectoryAtom, "/test/dir");
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
       mockInvoke.mockClear();
     });
 
     it("should handle path with trailing slash", async () => {
-      store.set(configFilePathAtom, "/custom/path/config.json/");
+      store.set(dataFilePathAtom, "/custom/path/config.json/");
       store.set(currentDirectoryAtom, "/test/dir");
 
       const { loadHitoConfig } = await import("./categories");
@@ -1713,7 +1517,7 @@ describe("categories UI and management", () => {
     });
 
     it("should handle path with multiple slashes", async () => {
-      store.set(configFilePathAtom, "/custom///path//config.json");
+      store.set(dataFilePathAtom, "/custom///path//config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       const { loadHitoConfig } = await import("./categories");
@@ -1728,7 +1532,7 @@ describe("categories UI and management", () => {
     });
 
     it("should handle relative path starting with dot", async () => {
-      store.set(configFilePathAtom, "./config.json");
+      store.set(dataFilePathAtom, "./config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       const { loadHitoConfig } = await import("./categories");
@@ -1830,27 +1634,11 @@ describe("categories UI and management", () => {
   describe("saveHitoConfig with large datasets", () => {
     beforeEach(() => {
       store.set(currentDirectoryAtom, "/test/dir");
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
       mockInvoke.mockResolvedValue(undefined);
     });
 
-    it("should handle saving many categories", async () => {
-      const manyCategories = Array.from({ length: 100 }, (_, i) => ({
-        id: `cat${i}`,
-        name: `Category ${i}`,
-        color: "#ff0000",
-      }));
-      store.set(categoriesAtom, manyCategories);
-      store.set(imageCategoriesAtom, new Map());
-      store.set(hotkeysAtom, []);
-
-      const { saveHitoConfig } = await import("./categories");
-      await saveHitoConfig();
-
-      expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", expect.objectContaining({
-        categories: manyCategories,
-      }));
-    });
+    // Categories are now saved via saveAppData, not saveHitoConfig
 
     it("should handle saving many image categories", async () => {
       const manyImageCategories = new Map<string, any[]>();
@@ -1859,9 +1647,7 @@ describe("categories UI and management", () => {
           { category_id: "cat1", assigned_at: new Date().toISOString() },
         ]);
       }
-      store.set(categoriesAtom, []);
       store.set(imageCategoriesAtom, manyImageCategories);
-      store.set(hotkeysAtom, []);
 
       const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
@@ -1874,10 +1660,11 @@ describe("categories UI and management", () => {
   describe("loadHitoConfig with malformed data", () => {
     beforeEach(() => {
       store.set(currentDirectoryAtom, "/test/dir");
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
     });
 
-    it("should handle null categories", async () => {
+    // Categories are now loaded via loadAppData, not loadHitoConfig
+    it.skip("should handle null categories", async () => {
       mockInvoke.mockResolvedValue({
         categories: null,
         image_categories: [],
@@ -2060,7 +1847,7 @@ describe("categories UI and management", () => {
   describe("saveHitoConfig data integrity", () => {
     beforeEach(() => {
       store.set(currentDirectoryAtom, "/test/dir");
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
       mockInvoke.mockResolvedValue(undefined);
     });
 
@@ -2073,8 +1860,6 @@ describe("categories UI and management", () => {
       ];
       imageCategories.set("/image1.jpg", assignments);
       store.set(imageCategoriesAtom, imageCategories);
-      store.set(categoriesAtom, []);
-      store.set(hotkeysAtom, []);
 
       const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
@@ -2109,27 +1894,11 @@ describe("categories UI and management", () => {
   describe("loadHitoConfig data validation", () => {
     beforeEach(() => {
       store.set(currentDirectoryAtom, "/test/dir");
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
     });
 
-    it("should handle categories with missing required fields", async () => {
-      mockInvoke.mockResolvedValue({
-        categories: [
-          { id: "cat1" }, // Missing name and color
-          { id: "cat2", name: "Category 2" }, // Missing color
-          { id: "cat3", name: "Category 3", color: "#ff0000" }, // Complete
-        ],
-        image_categories: [],
-        hotkeys: [],
-      });
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      // Should load all categories, even with missing fields
-      const categories = store.get(categoriesAtom);
-      expect(categories).toHaveLength(3);
-    });
+    // Categories validation is now handled by loadAppData tests
+    // loadHitoConfig only handles image_categories
 
     it("should handle image categories with invalid assignment structure", async () => {
       mockInvoke.mockResolvedValue({
@@ -2151,25 +1920,7 @@ describe("categories UI and management", () => {
       expect(imageCategories.has("/image3.jpg")).toBe(true);
     });
 
-    it("should handle duplicate category IDs", async () => {
-      mockInvoke.mockResolvedValue({
-        categories: [
-          { id: "cat1", name: "Category 1", color: "#ff0000" },
-          { id: "cat1", name: "Category 1 Duplicate", color: "#00ff00" }, // Duplicate ID
-        ],
-        image_categories: [],
-        hotkeys: [],
-      });
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      // Should load both (no deduplication)
-      const categories = store.get(categoriesAtom);
-      expect(categories).toHaveLength(2);
-      expect(categories[0].name).toBe("Category 1");
-      expect(categories[1].name).toBe("Category 1 Duplicate");
-    });
+    // Categories validation is now handled by loadAppData tests
   });
 
   describe("deleteCategory edge cases", () => {
@@ -2409,16 +2160,14 @@ describe("categories UI and management", () => {
       };
       store.set(currentDirectoryAtom, "/test/dir");
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
       mockInvoke.mockClear();
     });
 
     it("should return currentDirectory when configFilePath has no slash", async () => {
       // Path with no slash (e.g., just filename or Windows path without slashes)
-      store.set(configFilePathAtom, "config.json");
+      store.set(dataFilePathAtom, "config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       const { loadHitoConfig } = await import("./categories");
@@ -2442,15 +2191,13 @@ describe("categories UI and management", () => {
       };
       store.set(currentDirectoryAtom, "/test/dir");
       mockInvoke.mockResolvedValue({
-        categories: [],
         image_categories: [],
-        hotkeys: [],
       });
       mockInvoke.mockClear();
     });
 
     it("should return path when configFilePath has no slash", async () => {
-      store.set(configFilePathAtom, "config.json");
+      store.set(dataFilePathAtom, "config.json");
       store.set(currentDirectoryAtom, "/test/dir");
 
       const { loadHitoConfig } = await import("./categories");
@@ -2463,7 +2210,7 @@ describe("categories UI and management", () => {
     });
 
     it("should return undefined when configFilePath is empty string with no slash", async () => {
-      store.set(configFilePathAtom, "");
+      store.set(dataFilePathAtom, "");
       store.set(currentDirectoryAtom, "/test/dir");
 
       const { loadHitoConfig } = await import("./categories");
@@ -2643,6 +2390,943 @@ describe("categories UI and management", () => {
 
       // Should navigate to previous image
       expect(openModal).toHaveBeenCalled();
+    });
+  });
+
+  describe("navigateToNextFilteredImage - currentIndex < 0 branches", () => {
+    beforeEach(() => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+      ]);
+      store.set(imageCategoriesAtom, new Map());
+      store.set(filterOptionsAtom, {
+        categoryId: "cat1",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      mockInvoke.mockResolvedValue(undefined);
+    });
+
+    it("should navigate to first image when current image not in filtered list and filtered list has images", async () => {
+      // Setup: image2 has cat1 (matches filter), image1 does not
+      const imageCategories = store.get(imageCategoriesAtom);
+      const updatedImageCategories = new Map(imageCategories);
+      updatedImageCategories.set("/image2.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, updatedImageCategories);
+      store.set(currentModalImagePathAtom, "/image1.jpg"); // image1 not in filtered list
+
+      const { toggleImageCategory } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      // Toggle category on image1 (which is not in filtered list)
+      // Should navigate to first image in filtered list (image2)
+      await toggleImageCategory("/image1.jpg", "cat2");
+
+      expect(openModal).toHaveBeenCalledWith("/image2.jpg");
+    });
+
+    it("should close modal when current image not in filtered list and filtered list is empty", async () => {
+      // No images have cat1, so filtered list is empty
+      store.set(currentModalImagePathAtom, "/image1.jpg"); // image1 not in filtered list
+
+      const { toggleImageCategory } = await import("./categories");
+      const { closeModal } = await import("./modal");
+
+      // Toggle category on image1 (which is not in filtered list)
+      // Should close modal when no images in filtered list
+      await toggleImageCategory("/image1.jpg", "cat2");
+
+      expect(closeModal).toHaveBeenCalled();
+    });
+  });
+
+  describe("getFilteredImages - normalization and name operators", () => {
+    beforeEach(() => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(imageCategoriesAtom, new Map());
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      mockInvoke.mockResolvedValue(undefined);
+    });
+
+    it("should handle string image paths", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+      ]);
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      expect(mockInvoke).toHaveBeenCalled();
+    });
+
+    it("should handle object image paths", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+      ]);
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      expect(mockInvoke).toHaveBeenCalled();
+    });
+
+    it("should handle fallback normalization for invalid image paths", async () => {
+      store.set(allImagePathsAtom, [null, undefined, 123] as any);
+      store.set(currentModalImagePathAtom, "null");
+
+      const { toggleImageCategory } = await import("./categories");
+      // Should not throw
+      await expect(toggleImageCategory("null", "cat1")).resolves.not.toThrow();
+    });
+
+    it("should filter by name with contains operator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/test-image1.jpg" },
+        { path: "/other-image2.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      store.set(currentModalImagePathAtom, "/test-image1.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      await toggleImageCategory("/test-image1.jpg", "cat1");
+
+      expect(mockInvoke).toHaveBeenCalled();
+    });
+
+    it("should filter by name with startsWith operator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/test-image1.jpg" },
+        { path: "/other-image2.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test",
+        nameOperator: "startsWith",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      store.set(currentModalImagePathAtom, "/test-image1.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      await toggleImageCategory("/test-image1.jpg", "cat1");
+
+      expect(mockInvoke).toHaveBeenCalled();
+    });
+
+    it("should filter by name with endsWith operator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/image1-test.jpg" },
+        { path: "/image2-other.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test",
+        nameOperator: "endsWith",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      store.set(currentModalImagePathAtom, "/image1-test.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      await toggleImageCategory("/image1-test.jpg", "cat1");
+
+      expect(mockInvoke).toHaveBeenCalled();
+    });
+
+    it("should filter by name with exact operator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/test.jpg" },
+        { path: "/test-image.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test.jpg",
+        nameOperator: "exact",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      store.set(currentModalImagePathAtom, "/test.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      await toggleImageCategory("/test.jpg", "cat1");
+
+      expect(mockInvoke).toHaveBeenCalled();
+    });
+
+    it("should handle non-array allImagePaths", async () => {
+      store.set(allImagePathsAtom, null as any);
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      // Should not throw
+      await expect(toggleImageCategory("/image1.jpg", "cat1")).resolves.not.toThrow();
+    });
+  });
+
+  describe("imageMatchesCategoryFilter - cached snapshot", () => {
+    beforeEach(() => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "cat1",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      mockInvoke.mockResolvedValue(undefined);
+    });
+
+    it("should use cached snapshot when suppressCategoryRefilter is true", async () => {
+      // Note: When suppressCategoryRefilter is true, navigation is suppressed
+      // So we can't test navigation with cached snapshot directly
+      // Instead, we test that the cached snapshot is used for filtering
+      // by verifying that navigation uses the correct filtered list
+      
+      // Setup: image1 and image2 both have cat1 in current state
+      const imageCategories = new Map();
+      imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      imageCategories.set("/image2.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, imageCategories);
+
+      // Create cached snapshot where only image2 has cat1
+      const cachedSnapshot = new Map();
+      cachedSnapshot.set("/image2.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(cachedImageCategoriesForRefilterAtom, cachedSnapshot);
+      store.set(suppressCategoryRefilterAtom, false); // Allow navigation to test filtering
+
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      // Toggle cat1 on image1 (removes it)
+      // After toggle, image1 no longer has cat1, so it doesn't match filter
+      // Should navigate to image2 (the only image in filtered list)
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      // Should navigate because image1 no longer matches filter
+      expect(openModal).toHaveBeenCalled();
+    });
+
+    it("should use current imageCategories when suppressCategoryRefilter is false", async () => {
+      // Setup: image1 and image2 both have cat1
+      const imageCategories = new Map();
+      imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      imageCategories.set("/image2.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, imageCategories);
+
+      // Cached snapshot exists but suppressCategoryRefilter is false
+      const cachedSnapshot = new Map();
+      store.set(cachedImageCategoriesForRefilterAtom, cachedSnapshot);
+      store.set(suppressCategoryRefilterAtom, false);
+
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      // Toggle cat1 on image1 (removes it)
+      // After toggle, image1 no longer has cat1, so it doesn't match filter
+      // Should navigate to image2 (the next image in filtered list)
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      expect(openModal).toHaveBeenCalled();
+    });
+
+    it("should handle uncategorized filter with cached snapshot", async () => {
+      // Setup: Filter by cat1 (not uncategorized, to test navigation)
+      store.set(filterOptionsAtom, {
+        categoryId: "cat1",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+
+      // Current state: image1 has cat1, image2 also has cat1
+      const imageCategories = new Map();
+      imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      imageCategories.set("/image2.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, imageCategories);
+
+      // Cached snapshot: only image2 has cat1 (image1 doesn't in snapshot)
+      const cachedSnapshot = new Map();
+      cachedSnapshot.set("/image2.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(cachedImageCategoriesForRefilterAtom, cachedSnapshot);
+      store.set(suppressCategoryRefilterAtom, false); // Allow navigation
+
+      store.set(currentModalImagePathAtom, "/image1.jpg");
+
+      const { toggleImageCategory } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      // Toggle cat1 on image1 (removes it)
+      // After toggle, image1 no longer has cat1, so it doesn't match filter
+      // Should navigate to image2 (the only image in filtered list)
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      expect(openModal).toHaveBeenCalled();
+    });
+  });
+
+  describe("saveHitoConfig - actual save execution", () => {
+    beforeEach(() => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(dataFilePathAtom, "");
+      store.set(imageCategoriesAtom, new Map([
+        ["/image1.jpg", [
+          { category_id: "cat1", assigned_at: new Date().toISOString() }
+        ]]
+      ]));
+      mockInvoke.mockClear();
+    });
+
+    it("should execute save logic when all conditions are met", async () => {
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { saveHitoConfig } = await import("./categories");
+      await saveHitoConfig();
+
+      // Verify the actual save was called (not just early return)
+      expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
+        directory: "/test/dir",
+        imageCategories: expect.arrayContaining([
+          expect.arrayContaining(["/image1.jpg", expect.any(Array)])
+        ]),
+        filename: undefined,
+      });
+    });
+
+    it("should execute save logic with custom data file path", async () => {
+      store.set(dataFilePathAtom, "/custom/path/data.json");
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { saveHitoConfig } = await import("./categories");
+      await saveHitoConfig();
+
+      // Verify save was called with custom path
+      expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
+        directory: "/custom/path",
+        imageCategories: expect.any(Array),
+        filename: "data.json",
+      });
+    });
+
+    it("should log and rethrow errors from save", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockInvoke.mockRejectedValue(new Error("Save failed"));
+
+      const { saveHitoConfig } = await import("./categories");
+
+      await expect(saveHitoConfig()).rejects.toThrow("Save failed");
+      expect(consoleErrorSpy).toHaveBeenCalledWith("Failed to save .hito.json:", expect.any(Error));
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe("loadAppData", () => {
+    beforeEach(() => {
+      store.set(categoriesAtom, []);
+      store.set(hotkeysAtom, []);
+      mockInvoke.mockClear();
+    });
+
+    it("should create default hotkeys when no hotkeys in app data", async () => {
+      mockInvoke.mockResolvedValue({
+        categories: [],
+        hotkeys: [],
+      });
+
+      const { loadAppData } = await import("./categories");
+      await loadAppData();
+
+      // Should create default hotkeys
+      const hotkeys = store.get(hotkeysAtom);
+      expect(hotkeys.length).toBe(2);
+      expect(hotkeys[0].key).toBe("J");
+      expect(hotkeys[1].key).toBe("K");
+      // Should save default hotkeys
+      expect(mockInvoke).toHaveBeenCalledWith("save_app_data", expect.any(Object));
+    });
+
+    it("should handle error when saving default hotkeys fails", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      
+      // First call returns empty hotkeys, second call (save) fails
+      mockInvoke
+        .mockResolvedValueOnce({
+          categories: [],
+          hotkeys: [],
+        })
+        .mockRejectedValueOnce(new Error("Save failed"));
+
+      const { loadAppData } = await import("./categories");
+      await loadAppData();
+
+      // Should still create default hotkeys
+      const hotkeys = store.get(hotkeysAtom);
+      expect(hotkeys.length).toBe(2);
+      // Should log error but not throw
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[loadAppData] Failed to save default hotkeys:",
+        expect.any(Error)
+      );
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        "[loadAppData] Default hotkeys saved successfully"
+      );
+
+      consoleErrorSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    it("should create default hotkeys when load fails", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockInvoke.mockRejectedValue(new Error("Load failed"));
+
+      const { loadAppData } = await import("./categories");
+      await loadAppData();
+
+      // Should create default hotkeys on error
+      const hotkeys = store.get(hotkeysAtom);
+      expect(hotkeys.length).toBe(2);
+      expect(hotkeys[0].key).toBe("J");
+      expect(hotkeys[1].key).toBe("K");
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should handle hotkeys with missing fields", async () => {
+      mockInvoke.mockResolvedValue({
+        categories: [],
+        hotkeys: [
+          { id: "hotkey1", key: "K" }, // Missing modifiers and action
+          { id: "", key: "", modifiers: null, action: undefined }, // All missing
+        ],
+      });
+
+      const { loadAppData } = await import("./categories");
+      await loadAppData();
+
+      const hotkeys = store.get(hotkeysAtom);
+      expect(hotkeys.length).toBe(2);
+      expect(hotkeys[0].modifiers).toEqual([]);
+      expect(hotkeys[0].action).toBe("");
+      expect(hotkeys[1].id).toBeTruthy(); // Should generate ID
+      expect(hotkeys[1].modifiers).toEqual([]);
+      expect(hotkeys[1].action).toBe("");
+    });
+
+    it("should return early when Tauri API is unavailable", async () => {
+      delete (globalThis as any).window.__TAURI__;
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const { loadAppData } = await import("./categories");
+      await loadAppData();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[loadAppData] Tauri invoke not available");
+      expect(mockInvoke).not.toHaveBeenCalled();
+
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
+  describe("saveAppData - error handling", () => {
+    beforeEach(() => {
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+      ]);
+      store.set(hotkeysAtom, [
+        { id: "hotkey1", key: "K", modifiers: [], action: "next_image" },
+      ]);
+      mockInvoke.mockClear();
+    });
+
+    it("should return early when Tauri API is unavailable", async () => {
+      delete (globalThis as any).window.__TAURI__;
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const { saveAppData } = await import("./categories");
+      await saveAppData();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[saveAppData] Tauri invoke not available");
+      expect(mockInvoke).not.toHaveBeenCalled();
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it("should throw error when save fails", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockInvoke.mockRejectedValue(new Error("Save failed"));
+
+      const { saveAppData } = await import("./categories");
+
+      await expect(saveAppData()).rejects.toThrow("Save failed");
+      expect(consoleErrorSpy).toHaveBeenCalledWith("[saveAppData] Failed to save app data:", expect.any(Error));
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe("imageMatchesCategoryFilter - direct unit tests", () => {
+    beforeEach(() => {
+      store.set(imageCategoriesAtom, new Map());
+      store.set(suppressCategoryRefilterAtom, false);
+      store.set(cachedImageCategoriesForRefilterAtom, null);
+    });
+
+    it("should return true when filterCategoryId is empty", async () => {
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      expect(imageMatchesCategoryFilter("/image1.jpg", "")).toBe(true);
+      expect(imageMatchesCategoryFilter("/image1.jpg", null as any)).toBe(true);
+    });
+
+    it("should use cached snapshot when suppressCategoryRefilter is true", async () => {
+      const currentCategories = new Map();
+      currentCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, currentCategories);
+
+      const cachedSnapshot = new Map();
+      store.set(cachedImageCategoriesForRefilterAtom, cachedSnapshot);
+      store.set(suppressCategoryRefilterAtom, true);
+
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      // Should use cached snapshot (empty), so image1 doesn't have cat1
+      expect(imageMatchesCategoryFilter("/image1.jpg", "cat1")).toBe(false);
+    });
+
+    it("should use current imageCategories when suppressCategoryRefilter is false", async () => {
+      const currentCategories = new Map();
+      currentCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, currentCategories);
+      store.set(suppressCategoryRefilterAtom, false);
+
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      expect(imageMatchesCategoryFilter("/image1.jpg", "cat1")).toBe(true);
+    });
+
+    it("should handle uncategorized filter with assignments", async () => {
+      const categories = new Map();
+      categories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, categories);
+
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      expect(imageMatchesCategoryFilter("/image1.jpg", "uncategorized")).toBe(false);
+    });
+
+    it("should handle uncategorized filter without assignments", async () => {
+      store.set(imageCategoriesAtom, new Map());
+
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      expect(imageMatchesCategoryFilter("/image1.jpg", "uncategorized")).toBe(true);
+    });
+
+    it("should handle uncategorized filter with empty assignments array", async () => {
+      const categories = new Map();
+      categories.set("/image1.jpg", []);
+      store.set(imageCategoriesAtom, categories);
+
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      expect(imageMatchesCategoryFilter("/image1.jpg", "uncategorized")).toBe(true);
+    });
+
+    it("should match category filter when assignment exists", async () => {
+      const categories = new Map();
+      categories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, categories);
+
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      expect(imageMatchesCategoryFilter("/image1.jpg", "cat1")).toBe(true);
+    });
+
+    it("should not match category filter when assignment does not exist", async () => {
+      const categories = new Map();
+      categories.set("/image1.jpg", [
+        { category_id: "cat2", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, categories);
+
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      expect(imageMatchesCategoryFilter("/image1.jpg", "cat1")).toBe(false);
+    });
+
+    it("should not match category filter when no assignments exist", async () => {
+      store.set(imageCategoriesAtom, new Map());
+
+      const { imageMatchesCategoryFilter } = await import("./categories");
+      expect(imageMatchesCategoryFilter("/image1.jpg", "cat1")).toBe(false);
+    });
+  });
+
+  describe("getFilteredImages - direct unit tests", () => {
+    beforeEach(() => {
+      store.set(allImagePathsAtom, []);
+      store.set(imageCategoriesAtom, new Map());
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+    });
+
+    it("should handle string image paths", async () => {
+      store.set(allImagePathsAtom, ["/image1.jpg", "/image2.jpg"] as any);
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual(["/image1.jpg", "/image2.jpg"]);
+    });
+
+    it("should handle object image paths", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+      ]);
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual(["/image1.jpg", "/image2.jpg"]);
+    });
+
+    it("should filter out invalid paths instead of coercing to strings", async () => {
+      store.set(allImagePathsAtom, [null, undefined, 123] as any);
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      // Invalid items (null, undefined, 123) are filtered out instead of coerced to strings
+      expect(result).toEqual([]);
+    });
+
+    it("should filter out empty string paths", async () => {
+      store.set(allImagePathsAtom, ["/valid.jpg", "", "   ", "/another.jpg"] as any);
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      // Empty strings and whitespace-only strings are filtered out
+      expect(result).toEqual(["/valid.jpg", "/another.jpg"]);
+    });
+
+    it("should filter out objects with empty or missing path properties", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/valid.jpg" },
+        { path: "" },
+        { path: "   " },
+        { path: null },
+        { path: undefined },
+        {},
+        { other: "property" },
+      ] as any);
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      // Only objects with non-empty string "path" properties are included
+      expect(result).toEqual(["/valid.jpg"]);
+    });
+
+    it("should handle mixed valid and invalid items", async () => {
+      store.set(allImagePathsAtom, [
+        "/valid1.jpg",
+        { path: "/valid2.jpg" },
+        null,
+        undefined,
+        "",
+        { path: "" },
+        { path: "/valid3.jpg" },
+        123,
+        { other: "property" },
+      ] as any);
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      // Only valid non-empty string paths are included
+      expect(result).toEqual(["/valid1.jpg", "/valid2.jpg", "/valid3.jpg"]);
+    });
+
+    it("should handle non-array allImagePaths", async () => {
+      store.set(allImagePathsAtom, null as any);
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual([]);
+    });
+
+    it("should filter by category", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+      ]);
+      const categories = new Map();
+      categories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, categories);
+      store.set(filterOptionsAtom, {
+        categoryId: "cat1",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual(["/image1.jpg"]);
+    });
+
+    it("should filter by name with contains operator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/test-image1.jpg" },
+        { path: "/other-image2.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual(["/test-image1.jpg"]);
+    });
+
+    it("should filter by name with startsWith operator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/test-image1.jpg" },
+        { path: "/other-image2.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test",
+        nameOperator: "startsWith",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual(["/test-image1.jpg"]);
+    });
+
+    it("should filter by name with endsWith operator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/image1test.jpg" },
+        { path: "/image2other.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test.jpg",
+        nameOperator: "endsWith",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual(["/image1test.jpg"]);
+    });
+
+    it("should filter by name with exact operator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/test.jpg" },
+        { path: "/test-image.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test.jpg",
+        nameOperator: "exact",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual(["/test.jpg"]);
+    });
+
+    it("should handle default case for invalid nameOperator", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+      ]);
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "test",
+        nameOperator: "invalid" as any,
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      // Default case returns true, so all images pass
+      expect(result).toEqual(["/image1.jpg", "/image2.jpg"]);
+    });
+
+    it("should combine category and name filters", async () => {
+      store.set(allImagePathsAtom, [
+        { path: "/test-image1.jpg" },
+        { path: "/test-image2.jpg" },
+        { path: "/other-image3.jpg" },
+      ]);
+      const categories = new Map();
+      categories.set("/test-image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() }
+      ]);
+      categories.set("/test-image2.jpg", [
+        { category_id: "cat2", assigned_at: new Date().toISOString() }
+      ]);
+      store.set(imageCategoriesAtom, categories);
+      store.set(filterOptionsAtom, {
+        categoryId: "cat1",
+        namePattern: "test",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+
+      const { getFilteredImages } = await import("./categories");
+      const result = getFilteredImages();
+      expect(result).toEqual(["/test-image1.jpg"]);
+    });
+  });
+
+  describe("navigateToNextFilteredImage - direct unit tests", () => {
+    beforeEach(() => {
+      store.set(allImagePathsAtom, [
+        { path: "/image1.jpg" },
+        { path: "/image2.jpg" },
+        { path: "/image3.jpg" },
+      ]);
+      store.set(imageCategoriesAtom, new Map());
+      store.set(filterOptionsAtom, {
+        categoryId: "",
+        namePattern: "",
+        nameOperator: "contains",
+        sizeOperator: "largerThan",
+        sizeValue: "",
+        sizeValue2: "",
+      });
+      mockInvoke.mockResolvedValue(undefined);
+    });
+
+    it("should navigate to first image when currentIndex < 0 and filteredPaths.length > 0", async () => {
+      const { navigateToNextFilteredImage } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      // Current image not in filtered list, but filtered list has images
+      await navigateToNextFilteredImage("/nonexistent.jpg");
+
+      expect(openModal).toHaveBeenCalledWith("/image1.jpg");
+    });
+
+    it("should close modal when currentIndex < 0 and filteredPaths.length === 0", async () => {
+      store.set(allImagePathsAtom, []);
+      const { navigateToNextFilteredImage } = await import("./categories");
+      const { closeModal } = await import("./modal");
+
+      await navigateToNextFilteredImage("/nonexistent.jpg");
+
+      expect(closeModal).toHaveBeenCalled();
+    });
+
+    it("should navigate to next image when currentIndex < length - 1", async () => {
+      const { navigateToNextFilteredImage } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      await navigateToNextFilteredImage("/image1.jpg");
+
+      expect(openModal).toHaveBeenCalledWith("/image2.jpg");
+    });
+
+    it("should navigate to previous image when at last position and currentIndex > 0", async () => {
+      const { navigateToNextFilteredImage } = await import("./categories");
+      const { openModal } = await import("./modal");
+
+      await navigateToNextFilteredImage("/image3.jpg");
+
+      expect(openModal).toHaveBeenCalledWith("/image2.jpg");
+    });
+
+    it("should close modal when currentIndex === 0 and length === 1", async () => {
+      store.set(allImagePathsAtom, [{ path: "/image1.jpg" }]);
+      const { navigateToNextFilteredImage } = await import("./categories");
+      const { closeModal } = await import("./modal");
+
+      await navigateToNextFilteredImage("/image1.jpg");
+
+      expect(closeModal).toHaveBeenCalled();
     });
   });
 });

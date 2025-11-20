@@ -45,6 +45,16 @@ body {
     0 0 60px rgba(74, 222, 128, 0.4);
 }
 
+.notification-bar.error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.notification-bar.error.show {
+  box-shadow:
+    0 4px 20px rgba(239, 68, 68, 0.6),
+    0 0 60px rgba(239, 68, 68, 0.4);
+}
+
 .container {
   margin: 0;
   padding: 20px;
@@ -1609,7 +1619,7 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
   display: block;
 }
 
-.config-file-input {
+.data-file-input {
   width: 100%;
   padding: 10px 12px;
   background-color: rgba(255, 255, 255, 0.05);
@@ -1621,14 +1631,47 @@ body:has(.hotkey-sidebar.open) .hotkey-sidebar-toggle {
   box-sizing: border-box;
 }
 
-.config-file-input:focus {
+.data-file-input:focus {
   outline: none;
   border-color: #22c55e;
   background-color: rgba(255, 255, 255, 0.08);
 }
 
-.config-file-input::placeholder {
+.data-file-input::placeholder {
   color: #666;
+}
+
+.data-file-input-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.data-file-input-container .data-file-input {
+  flex: 1;
+}
+
+.save-data-file-btn {
+  padding: 10px 16px;
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  font-family: inherit;
+  transition: background-color 0.2s, opacity 0.2s;
+  white-space: nowrap;
+}
+
+.save-data-file-btn:hover:not(:disabled) {
+  background-color: #16a34a;
+}
+
+.save-data-file-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .file-hint {

@@ -1,50 +1,19 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
+import { v4 as uuidv4 } from "uuid";
 import { categoryDialogVisibleAtom, categoryDialogCategoryAtom, categoriesAtom } from "../state";
 import type { Category } from "../types";
-import { saveHitoConfig, isCategoryNameDuplicate, generateCategoryColor } from "../ui/categories";
+import { saveAppData, isCategoryNameDuplicate, generateCategoryColor } from "../ui/categories";
 
 /**
  * Generates a UUID v4 string.
- * Uses crypto.randomUUID() if available, otherwise falls back to a random-based implementation.
+ * Uses crypto.randomUUID() if available (native and faster), otherwise falls back to uuid library.
  */
 function generateUUID(): string {
-  // Use crypto.randomUUID() if available (modern browsers and Node.js 14.17.0+)
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  
-  // Fallback: Generate UUID v4-like string using crypto.getRandomValues()
-  // Format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-  const hex = "0123456789abcdef";
-  
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    const randomValues = new Uint8Array(16);
-    crypto.getRandomValues(randomValues);
-    
-    // Set version (4) and variant bits according to RFC 4122
-    randomValues[6] = (randomValues[6] & 0x0f) | 0x40; // Version 4
-    randomValues[8] = (randomValues[8] & 0x3f) | 0x80; // Variant 10
-    
-    // Convert to UUID string format
-    const parts: string[] = [];
-    for (let i = 0; i < 16; i++) {
-      parts.push(hex[randomValues[i] >> 4]);
-      parts.push(hex[randomValues[i] & 0x0f]);
-      if (i === 3 || i === 5 || i === 7 || i === 9) {
-        parts.push("-");
-      }
-    }
-    return parts.join("");
-  }
-  
-  // Final fallback: Use Math.random() (less secure but works everywhere)
-  const template = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
-  return template.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return hex[v];
-  });
+  return uuidv4();
 }
 
 export function CategoryDialog() {
@@ -148,7 +117,7 @@ export function CategoryDialog() {
     }
     
     try {
-      await saveHitoConfig();
+      await saveAppData();
       
       // Close dialog only if save succeeds
       setCategoryDialogVisible(false);
