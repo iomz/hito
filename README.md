@@ -2,6 +2,7 @@
 
 # Hito
 
+[![release](https://github.com/iomz/hito/actions/workflows/release.yml/badge.svg?branch=release)](https://github.com/iomz/hito/actions/workflows/release.yml)
 [![codecov](https://codecov.io/gh/iomz/hito/graph/badge.svg?token=JUh7WEGnQe)](https://codecov.io/gh/iomz/hito)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -16,7 +17,6 @@ Simply drag and drop a folder to start browsing your images.
 ### Image Browsing
 
 - **Drag & Drop**: Drag folders directly into the app to browse images
-- **File Picker**: Click the drop zone to select a folder using the system file picker
 - **Lazy Loading**: Images load on-demand with infinite scroll for smooth performance
 - **Image Carousel**: Click any image to open a full-screen modal with navigation
 - **Breadcrumb Navigation**: Click on path segments to navigate to parent directories
@@ -42,17 +42,67 @@ Simply drag and drop a folder to start browsing your images.
 
 ### Data Storage
 
-- **Hybrid Storage Architecture**: 
+- **Hybrid Storage Architecture**:
   - Categories and hotkeys stored in app data directory (persistent across directories)
   - Image category assignments stored in `.hito.json` files (directory-specific)
 - **Custom Data File Paths**: Configure different data file paths for different directories
 - **Automatic Data Migration**: Seamlessly handles data file path changes and reloads
 
-## Synopsis
+## Install
 
-1. Run `pnpm install` to install the dependencies
-2. Run `pnpm run build` to compile TypeScript (or `pnpm run dev` for watch mode)
-3. Run `pnpm run tauri dev` to start the app
+Download the installer from [the latest release](https://github.com/iomz/hito/releases) for the appropriate platform:
+
+### macOS
+
+- **Apple Silicon (M1/M2/M3)**: `Hito_*_aarch64.dmg` or `Hito_aarch64.app.tar.gz`
+- **Intel (x64)**: `Hito_*_x64.dmg` or `Hito_x64.app.tar.gz`
+
+### Windows
+
+- **Installer (recommended)**: `Hito_*_x64-setup.exe`
+- **MSI package**: `Hito_*_x64_en-US.msi`
+
+### Linux
+
+- **AppImage (universal)**: `Hito_*_amd64.AppImage`
+- **Debian/Ubuntu**: `Hito_*_amd64.deb`
+- **Fedora/RHEL**: `Hito-*-1.x86_64.rpm`
+
+## Build from Source
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18 or later)
+- [pnpm](https://pnpm.io/) package manager
+- [Rust](https://www.rust-lang.org/) (latest stable)
+
+### Build Steps
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/iomz/hito.git && cd hito
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+3. Build the application:
+
+   ```bash
+   pnpm run tauri build
+   ```
+
+   The built application will be in `src-tauri/target/release/bundle/`.
+
+4. For development (watch mode):
+
+   ```bash
+   pnpm run tauri dev
+   ```
 
 ## Usage
 
@@ -68,7 +118,7 @@ Simply drag and drop a folder to start browsing your images.
 
 1. **Open sidebar**: Click the hamburger menu (☰) button when viewing a directory
 2. **Create categories**: Go to the "Categories" tab and click "+ Add" to create a new category
-3. **Assign categories**: 
+3. **Assign categories**:
    - In the modal view, click category buttons to assign/unassign categories to the current image
    - Categories are saved automatically to the data file (`.hito.json`)
 4. **Filter images**: Use the filter controls in the header to filter by category, name, or size. For size filtering, select an operator (larger than, less than, or between) and enter the size value(s) in KB. When using "between", enter both the minimum and maximum values.
