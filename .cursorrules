@@ -55,3 +55,25 @@ Closes #123
 - After making changes to the code, run `pnpm run build` to verify that the build passes
 - Fix any build errors before considering the task complete
 - This ensures TypeScript type checking and build compilation succeed
+
+## Tauri Parameter Naming
+
+- **Important**: Tauri automatically converts Rust `snake_case` parameter names to JavaScript `camelCase`
+- When defining Tauri commands in Rust, use `snake_case` for parameters (e.g., `data_file_path: String`)
+- When calling Tauri commands from TypeScript, use `camelCase` for the same parameters (e.g., `dataFilePath: value`)
+- This conversion happens automatically - do NOT use `camelCase` in Rust or `snake_case` in TypeScript
+- Example:
+  - Rust: `fn save_data_file_path(app: AppHandle, data_file_path: String)`
+  - TypeScript: `invokeTauri("save_data_file_path", { dataFilePath: value })`
+
+## Vitest Test Execution
+
+- **Prevent Zombie Processes**: To prevent zombie processes in Node.js/Vitest (especially in Cursor IDE or CI environments), follow these practices:
+  - Use `pnpm test:run` for CI/automated runs instead of `pnpm test` (watch mode)
+  - Use `pnpm test:coverage` for coverage reports (uses `vitest run` internally)
+  - Use `pnpm test:ci` for CI environments (non-watch mode with coverage)
+  - The `vitest.config.ts` is configured with:
+    - `pool: "forks"` with `isolate: true` for proper process isolation
+    - Timeout configurations (`teardownTimeout`, `hookTimeout`, `testTimeout`) to ensure proper cleanup
+  - Watch mode (`pnpm test`) is fine for interactive development, but avoid it in automated scripts
+  - Always use `vitest run` or `--watch=false` in CI/Scripted environments to ensure processes terminate cleanly

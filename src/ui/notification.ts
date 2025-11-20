@@ -1,4 +1,4 @@
 // Re-export from React component for backward compatibility
 // The React component manages the notification state internally
-export { showNotification, hideNotification } from "../components/NotificationBar";
+export { showNotification, showError, hideNotification } from "../components/NotificationBar";
 

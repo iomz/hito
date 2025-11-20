@@ -1,9 +1,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
+use std::collections::HashMap;
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use chrono;
+use tauri::{AppHandle, Manager};
+
+// Type alias for data file path mapping (directory -> data file path)
+type DataFileMap = HashMap<String, String>;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -284,11 +289,18 @@ struct FilterOptions {
     size_value2: Option<String>,
 }
 
+// File structure for .hito.json (only contains image assignments)
 #[derive(Serialize, Deserialize)]
 struct HitoFile {
-    categories: Vec<CategoryData>,
     image_categories: Vec<(String, Vec<CategoryAssignment>)>,
+}
+
+// App data structure for categories and hotkeys (stored in app data directory)
+#[derive(Serialize, Deserialize, Default)]
+struct AppData {
+    categories: Vec<CategoryData>,
     hotkeys: Vec<HotkeyData>,
+    data_file_paths: Option<DataFileMap>, // directory -> data file path mapping
 }
 
 /// Get the path to the .hito.json file in the directory.
@@ -299,18 +311,171 @@ fn get_hito_file_path(directory: &str, filename: Option<&str>) -> PathBuf {
     dir_path.join(file_name)
 }
 
-/// Load categories and hotkeys from .hito.json in the specified directory.
-///
-/// Returns categories, image category assignments, and hotkeys if the file exists, otherwise returns empty data.
+/// Get the path to the app data file.
+fn get_app_data_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data directory: {}", e))?;
+    
+    // Ensure the directory exists
+    fs::create_dir_all(&app_data_dir)
+        .map_err(|e| format!("Failed to create app data directory: {}", e))?;
+    
+    Ok(app_data_dir.join("app-config.json"))
+}
+
+/// Load categories and hotkeys from app data directory.
+#[tauri::command]
+fn load_app_data(app: AppHandle) -> Result<AppData, String> {
+    let app_data_path = get_app_data_path(&app)?;
+    
+    if !app_data_path.exists() {
+        return Ok(AppData::default());
+    }
+    
+    match fs::read_to_string(&app_data_path) {
+        Ok(content) => {
+            match serde_json::from_str::<AppData>(&content) {
+                Ok(data) => Ok(data),
+                Err(e) => Err(format!("Failed to parse app data file: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("Failed to read app data file: {}", e)),
+    }
+}
+
+/// Save data file path mapping for a directory.
+#[tauri::command]
+fn save_data_file_path(
+    app: AppHandle,
+    directory: String,
+    data_file_path: String,
+) -> Result<(), String> {
+    let app_data_path = get_app_data_path(&app)?;
+    
+    // Load existing app data
+    let mut app_data = if app_data_path.exists() {
+        match fs::read_to_string(&app_data_path) {
+            Ok(content) => {
+                serde_json::from_str::<AppData>(&content)
+                    .map_err(|e| format!("Failed to parse existing app data: {}", e))?
+            }
+            Err(e) => return Err(format!("Failed to read existing app data: {}", e)),
+        }
+    } else {
+        AppData::default()
+    };
+    
+    // Initialize or update data_file_paths
+    if app_data.data_file_paths.is_none() {
+        app_data.data_file_paths = Some(DataFileMap::new());
+    }
+    if let Some(ref mut paths) = app_data.data_file_paths {
+        paths.insert(directory, data_file_path);
+    }
+    
+    let json_content = serde_json::to_string_pretty(&app_data)
+        .map_err(|e| format!("Failed to serialize app data: {}", e))?;
+    
+    fs::write(&app_data_path, json_content)
+        .map_err(|e| format!("Failed to write app data file: {}", e))?;
+    
+    Ok(())
+}
+
+/// Get data file path for a directory.
+#[tauri::command]
+fn get_data_file_path(
+    app: AppHandle,
+    directory: String,
+) -> Result<Option<String>, String> {
+    let app_data_path = get_app_data_path(&app)?;
+    
+    if !app_data_path.exists() {
+        return Ok(None);
+    }
+    
+    match fs::read_to_string(&app_data_path) {
+        Ok(content) => {
+            match serde_json::from_str::<AppData>(&content) {
+                Ok(data) => {
+                    if let Some(paths) = data.data_file_paths {
+                        Ok(paths.get(&directory).cloned())
+                    } else {
+                        Ok(None)
+                    }
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Failed to parse app data file at {}: {}",
+                        app_data_path.display(),
+                        e
+                    );
+                    Ok(None)
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!(
+                "Failed to read app data file at {}: {}",
+                app_data_path.display(),
+                e
+            );
+            Ok(None)
+        }
+    }
+}
+
+/// Save categories and hotkeys to app data directory.
+#[tauri::command]
+fn save_app_data(
+    app: AppHandle,
+    categories: Vec<CategoryData>,
+    hotkeys: Vec<HotkeyData>,
+) -> Result<(), String> {
+    let app_data_path = get_app_data_path(&app)?;
+    
+    // Load existing data to preserve data_file_paths
+    let existing_data = if app_data_path.exists() {
+        let content = fs::read_to_string(&app_data_path)
+            .map_err(|e| format!(
+                "Failed to read existing app data file at {}: {}",
+                app_data_path.display(),
+                e
+            ))?;
+        
+        Some(serde_json::from_str::<AppData>(&content)
+            .map_err(|e| format!(
+                "Failed to deserialize existing app data from {}: {}",
+                app_data_path.display(),
+                e
+            ))?)
+    } else {
+        None
+    };
+    
+    let data = AppData {
+        categories,
+        hotkeys,
+        data_file_paths: existing_data.and_then(|d| d.data_file_paths),
+    };
+    
+    let json_content = serde_json::to_string_pretty(&data)
+        .map_err(|e| format!("Failed to serialize app data: {}", e))?;
+    
+    fs::write(&app_data_path, json_content)
+        .map_err(|e| format!("Failed to write app data file: {}", e))?;
+    
+    Ok(())
+}
+
+/// Load image category assignments from .hito.json in the specified directory.
 #[tauri::command]
 fn load_hito_config(directory: String, filename: Option<String>) -> Result<HitoFile, String> {
     let hito_path = get_hito_file_path(&directory, filename.as_deref());
     
     if !hito_path.exists() {
         return Ok(HitoFile {
-            categories: Vec::new(),
             image_categories: Vec::new(),
-            hotkeys: Vec::new(),
         });
     }
     
@@ -325,21 +490,17 @@ fn load_hito_config(directory: String, filename: Option<String>) -> Result<HitoF
     }
 }
 
-/// Save categories and hotkeys to .hito.json in the specified directory.
+/// Save image category assignments to .hito.json in the specified directory.
 #[tauri::command]
 fn save_hito_config(
     directory: String,
-    categories: Vec<CategoryData>,
     image_categories: Vec<(String, Vec<CategoryAssignment>)>,
-    hotkeys: Vec<HotkeyData>,
     filename: Option<String>,
 ) -> Result<(), String> {
     let hito_path = get_hito_file_path(&directory, filename.as_deref());
     
     let data = HitoFile {
-        categories,
         image_categories,
-        hotkeys,
     };
     
     let json_content = serde_json::to_string_pretty(&data)
@@ -584,7 +745,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image, load_hito_config, save_hito_config, sort_images])
+        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image, load_app_data, save_app_data, save_data_file_path, get_data_file_path, load_hito_config, save_hito_config, sort_images])
         .setup(|_app| {
             // File drops in Tauri 2.0 are handled through the event system
             // JavaScript will listen for tauri://drag-drop events

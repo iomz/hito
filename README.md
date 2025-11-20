@@ -5,20 +5,48 @@
 [![codecov](https://codecov.io/gh/iomz/hito/graph/badge.svg?token=JUh7WEGnQe)](https://codecov.io/gh/iomz/hito)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A fast and lightweight image browser built with Tauri 2.0.
+A fast and lightweight image browser and organizer built with Tauri 2.0.
 
 `Hito` is named after Human Intelligence Tasks Organizer and "boundary stone" in Spanish as well as "human" (人) in Japanese.
-It provides a clean graphical interface to help users to flag images for selective actions: copy or move to each directories.
+It provides a clean graphical interface to help users organize and categorize images for selective actions.
 Simply drag and drop a folder to start browsing your images.
 
 ## Features
+
+### Image Browsing
 
 - **Drag & Drop**: Drag folders directly into the app to browse images
 - **File Picker**: Click the drop zone to select a folder using the system file picker
 - **Lazy Loading**: Images load on-demand with infinite scroll for smooth performance
 - **Image Carousel**: Click any image to open a full-screen modal with navigation
-- **Keyboard Shortcuts**: Navigate images with arrow keys, close with Esc, view shortcuts with `?`
 - **Breadcrumb Navigation**: Click on path segments to navigate to parent directories
+- **Image Statistics**: View total image count and current directory information
+
+### Image Organization
+
+- **Category Management**: Create, edit, and delete custom categories with color coding
+- **Category Assignment**: Assign multiple categories to images for flexible organization
+- **Category Filtering**: Filter images by category or view uncategorized images
+- **Name Filtering**: Filter images by filename with operators (contains, starts with, ends with, exact match)
+- **Size Filtering**: Filter images by file size (coming soon)
+- **Sorting**: Sort images by name, creation date, last categorized date, or file size
+- **Data File Management**: Customize the data file path (`.hito.json`) per directory for flexible storage
+
+### Keyboard Shortcuts
+
+- **Customizable Hotkeys**: Create and manage custom keyboard shortcuts for various actions
+- **Modal-Only Navigation**: Arrow keys (← →) and Esc are built-in, modal-only navigation keys that cannot be customized
+- **Default Hotkeys**: J and K are pre-configured default hotkeys for navigation (customizable or removable via the Hotkeys sidebar)
+- **Global Shortcuts**: `?` key shows/hides the keyboard shortcuts overlay globally
+- **Hotkey Actions**: Assign hotkeys to category toggling, navigation, and more
+
+### Data Storage
+
+- **Hybrid Storage Architecture**: 
+  - Categories and hotkeys stored in app data directory (persistent across directories)
+  - Image category assignments stored in `.hito.json` files (directory-specific)
+- **Custom Data File Paths**: Configure different data file paths for different directories
+- **Automatic Data Migration**: Seamlessly handles data file path changes and reloads
 
 ## Synopsis
 
@@ -28,30 +56,76 @@ Simply drag and drop a folder to start browsing your images.
 
 ## Usage
 
+### Basic Navigation
+
 1. **Browse a folder**: Drag and drop a folder onto the drop zone, or click to select a folder
 2. **View images**: Click any image thumbnail to open it in full-screen mode
 3. **Navigate**: Use arrow keys (← →) to navigate between images in the modal
 4. **Navigate directories**: Click on breadcrumb segments to browse parent directories
-5. **Go home**: Click the "hito" title to return to the home screen
+5. **Go home**: Click the "Hito" title to return to the home screen
 
-## Keyboard Shortcuts
+### Organizing Images
 
-- `←` - Previous image
-- `→` - Next image
-- `Esc` - Close modal
+1. **Open sidebar**: Click the hamburger menu (☰) button when viewing a directory
+2. **Create categories**: Go to the "Categories" tab and click "+ Add" to create a new category
+3. **Assign categories**: 
+   - In the modal view, click category buttons to assign/unassign categories to the current image
+   - Categories are saved automatically to the data file (`.hito.json`)
+4. **Filter images**: Use the filter controls in the header to filter by category, name, or size
+5. **Sort images**: Use the sort dropdown to sort images by various criteria
+
+### Customizing Hotkeys
+
+1. **Open sidebar**: Click the hamburger menu (☰) button
+2. **Go to Hotkeys tab**: Click the "Hotkeys" tab in the sidebar
+3. **Add hotkey**: Click "+ Add Hotkey" to create a new keyboard shortcut
+4. **Configure**: Set the key combination and action for your hotkey
+
+### Data File Management
+
+1. **Open sidebar**: Click the hamburger menu (☰) button
+2. **Go to File tab**: Click the "File" tab in the sidebar
+3. **Set custom path**: Enter a custom path for the data file (`.hito.json`) for the current directory
+4. **Save**: Click "Save" to persist the custom data file path for this directory
+
+## Default Keyboard Shortcuts
+
+### Modal-Only Shortcuts (Built-in, Cannot be Customized)
+
+- `←` / `→` - Previous/Next image in modal
+- `Esc` - Close modal (or hide shortcuts overlay if visible)
+
+### Global Shortcuts
+
 - `?` - Show/hide keyboard shortcuts overlay
+
+### Default Hotkeys (Pre-configured, Customizable)
+
+- `J` - Next image (default hotkey, can be edited or removed)
+- `K` - Previous image (default hotkey, can be edited or removed)
+
+**Note**: Default hotkeys (J/K) are automatically created on first launch. You can customize or disable them by opening the sidebar (☰), going to the "Hotkeys" tab, and editing or deleting them. Modal-only shortcuts (arrow keys and Esc) are always active when the modal is open and cannot be changed.
 
 ## Testing
 
-The project uses [Vitest](https://vitest.dev/) for testing. Run tests with:
+The project uses [Vitest](https://vitest.dev/) for testing with comprehensive test coverage. Run tests with:
 
 ```bash
-pnpm test          # Run tests once
+pnpm test          # Run tests in watch mode (interactive development)
+pnpm test:run      # Run tests once (non-watch, recommended for CI)
 pnpm test:ui       # Run tests with UI
-pnpm test:coverage # Run tests with coverage report
+pnpm test:coverage # Run tests with coverage report (local development)
+pnpm test:ci       # Run tests with coverage in CI mode (verbose reporter for CI logs)
 ```
 
-Tests are located alongside source files with `.test.ts` extension.
+**Note**: Use `pnpm test:run` or `pnpm test:ci` in CI/automated environments to prevent zombie processes. Watch mode (`pnpm test`) is fine for interactive development. The `test:coverage` script is intended for local coverage analysis, while `test:ci` is optimized for CI environments with verbose output for better log visibility.
+
+Tests are located alongside source files with `.test.ts` extension. The test suite includes:
+
+- Unit tests for core functionality
+- Integration tests for user workflows
+- Comprehensive coverage of category and hotkey management
+- Direct tests for internal functions to ensure 100% coverage
 
 ## Recommended IDE Setup
 

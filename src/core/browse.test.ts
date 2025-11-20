@@ -5,22 +5,15 @@ import {
   allDirectoryPathsAtom,
   currentIndexAtom,
   isLoadingBatchAtom,
-  loadedImagesAtom,
-  currentModalImagePathAtom,
-  currentDirectoryAtom,
-  configFilePathAtom,
-  categoriesAtom,
-  imageCategoriesAtom,
-  hotkeysAtom,
   isLoadingAtom,
   resetStateAtom,
 } from "../state";
 import { loadImageBatch, browseImages } from "./browse";
-import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 import { showError } from "../ui/error";
 import { showNotification } from "../ui/notification";
+import { loadAppData, loadHitoConfig } from "../ui/categories";
 
 // Mock dependencies
 vi.mock("../utils/images", () => ({
@@ -46,6 +39,7 @@ vi.mock("../handlers/dragDrop", () => ({
 
 vi.mock("../ui/categories", () => ({
   loadHitoConfig: vi.fn().mockResolvedValue(undefined),
+  loadAppData: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../utils/tauri", () => ({
@@ -57,6 +51,9 @@ describe("browse", () => {
   beforeEach(() => {
     // Reset state
     store.set(resetStateAtom);
+
+    // Reset all mocks
+    vi.clearAllMocks();
 
     // Setup DOM elements (code uses querySelector)
     const existingErrorMsg = document.getElementById("error-msg");
@@ -174,11 +171,23 @@ describe("browse", () => {
   });
 
   describe("browseImages", () => {
+    // Helper to setup mocks for browseImages flow
+    const setupBrowseMocks = (
+      listImagesResponse: DirectoryContents,
+      dataFilePathResponse: string | null = null
+    ) => {
+      // Mock get_data_file_path call
+      vi.mocked(invokeTauri).mockResolvedValueOnce(dataFilePathResponse);
+      // Mock list_images call
+      vi.mocked(invokeTauri).mockResolvedValueOnce(listImagesResponse);
+      // Note: loadAppData and loadHitoConfig are mocked functions, so they don't call invokeTauri
+    };
+
     it("should return early if required elements are missing", async () => {
       const errorMsg = document.getElementById("error-msg");
       errorMsg?.remove();
       // Mock invokeTauri to return a valid payload so browseImages can complete
-      vi.mocked(invokeTauri).mockResolvedValueOnce({
+      setupBrowseMocks({
         directories: [],
         images: [],
       });
@@ -187,7 +196,7 @@ describe("browse", () => {
     });
 
     it("should handle invalid backend response (non-array directories)", async () => {
-      vi.mocked(invokeTauri).mockResolvedValueOnce({
+      setupBrowseMocks({
         directories: "not an array",
         images: [],
       } as any);
@@ -199,7 +208,7 @@ describe("browse", () => {
     });
 
     it("should handle invalid backend response (non-array images)", async () => {
-      vi.mocked(invokeTauri).mockResolvedValueOnce({
+      setupBrowseMocks({
         directories: [],
         images: "not an array",
       } as any);
@@ -211,7 +220,7 @@ describe("browse", () => {
     });
 
     it("should handle invalid backend response (null values)", async () => {
-      vi.mocked(invokeTauri).mockResolvedValueOnce({
+      setupBrowseMocks({
         directories: null,
         images: null,
       } as any);
@@ -227,16 +236,21 @@ describe("browse", () => {
         directories: [{ path: "/test/dir1" }],
         images: [{ path: "/test/image1.png" }],
       };
-      vi.mocked(invokeTauri).mockResolvedValueOnce(contents);
+      setupBrowseMocks(contents);
 
       await browseImages("/test/path");
 
+      expect(invokeTauri).toHaveBeenCalledWith("get_data_file_path", { directory: "/test/path" });
       expect(invokeTauri).toHaveBeenCalledWith("list_images", { path: "/test/path" });
+      expect(loadAppData).toHaveBeenCalled();
+      expect(loadHitoConfig).toHaveBeenCalled();
       expect(store.get(allDirectoryPathsAtom)).toEqual(contents.directories);
       expect(store.get(allImagePathsAtom)).toEqual(contents.images);
     });
 
     it("should handle Tauri API unavailable", async () => {
+      // Mock get_data_file_path to be called before the check
+      vi.mocked(invokeTauri).mockResolvedValueOnce(null); // get_data_file_path
       vi.mocked(isTauriInvokeAvailable).mockReturnValueOnce(false);
 
       await browseImages("/test/path");
@@ -245,7 +259,9 @@ describe("browse", () => {
     });
 
     it("should handle backend errors", async () => {
-      vi.mocked(invokeTauri).mockRejectedValueOnce(new Error("Backend error"));
+      // Mock get_data_file_path to succeed, but list_images to fail
+      vi.mocked(invokeTauri).mockResolvedValueOnce(null); // get_data_file_path
+      vi.mocked(invokeTauri).mockRejectedValueOnce(new Error("Backend error")); // list_images
 
       await browseImages("/test/path");
 
@@ -256,7 +272,7 @@ describe("browse", () => {
     it("should reset state before browsing", async () => {
       store.set(currentIndexAtom, 100);
       store.set(isLoadingBatchAtom, true);
-      vi.mocked(invokeTauri).mockResolvedValueOnce({
+      setupBrowseMocks({
         directories: [],
         images: [],
       });
@@ -268,7 +284,7 @@ describe("browse", () => {
     });
 
     it("should show notification when no images or directories found", async () => {
-      vi.mocked(invokeTauri).mockResolvedValueOnce({
+      setupBrowseMocks({
         directories: [],
         images: [],
       });
@@ -283,7 +299,7 @@ describe("browse", () => {
     });
 
     it("should set currentIndexAtom to 0 when images array is empty (branch: images.length === 0)", async () => {
-      vi.mocked(invokeTauri).mockResolvedValueOnce({
+      setupBrowseMocks({
         directories: [{ path: "/test/subdir", size: 0, created_at: undefined }],
         images: [], // Empty images array
       });

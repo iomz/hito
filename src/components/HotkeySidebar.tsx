@@ -7,7 +7,7 @@ import { showHotkeyDialog } from "../ui/hotkeys";
 import { CategoryList } from "./CategoryList";
 import { CurrentImageCategories } from "./CurrentImageCategories";
 import { HotkeyList } from "./HotkeyList";
-import { ConfigFileInput } from "./ConfigFileInput";
+import { DataFileInput } from "./DataFileInput";
 
 export function HotkeySidebar() {
   const isOpen = useAtomValue(isHotkeySidebarOpenAtom);
@@ -120,9 +120,9 @@ export function HotkeySidebar() {
             className={`sidebar-panel ${activeTab === "file" ? "active" : ""}`}
           >
             <div className="panel-header">
-              <h4>Configuration File</h4>
+              <h4>Data File</h4>
             </div>
-            <ConfigFileInput />
+            <DataFileInput />
           </div>
         </div>
       </div>

@@ -13,7 +13,7 @@ import {
   categoriesAtom,
   imageCategoriesAtom,
   currentDirectoryAtom,
-  configFilePathAtom,
+  dataFilePathAtom,
   resetCounterAtom,
   shortcutsOverlayVisibleAtom,
   categoryDialogVisibleAtom,
@@ -53,7 +53,7 @@ describe('state', () => {
       expect(store.get(categoriesAtom)).toEqual([]);
       expect(store.get(imageCategoriesAtom).size).toBe(0);
       expect(store.get(currentDirectoryAtom)).toBe('');
-      expect(store.get(configFilePathAtom)).toBe('');
+      expect(store.get(dataFilePathAtom)).toBe('');
       expect(store.get(shortcutsOverlayVisibleAtom)).toBe(false);
       expect(store.get(categoryDialogVisibleAtom)).toBe(false);
       expect(store.get(categoryDialogCategoryAtom)).toBeUndefined();
@@ -111,7 +111,7 @@ describe('state', () => {
       ]]]);
       store.set(imageCategoriesAtom, imageCategories);
       store.set(currentDirectoryAtom, '/test/dir');
-      store.set(configFilePathAtom, '/test/config.json');
+      store.set(dataFilePathAtom, '/test/config.json');
       store.set(shortcutsOverlayVisibleAtom, true);
       store.set(categoryDialogVisibleAtom, true);
       store.set(categoryDialogCategoryAtom, { id: '1', name: 'Test', color: '#000' });
@@ -150,7 +150,7 @@ describe('state', () => {
       expect(store.get(categoriesAtom)).toEqual([]);
       expect(store.get(imageCategoriesAtom).size).toBe(0);
       expect(store.get(currentDirectoryAtom)).toBe('');
-      expect(store.get(configFilePathAtom)).toBe('');
+      expect(store.get(dataFilePathAtom)).toBe('');
       expect(store.get(resetCounterAtom)).toBe(resetCounterBefore + 1);
       expect(store.get(shortcutsOverlayVisibleAtom)).toBe(false);
       expect(store.get(categoryDialogVisibleAtom)).toBe(false);
