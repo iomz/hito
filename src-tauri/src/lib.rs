@@ -366,12 +366,9 @@ fn save_data_file_path(
     };
     
     // Initialize or update data_file_paths
-    if app_data.data_file_paths.is_none() {
-        app_data.data_file_paths = Some(DataFileMap::new());
-    }
-    if let Some(ref mut paths) = app_data.data_file_paths {
-        paths.insert(directory, data_file_path);
-    }
+    app_data.data_file_paths
+        .get_or_insert_with(DataFileMap::new)
+        .insert(directory, data_file_path);
     
     let json_content = serde_json::to_string_pretty(&app_data)
         .map_err(|e| format!("Failed to serialize app data: {}", e))?;
@@ -404,24 +401,18 @@ fn get_data_file_path(
                         Ok(None)
                     }
                 }
-                Err(e) => {
-                    eprintln!(
-                        "Failed to parse app data file at {}: {}",
-                        app_data_path.display(),
-                        e
-                    );
-                    Ok(None)
-                }
+                Err(e) => Err(format!(
+                    "Failed to parse app data file at {}: {}",
+                    app_data_path.display(),
+                    e
+                )),
             }
         }
-        Err(e) => {
-            eprintln!(
-                "Failed to read app data file at {}: {}",
-                app_data_path.display(),
-                e
-            );
-            Ok(None)
-        }
+        Err(e) => Err(format!(
+            "Failed to read app data file at {}: {}",
+            app_data_path.display(),
+            e
+        )),
     }
 }
 

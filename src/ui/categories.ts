@@ -121,16 +121,8 @@ export async function loadAppData(abortSignal?: AbortSignal): Promise<void> {
       hotkeysCount: data.hotkeys?.length || 0,
     });
 
-    if (abortSignal?.aborted) {
-      return;
-    }
-
     if (data.categories) {
       store.set(categoriesAtom, data.categories);
-    }
-
-    if (abortSignal?.aborted) {
-      return;
     }
 
     if (data.hotkeys && data.hotkeys.length > 0) {
