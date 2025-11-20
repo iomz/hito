@@ -37,14 +37,26 @@ jobs:
             librsvg2-dev \
             libglib2.0-dev \
             pkg-config \
-            patchelf
+            patchelf \
+            lcov
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Ensure coverage directory exists
         run: mkdir -p coverage
-      - name: Generate Rust coverage
+      - name: Generate Rust coverage (lib tests)
         working-directory: src-tauri
-        run: cargo llvm-cov --lib --doc --lcov --output-path ../coverage/rust-lcov.info
+        run: cargo llvm-cov --lib --lcov --output-path ../coverage/rust-lib-lcov.info
+      - name: Generate Rust coverage (doc tests)
+        working-directory: src-tauri
+        run: cargo llvm-cov --doc --lcov --output-path ../coverage/rust-doc-lcov.info || true
+      - name: Merge Rust coverage reports
+        run: |
+          if [ -f coverage/rust-doc-lcov.info ]; then
+            # Merge coverage reports using lcov
+            lcov -a coverage/rust-lib-lcov.info -a coverage/rust-doc-lcov.info -o coverage/rust-lcov.info
+          else
+            cp coverage/rust-lib-lcov.info coverage/rust-lcov.info
+          fi
       
       # Upload coverage reports to Codecov
       - name: Upload coverage reports to Codecov
