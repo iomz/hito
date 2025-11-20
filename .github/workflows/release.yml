@@ -72,6 +72,9 @@ jobs:
           version: 10
           run_install: true
 
+      - name: build dist
+        run: pnpm build
+
       - uses: tauri-apps/tauri-action@v0.6.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
