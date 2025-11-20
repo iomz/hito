@@ -26,44 +26,24 @@ jobs:
         run: pnpm test:coverage
       
       # Rust coverage
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install system dependencies (Linux)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            libglib2.0-dev \
-            pkg-config \
-            patchelf \
-            lcov
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Ensure coverage directory exists
-        run: mkdir -p coverage
-      - name: Generate Rust coverage (lib tests)
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+      - name: Run Rust coverage
         working-directory: src-tauri
-        run: cargo llvm-cov --lib --lcov --output-path ../coverage/rust-lib-lcov.info
-      - name: Generate Rust coverage (doc tests)
-        working-directory: src-tauri
-        run: cargo llvm-cov --doc --lcov --output-path ../coverage/rust-doc-lcov.info || true
-      - name: Merge Rust coverage reports
-        run: |
-          if [ -f coverage/rust-doc-lcov.info ]; then
-            # Merge coverage reports using lcov
-            lcov -a coverage/rust-lib-lcov.info -a coverage/rust-doc-lcov.info -o coverage/rust-lcov.info
-          else
-            cp coverage/rust-lib-lcov.info coverage/rust-lcov.info
-          fi
+        run: cargo tarpaulin --lib --out Lcov --output-dir target/tarpaulin-report
       
       # Upload coverage reports to Codecov
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/coverage-final.json,./coverage/lcov.info,./coverage/rust-lcov.info
+          files: ./coverage/coverage-final.json,./coverage/lcov.info,./src-tauri/target/tarpaulin-report/lcov.info
           flags: unittests,rust
           name: codecov-umbrella
           fail_ci_if_error: false
