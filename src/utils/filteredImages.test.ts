@@ -11,8 +11,8 @@ import {
   cachedImageCategoriesForRefilterAtom,
   resetStateAtom,
 } from "../state";
-import { getFilteredAndSortedImages, getFilteredAndSortedImagesSync } from "./filteredImages";
-import type { ImagePath, CategoryAssignment } from "../types";
+import { getFilteredAndSortedImages, getFilteredAndSortedImagesSync, getSortedDirectoriesAndImages } from "./filteredImages";
+import type { ImagePath, CategoryAssignment, DirectoryPath } from "../types";
 
 // Mock the tauri module
 vi.mock("./tauri", () => ({
@@ -612,6 +612,157 @@ describe("filteredImages", () => {
         expect(result).toHaveLength(1);
         expect(result[0].path).toBe("/test/apple2.png");
       });
+    });
+  });
+
+  describe("getSortedDirectoriesAndImages", () => {
+    it("should sort directories by name when sortOption is name", () => {
+      store.set(sortOptionAtom, "name");
+      store.set(sortDirectionAtom, "ascending");
+      store.set(allImagePathsAtom, [
+        { path: "/test/image1.png", size: 1000 },
+        { path: "/test/image2.png", size: 2000 },
+      ]);
+
+      const directories: DirectoryPath[] = [
+        { path: "/test/zebra" },
+        { path: "/test/apple" },
+        { path: "/test/banana" },
+      ];
+
+      const result = getSortedDirectoriesAndImages(directories);
+
+      // Directories should be sorted by name (apple, banana, zebra)
+      expect(result.directories).toEqual([
+        { path: "/test/apple" },
+        { path: "/test/banana" },
+        { path: "/test/zebra" },
+      ]);
+      expect(result.images).toHaveLength(2);
+    });
+
+    it("should sort directories by name descending when sortDirection is descending", () => {
+      store.set(sortOptionAtom, "name");
+      store.set(sortDirectionAtom, "descending");
+      store.set(allImagePathsAtom, []);
+
+      const directories: DirectoryPath[] = [
+        { path: "/test/apple" },
+        { path: "/test/zebra" },
+        { path: "/test/banana" },
+      ];
+
+      const result = getSortedDirectoriesAndImages(directories);
+
+      // Directories should be sorted by name descending (zebra, banana, apple)
+      expect(result.directories).toEqual([
+        { path: "/test/zebra" },
+        { path: "/test/banana" },
+        { path: "/test/apple" },
+      ]);
+    });
+
+    it("should sort directories by name when sortOption is lastCategorized", () => {
+      store.set(sortOptionAtom, "lastCategorized");
+      store.set(sortDirectionAtom, "ascending");
+      store.set(allImagePathsAtom, []);
+
+      const directories: DirectoryPath[] = [
+        { path: "/test/zebra" },
+        { path: "/test/apple" },
+        { path: "/test/banana" },
+      ];
+
+      const result = getSortedDirectoriesAndImages(directories);
+
+      // Directories should be sorted by name (not by lastCategorized)
+      expect(result.directories).toEqual([
+        { path: "/test/apple" },
+        { path: "/test/banana" },
+        { path: "/test/zebra" },
+      ]);
+    });
+
+    it("should sort directories by name when sortOption is size", () => {
+      store.set(sortOptionAtom, "size");
+      store.set(sortDirectionAtom, "ascending");
+      store.set(allImagePathsAtom, []);
+
+      const directories: DirectoryPath[] = [
+        { path: "/test/zebra" },
+        { path: "/test/apple" },
+        { path: "/test/banana" },
+      ];
+
+      const result = getSortedDirectoriesAndImages(directories);
+
+      // Directories should be sorted by name (not by size)
+      expect(result.directories).toEqual([
+        { path: "/test/apple" },
+        { path: "/test/banana" },
+        { path: "/test/zebra" },
+      ]);
+    });
+
+    it("should sort directories by dateCreated when sortOption is dateCreated", () => {
+      store.set(sortOptionAtom, "dateCreated");
+      store.set(sortDirectionAtom, "ascending");
+      store.set(allImagePathsAtom, []);
+
+      const directories: DirectoryPath[] = [
+        { path: "/test/dir1", created_at: "2023-03-01T00:00:00Z" },
+        { path: "/test/dir2", created_at: "2023-01-01T00:00:00Z" },
+        { path: "/test/dir3", created_at: "2023-02-01T00:00:00Z" },
+      ];
+
+      const result = getSortedDirectoriesAndImages(directories);
+
+      // Directories should be sorted by dateCreated (oldest first)
+      expect(result.directories).toEqual([
+        { path: "/test/dir2", created_at: "2023-01-01T00:00:00Z" },
+        { path: "/test/dir3", created_at: "2023-02-01T00:00:00Z" },
+        { path: "/test/dir1", created_at: "2023-03-01T00:00:00Z" },
+      ]);
+    });
+
+    it("should handle directories without created_at", () => {
+      store.set(sortOptionAtom, "dateCreated");
+      store.set(sortDirectionAtom, "ascending");
+      store.set(allImagePathsAtom, []);
+
+      const directories: DirectoryPath[] = [
+        { path: "/test/dir1", created_at: "2023-01-01T00:00:00Z" },
+        { path: "/test/dir2" }, // no created_at (treated as 0)
+        { path: "/test/dir3", created_at: "2023-02-01T00:00:00Z" },
+      ];
+
+      const result = getSortedDirectoriesAndImages(directories);
+
+      // Directories without created_at (treated as 0) should be sorted first in ascending order
+      // dir2 (0), dir1 (2023-01-01), dir3 (2023-02-01)
+      expect(result.directories[0].path).toBe("/test/dir2"); // no created_at = 0
+      expect(result.directories[1].path).toBe("/test/dir1"); // oldest date
+      expect(result.directories[2].path).toBe("/test/dir3"); // newest date
+    });
+
+    it("should place directories before images", () => {
+      store.set(sortOptionAtom, "name");
+      store.set(sortDirectionAtom, "ascending");
+      store.set(allImagePathsAtom, [
+        { path: "/test/image1.png" },
+        { path: "/test/image2.png" },
+      ]);
+
+      const directories: DirectoryPath[] = [
+        { path: "/test/folder" },
+      ];
+
+      const result = getSortedDirectoriesAndImages(directories);
+
+      // Directories should be first, then images
+      expect(result.directories).toHaveLength(1);
+      expect(result.images).toHaveLength(2);
+      expect(result.directories[0].path).toBe("/test/folder");
     });
   });
 });
