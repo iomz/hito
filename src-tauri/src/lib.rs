@@ -16,7 +16,7 @@ struct ImagePath {
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct DirectoryPath {
     path: String,
-    size: Option<u64>, // Total file size in bytes (recursive)
+    size: Option<u64>, // Not calculated for directories (None)
     created_at: Option<String>, // ISO 8601 datetime string
 }
 
