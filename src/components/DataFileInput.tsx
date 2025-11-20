@@ -22,6 +22,11 @@ export function DataFileInput() {
   };
 
   const handleSave = async () => {
+    const trimmedValue = (value || "").trim();
+    if (trimmedValue !== (value || "")) {
+      setDataFilePath(trimmedValue);
+    }
+
     if (!currentDirectory || currentDirectory.trim() === "") {
       showError("No directory is currently open.");
       return;
@@ -36,7 +41,7 @@ export function DataFileInput() {
     try {
       await invokeTauri("save_data_file_path", {
         directory: currentDirectory,
-        dataFilePath: value || "",
+        dataFilePath: trimmedValue,
       });
       showNotification("Data file path saved successfully.");
     } catch (error) {

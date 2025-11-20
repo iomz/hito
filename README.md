@@ -28,7 +28,7 @@ Simply drag and drop a folder to start browsing your images.
 - **Category Assignment**: Assign multiple categories to images for flexible organization
 - **Category Filtering**: Filter images by category or view uncategorized images
 - **Name Filtering**: Filter images by filename with operators (contains, starts with, ends with, exact match)
-- **Size Filtering**: Filter images by file size (coming soon)
+- **Size Filtering**: Filter images by file size with operators (larger than, less than, or between two values). Size values are specified in KB.
 - **Sorting**: Sort images by name, creation date, last categorized date, or file size
 - **Data File Management**: Customize the data file path (`.hito.json`) per directory for flexible storage
 
@@ -71,7 +71,7 @@ Simply drag and drop a folder to start browsing your images.
 3. **Assign categories**: 
    - In the modal view, click category buttons to assign/unassign categories to the current image
    - Categories are saved automatically to the data file (`.hito.json`)
-4. **Filter images**: Use the filter controls in the header to filter by category, name, or size
+4. **Filter images**: Use the filter controls in the header to filter by category, name, or size. For size filtering, select an operator (larger than, less than, or between) and enter the size value(s) in KB. When using "between", enter both the minimum and maximum values.
 5. **Sort images**: Use the sort dropdown to sort images by various criteria
 
 ### Customizing Hotkeys

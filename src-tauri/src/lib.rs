@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use chrono;
@@ -323,10 +324,63 @@ fn get_app_data_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_dir.join("app-config.json"))
 }
 
+/// Static mutex to coordinate concurrent writes to app-config.json
+static APP_DATA_MUTEX: OnceLock<Mutex<()>> = OnceLock::new();
+
+/// Get the app data mutex, initializing it if necessary.
+fn get_app_data_mutex() -> &'static Mutex<()> {
+    APP_DATA_MUTEX.get_or_init(|| Mutex::new(()))
+}
+
+/// Perform a synchronized read-modify-write operation on app-config.json.
+/// 
+/// This function ensures that concurrent writes to the app data file are serialized
+/// to prevent lost updates. The `update_fn` closure receives the current AppData
+/// (or default if the file doesn't exist) and should return the updated AppData.
+fn update_app_data_sync<F>(app: &AppHandle, update_fn: F) -> Result<(), String>
+where
+    F: FnOnce(AppData) -> Result<AppData, String>,
+{
+    let app_data_path = get_app_data_path(app)?;
+    let mutex = get_app_data_mutex();
+    
+    // Lock the mutex to serialize all file operations
+    let _guard = mutex.lock().map_err(|e| format!("Failed to acquire app data lock: {}", e))?;
+    
+    // Read current app data (or default if file doesn't exist)
+    let current_data = if app_data_path.exists() {
+        match fs::read_to_string(&app_data_path) {
+            Ok(content) => {
+                serde_json::from_str::<AppData>(&content)
+                    .map_err(|e| format!("Failed to parse app data file: {}", e))?
+            }
+            Err(e) => return Err(format!("Failed to read app data file: {}", e)),
+        }
+    } else {
+        AppData::default()
+    };
+    
+    // Apply the update function
+    let updated_data = update_fn(current_data)?;
+    
+    // Write the updated data back to the file
+    let json_content = serde_json::to_string_pretty(&updated_data)
+        .map_err(|e| format!("Failed to serialize app data: {}", e))?;
+    
+    fs::write(&app_data_path, json_content)
+        .map_err(|e| format!("Failed to write app data file: {}", e))?;
+    
+    Ok(())
+}
+
 /// Load categories and hotkeys from app data directory.
 #[tauri::command]
 fn load_app_data(app: AppHandle) -> Result<AppData, String> {
     let app_data_path = get_app_data_path(&app)?;
+    let mutex = get_app_data_mutex();
+    
+    // Lock the mutex to ensure we don't read during a write
+    let _guard = mutex.lock().map_err(|e| format!("Failed to acquire app data lock: {}", e))?;
     
     if !app_data_path.exists() {
         return Ok(AppData::default());
@@ -350,33 +404,13 @@ fn save_data_file_path(
     directory: String,
     data_file_path: String,
 ) -> Result<(), String> {
-    let app_data_path = get_app_data_path(&app)?;
-    
-    // Load existing app data
-    let mut app_data = if app_data_path.exists() {
-        match fs::read_to_string(&app_data_path) {
-            Ok(content) => {
-                serde_json::from_str::<AppData>(&content)
-                    .map_err(|e| format!("Failed to parse existing app data: {}", e))?
-            }
-            Err(e) => return Err(format!("Failed to read existing app data: {}", e)),
-        }
-    } else {
-        AppData::default()
-    };
-    
-    // Initialize or update data_file_paths
-    app_data.data_file_paths
-        .get_or_insert_with(DataFileMap::new)
-        .insert(directory, data_file_path);
-    
-    let json_content = serde_json::to_string_pretty(&app_data)
-        .map_err(|e| format!("Failed to serialize app data: {}", e))?;
-    
-    fs::write(&app_data_path, json_content)
-        .map_err(|e| format!("Failed to write app data file: {}", e))?;
-    
-    Ok(())
+    update_app_data_sync(&app, |mut app_data| {
+        // Initialize or update data_file_paths
+        app_data.data_file_paths
+            .get_or_insert_with(DataFileMap::new)
+            .insert(directory, data_file_path);
+        Ok(app_data)
+    })
 }
 
 /// Get data file path for a directory.
@@ -386,6 +420,10 @@ fn get_data_file_path(
     directory: String,
 ) -> Result<Option<String>, String> {
     let app_data_path = get_app_data_path(&app)?;
+    let mutex = get_app_data_mutex();
+    
+    // Lock the mutex to ensure we don't read during a write
+    let _guard = mutex.lock().map_err(|e| format!("Failed to acquire app data lock: {}", e))?;
     
     if !app_data_path.exists() {
         return Ok(None);
@@ -423,40 +461,12 @@ fn save_app_data(
     categories: Vec<CategoryData>,
     hotkeys: Vec<HotkeyData>,
 ) -> Result<(), String> {
-    let app_data_path = get_app_data_path(&app)?;
-    
-    // Load existing data to preserve data_file_paths
-    let existing_data = if app_data_path.exists() {
-        let content = fs::read_to_string(&app_data_path)
-            .map_err(|e| format!(
-                "Failed to read existing app data file at {}: {}",
-                app_data_path.display(),
-                e
-            ))?;
-        
-        Some(serde_json::from_str::<AppData>(&content)
-            .map_err(|e| format!(
-                "Failed to deserialize existing app data from {}: {}",
-                app_data_path.display(),
-                e
-            ))?)
-    } else {
-        None
-    };
-    
-    let data = AppData {
-        categories,
-        hotkeys,
-        data_file_paths: existing_data.and_then(|d| d.data_file_paths),
-    };
-    
-    let json_content = serde_json::to_string_pretty(&data)
-        .map_err(|e| format!("Failed to serialize app data: {}", e))?;
-    
-    fs::write(&app_data_path, json_content)
-        .map_err(|e| format!("Failed to write app data file: {}", e))?;
-    
-    Ok(())
+    update_app_data_sync(&app, |mut app_data| {
+        // Update categories and hotkeys while preserving data_file_paths
+        app_data.categories = categories;
+        app_data.hotkeys = hotkeys;
+        Ok(app_data)
+    })
 }
 
 /// Load image category assignments from .hito.json in the specified directory.

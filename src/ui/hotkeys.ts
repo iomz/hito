@@ -4,6 +4,7 @@ import { createElement } from "../utils/dom";
 import type { HotkeyConfig } from "../types";
 import { saveAppData } from "./categories";
 import { confirm } from "../utils/dialog";
+import { showError } from "./error";
 
 /**
  * Width of the hotkey sidebar when open.
@@ -189,9 +190,12 @@ export async function deleteHotkey(hotkeyId: string): Promise<void> {
 
   const hotkeys = store.get(hotkeysAtom);
   store.set(hotkeysAtom, hotkeys.filter(h => h.id !== hotkeyId));
-  saveAppData().catch((error) => {
+  try {
+    await saveAppData();
+  } catch (error) {
     console.error("Failed to save hotkeys:", error);
-  });
+    showError("Failed to save hotkeys");
+  }
 }
 
 /**

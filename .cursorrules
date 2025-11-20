@@ -63,8 +63,8 @@ Closes #123
 - When calling Tauri commands from TypeScript, use `camelCase` for the same parameters (e.g., `dataFilePath: value`)
 - This conversion happens automatically - do NOT use `camelCase` in Rust or `snake_case` in TypeScript
 - Example:
-  - Rust: `fn save_data_file_path(app: AppHandle, data_file_path: String)`
-  - TypeScript: `invokeTauri("save_data_file_path", { dataFilePath: value })`
+  - Rust: `fn save_data_file_path(app: AppHandle, directory: String, data_file_path: String)`
+  - TypeScript: `invokeTauri("save_data_file_path", { directory, dataFilePath })`
 
 ## Vitest Test Execution
 
