@@ -58,7 +58,7 @@ jobs:
         run: cargo llvm-cov --lib --lcov --output-path ../coverage/rust-lib-lcov.info
       - name: Generate Rust coverage (doc tests)
         working-directory: src-tauri
-        run: cargo llvm-cov --doc --lcov --output-path ../coverage/rust-doc-lcov.info || echo "Doc test coverage generation failed or skipped"
+        run: cargo +nightly llvm-cov --doc --lcov --output-path ../coverage/rust-doc-lcov.info || echo "Doc test coverage generation failed or skipped"
         continue-on-error: true
       - name: Merge Rust coverage reports
         run: |
