@@ -201,7 +201,7 @@ export function showPreviousImage(): void {
         openModal(filteredImages[newIndex].path);
       } else if (filteredImages.length > 0) {
         // Old previous image no longer in filtered list, fall back to position-based navigation
-        const targetIndex = Math.max(0, oldIndex - 1);
+        const targetIndex = Math.min(Math.max(0, oldIndex - 1), filteredImages.length - 1);
         openModal(filteredImages[targetIndex].path);
       }
     } else if (oldIndex < 0 && filteredImages.length > 0) {
@@ -209,7 +209,7 @@ export function showPreviousImage(): void {
       openModal(filteredImages[filteredImages.length - 1].path);
     } else if (oldIndex >= 0 && filteredImages.length > 0) {
       // We were at the first index in old order (oldPreviousImagePath is null), preserve position
-      const targetIndex = Math.max(0, oldIndex - 1);
+      const targetIndex = Math.min(Math.max(0, oldIndex - 1), filteredImages.length - 1);
       openModal(filteredImages[targetIndex].path);
     }
     // If oldIndex < 0 and filteredImages is empty, don't navigate
