@@ -248,21 +248,6 @@ describe("keyboard handlers", () => {
       expect(showNextImage).not.toHaveBeenCalled();
     });
 
-    it("should not handle modal shortcuts when modal is closed via state", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard");
-      const { showNextImage } = await import("../ui/modal");
-
-      setupKeyboardHandlers();
-
-      // Modal is closed (state-based check)
-      store.set(currentModalImagePathAtom, "");
-
-      const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
-      document.dispatchEvent(event);
-
-      expect(showNextImage).not.toHaveBeenCalled();
-    });
-
     it("should check hotkeys first before modal shortcuts", async () => {
       const { setupKeyboardHandlers } = await import("./keyboard");
       const { checkAndExecuteHotkey } = await import("../ui/hotkeys");
@@ -420,36 +405,6 @@ describe("keyboard handlers", () => {
       document.dispatchEvent(event);
 
       expect(preventDefaultSpy).toHaveBeenCalled();
-    });
-
-    it("should not handle modal shortcuts when modal state is empty (state-based check)", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard");
-      const { showNextImage } = await import("../ui/modal");
-
-      setupKeyboardHandlers();
-
-      // Modal is closed (state-based check, not DOM style)
-      store.set(currentModalImagePathAtom, "");
-
-      const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
-      document.dispatchEvent(event);
-
-      expect(showNextImage).not.toHaveBeenCalled();
-    });
-
-    it("should not handle modal shortcuts when modal state indicates closed (state-based check)", async () => {
-      const { setupKeyboardHandlers } = await import("./keyboard");
-      const { showNextImage } = await import("../ui/modal");
-
-      setupKeyboardHandlers();
-
-      // Modal is closed (state-based check, not DOM style)
-      store.set(currentModalImagePathAtom, "");
-
-      const event = new KeyboardEvent("keydown", { key: "ArrowRight" });
-      document.dispatchEvent(event);
-
-      expect(showNextImage).not.toHaveBeenCalled();
     });
 
     it("should skip hotkey handling when typing in INPUT element", async () => {

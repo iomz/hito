@@ -98,12 +98,12 @@ export function closeModal(): void {
 }
 
 /**
- * Advance the modal viewer to the next image in the filtered/sorted list if one exists.
- *
- * Does nothing when the currently shown image is the last in the filtered list.
- * Clears suppressCategoryRefilter flag to trigger deferred re-filtering.
+ * Internal helper for navigation with suppression-aware logic.
+ * Handles the "remember neighbor then navigate after refilter" algorithm.
+ * 
+ * @param direction - Navigation direction: +1 for next, -1 for previous
  */
-export function showNextImage(): void {
+function navigateWithSuppressionAwareness(direction: 1 | -1): void {
   const currentModalImagePath = store.get(currentModalImagePathAtom);
   if (!currentModalImagePath) {
     return;
@@ -115,10 +115,13 @@ export function showNextImage(): void {
   const oldFilteredImages = getFilteredAndSortedImagesSync();
   const oldIndex = oldFilteredImages.findIndex((img) => img.path === currentModalImagePath);
   
-  // Remember what image was next in the old sort order before clearing suppress
+  // Remember what image was next/previous in the old sort order before clearing suppress
   // This ensures we navigate to the same image even if sort order changes
-  const oldNextImagePath = oldIndex >= 0 && oldIndex < oldFilteredImages.length - 1
-    ? oldFilteredImages[oldIndex + 1].path
+  const neighborIndex = direction === 1
+    ? (oldIndex >= 0 && oldIndex < oldFilteredImages.length - 1 ? oldIndex + 1 : null)
+    : (oldIndex > 0 ? oldIndex - 1 : null);
+  const oldNeighborPath = neighborIndex !== null
+    ? oldFilteredImages[neighborIndex].path
     : null;
   
   // Clear suppress flag and cached snapshot to trigger deferred re-filtering from category assignments
@@ -131,32 +134,49 @@ export function showNextImage(): void {
   // If suppress was active, the sort order may have changed, so always use remembered next/previous
   // instead of navigating based on the new position
   if (hadSuppress) {
-    if (oldNextImagePath) {
+    if (oldNeighborPath) {
       // Current image moved in sort order (e.g., from index 5 to last after toggling category)
-      // Navigate to the image that was next in the old order (at index 6), not based on new position
-      const newIndex = filteredImages.findIndex((img) => img.path === oldNextImagePath);
+      // Navigate to the image that was next/previous in the old order, not based on new position
+      const newIndex = filteredImages.findIndex((img) => img.path === oldNeighborPath);
       if (newIndex >= 0) {
         openModal(filteredImages[newIndex].path);
       } else if (filteredImages.length > 0) {
-        // Old next image no longer in filtered list, fall back to position-based navigation
-        const targetIndex = Math.min(oldIndex, filteredImages.length - 1);
+        // Old neighbor image no longer in filtered list, fall back to position-based navigation
+        const targetIndex = direction === 1
+          ? Math.min(oldIndex, filteredImages.length - 1)
+          : Math.min(Math.max(0, oldIndex - 1), filteredImages.length - 1);
         openModal(filteredImages[targetIndex].path);
       }
     } else if (oldIndex < 0 && filteredImages.length > 0) {
-      // Image was removed from filtered list (not found in old list), navigate to first image
-      openModal(filteredImages[0].path);
+      // Image was removed from filtered list (not found in old list)
+      // Navigate to first image for next direction, last image for previous direction
+      const fallbackIndex = direction === 1 ? 0 : filteredImages.length - 1;
+      openModal(filteredImages[fallbackIndex].path);
     } else if (oldIndex >= 0 && filteredImages.length > 0) {
-      // We were at the last index in old order (oldNextImagePath is null), preserve position
-      const targetIndex = Math.min(oldIndex, filteredImages.length - 1);
+      // We were at the boundary in old order (oldNeighborPath is null), preserve position
+      const targetIndex = direction === 1
+        ? Math.min(oldIndex, filteredImages.length - 1)
+        : Math.min(Math.max(0, oldIndex - 1), filteredImages.length - 1);
       openModal(filteredImages[targetIndex].path);
     }
     // If oldIndex < 0 and filteredImages is empty, don't navigate
   } else if (currentIndex >= 0) {
-    // Current image is still in filtered list and suppress was not active, navigate to next
-    if (currentIndex < filteredImages.length - 1) {
-      openModal(filteredImages[currentIndex + 1].path);
+    // Current image is still in filtered list and suppress was not active, navigate normally
+    const newIndex = currentIndex + direction;
+    if (newIndex >= 0 && newIndex < filteredImages.length) {
+      openModal(filteredImages[newIndex].path);
     }
   }
+}
+
+/**
+ * Advance the modal viewer to the next image in the filtered/sorted list if one exists.
+ *
+ * Does nothing when the currently shown image is the last in the filtered list.
+ * Clears suppressCategoryRefilter flag to trigger deferred re-filtering.
+ */
+export function showNextImage(): void {
+  navigateWithSuppressionAwareness(1);
 }
 
 /**
@@ -166,59 +186,7 @@ export function showNextImage(): void {
  * Clears suppressCategoryRefilter flag to trigger deferred re-filtering.
  */
 export function showPreviousImage(): void {
-  const currentModalImagePath = store.get(currentModalImagePathAtom);
-  if (!currentModalImagePath) {
-    return;
-  }
-  
-  // Get current index in old filtered list BEFORE clearing suppress flag
-  // This preserves the position when the current image is removed from the filter or re-sorted
-  const hadSuppress = store.get(suppressCategoryRefilterAtom);
-  const oldFilteredImages = getFilteredAndSortedImagesSync();
-  const oldIndex = oldFilteredImages.findIndex((img) => img.path === currentModalImagePath);
-  
-  // Remember what image was previous in the old sort order before clearing suppress
-  // This ensures we navigate to the same image even if sort order changes
-  const oldPreviousImagePath = oldIndex > 0
-    ? oldFilteredImages[oldIndex - 1].path
-    : null;
-  
-  // Clear suppress flag and cached snapshot to trigger deferred re-filtering from category assignments
-  store.set(suppressCategoryRefilterAtom, false);
-  store.set(cachedImageCategoriesForRefilterAtom, null);
-  
-  const filteredImages = getFilteredAndSortedImagesSync();
-  const currentIndex = filteredImages.findIndex((img) => img.path === currentModalImagePath);
-  
-  // If suppress was active, the sort order may have changed, so always use remembered next/previous
-  // instead of navigating based on the new position
-  if (hadSuppress) {
-    if (oldPreviousImagePath) {
-      // Current image moved in sort order (e.g., from index 5 to last after toggling category)
-      // Navigate to the image that was previous in the old order (at index 4), not based on new position
-      const newIndex = filteredImages.findIndex((img) => img.path === oldPreviousImagePath);
-      if (newIndex >= 0) {
-        openModal(filteredImages[newIndex].path);
-      } else if (filteredImages.length > 0) {
-        // Old previous image no longer in filtered list, fall back to position-based navigation
-        const targetIndex = Math.min(Math.max(0, oldIndex - 1), filteredImages.length - 1);
-        openModal(filteredImages[targetIndex].path);
-      }
-    } else if (oldIndex < 0 && filteredImages.length > 0) {
-      // Image was removed from filtered list (not found in old list), navigate to last image
-      openModal(filteredImages[filteredImages.length - 1].path);
-    } else if (oldIndex >= 0 && filteredImages.length > 0) {
-      // We were at the first index in old order (oldPreviousImagePath is null), preserve position
-      const targetIndex = Math.min(Math.max(0, oldIndex - 1), filteredImages.length - 1);
-      openModal(filteredImages[targetIndex].path);
-    }
-    // If oldIndex < 0 and filteredImages is empty, don't navigate
-  } else if (currentIndex >= 0) {
-    // Current image is still in filtered list and suppress was not active, navigate to previous
-    if (currentIndex > 0) {
-      openModal(filteredImages[currentIndex - 1].path);
-    }
-  }
+  navigateWithSuppressionAwareness(-1);
 }
 
 
