@@ -48,9 +48,10 @@ struct DirectoryContents {
 ///
 /// # Examples
 ///
-/// ```
-/// let parent = get_parent_directory(PathBuf::from("/tmp/project/src/main.rs")).unwrap();
-/// assert_eq!(parent, "/tmp/project/src");
+/// ```no_run
+/// use std::path::PathBuf;
+/// // This is a Tauri command, so it must be called from the frontend
+/// // Example: get_parent_directory(PathBuf::from("/tmp/project/src/main.rs"))
 /// ```
 #[tauri::command]
 fn get_parent_directory(file_path: PathBuf) -> Result<String, String> {
@@ -186,13 +187,8 @@ fn list_images(path: String) -> Result<DirectoryContents, String> {
 ///
 /// # Examples
 ///
-/// ```
-/// // Example (requires the referenced file to exist in the filesystem)
-/// let result = load_image("tests/fixtures/example.png".into());
-/// if let Ok(data_url) = result {
-///     assert!(data_url.starts_with("data:image/"));
-/// }
-/// ```
+/// This is a Tauri command that must be called from the frontend.
+/// The function returns a data URL string like `"data:image/png;base64,..."` on success.
 #[tauri::command]
 fn load_image(image_path: String) -> Result<String, String> {
     let file_path = Path::new(&image_path);
@@ -736,7 +732,7 @@ fn sort_images(
 /// ```no_run
 /// fn main() {
 ///     // Starts the desktop application (blocks until the app exits).
-///     your_crate_name::run();
+///     hito_lib::run();
 /// }
 /// ```
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
