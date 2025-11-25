@@ -25,6 +25,7 @@ export const isLoadingAtom = atom<boolean>(false); // Whether the loading spinne
 export const errorMessageAtom = atom<string>(""); // Current error message to display (empty = no error)
 export const sortOptionAtom = atom<"name" | "dateCreated" | "lastCategorized" | "size">("name");
 export const sortDirectionAtom = atom<"ascending" | "descending">("ascending");
+export const sortExplicitlySetAtom = atom<boolean>(false); // Whether the user has explicitly set a sort option
 
 // Shared initial filter options to avoid duplication between atom default and resetStateAtom
 const initialFilterOptions = {
@@ -83,6 +84,7 @@ export const resetStateAtom = atom(null, (get, set) => {
   set(errorMessageAtom, "");
   set(sortOptionAtom, "name");
   set(sortDirectionAtom, "ascending");
+  set(sortExplicitlySetAtom, false);
   set(filterOptionsAtom, { ...initialFilterOptions });
   set(selectionModeAtom, false);
   set(selectedImagesAtom, new Set<string>());
