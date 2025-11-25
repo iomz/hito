@@ -1,7 +1,8 @@
 import React from "react";
 import { useAtomValue } from "jotai";
-import { hotkeysAtom } from "../state";
-import type { HotkeyConfig } from "../types";
+import { hotkeysAtom, categoriesAtom } from "../state";
+import type { HotkeyConfig, Category } from "../types";
+import { formatActionLabel } from "../ui/hotkeys";
 
 // Format a hotkey combination for display
 function formatHotkeyDisplay(config: HotkeyConfig): string {
@@ -9,8 +10,10 @@ function formatHotkeyDisplay(config: HotkeyConfig): string {
   return parts.join(" + ");
 }
 
+
 export function HotkeyList() {
   const hotkeys = useAtomValue(hotkeysAtom);
+  const categories = useAtomValue(categoriesAtom);
 
   const handleEdit = async (hotkeyId: string) => {
     const { editHotkey } = await import("../ui/hotkeys");
@@ -38,6 +41,7 @@ export function HotkeyList() {
         <div key={hotkey.id} className="hotkey-item">
           <div className="hotkey-info">
             <div className="hotkey-key">{formatHotkeyDisplay(hotkey)}</div>
+            <div className="hotkey-description">{formatActionLabel(hotkey.action, categories)}</div>
           </div>
           <div className="hotkey-actions">
             <button

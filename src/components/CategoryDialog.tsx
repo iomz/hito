@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { categoryDialogVisibleAtom, categoryDialogCategoryAtom, categoriesAtom } from "../state";
 import type { Category } from "../types";
 import { saveAppData, isCategoryNameDuplicate, generateCategoryColor } from "../ui/categories";
+import { autoAssignHotkeyToCategory } from "../ui/hotkeys";
 
 /**
  * Generates a UUID v4 string.
@@ -114,6 +115,23 @@ export function CategoryDialog() {
         color,
       };
       setCategories([...categories, newCategory]);
+      
+      try {
+        await saveAppData();
+        
+        // Auto-assign hotkey to the new category
+        await autoAssignHotkeyToCategory(newCategory.id);
+        
+        // Close dialog only if save succeeds
+        setCategoryDialogVisible(false);
+        setCategoryDialogCategory(undefined);
+      } catch (error) {
+        // Show error to user and keep dialog open so they can retry or cancel
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setErrorMessage(`Failed to save category: ${errorMessage}`);
+        setShowError(true);
+      }
+      return;
     }
     
     try {

@@ -1095,5 +1095,323 @@ describe("hotkeys", () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe("findUnassignedNumberKey", () => {
+    it("should return '1' when no hotkeys are assigned", async () => {
+      store.set(hotkeysAtom, []);
+      
+      const { findUnassignedNumberKey } = await import("./hotkeys");
+      const result = findUnassignedNumberKey();
+      
+      expect(result).toBe("1");
+    });
+
+    it("should return '2' when '1' is already assigned", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "1", modifiers: [], action: "next_image" },
+      ]);
+      
+      const { findUnassignedNumberKey } = await import("./hotkeys");
+      const result = findUnassignedNumberKey();
+      
+      expect(result).toBe("2");
+    });
+
+    it("should check keys in order: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "1", modifiers: [], action: "next_image" },
+        { id: "h2", key: "2", modifiers: [], action: "previous_image" },
+        { id: "h3", key: "3", modifiers: [], action: "delete_image_and_next" },
+        { id: "h4", key: "4", modifiers: [], action: "toggle_category_cat1" },
+        { id: "h5", key: "5", modifiers: [], action: "toggle_category_cat2" },
+        { id: "h6", key: "6", modifiers: [], action: "toggle_category_cat3" },
+        { id: "h7", key: "7", modifiers: [], action: "toggle_category_cat4" },
+        { id: "h8", key: "8", modifiers: [], action: "toggle_category_cat5" },
+        { id: "h9", key: "9", modifiers: [], action: "toggle_category_cat6" },
+      ]);
+      
+      const { findUnassignedNumberKey } = await import("./hotkeys");
+      const result = findUnassignedNumberKey();
+      
+      expect(result).toBe("0");
+    });
+
+    it("should return null when all number keys are assigned", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "1", modifiers: [], action: "next_image" },
+        { id: "h2", key: "2", modifiers: [], action: "previous_image" },
+        { id: "h3", key: "3", modifiers: [], action: "delete_image_and_next" },
+        { id: "h4", key: "4", modifiers: [], action: "toggle_category_cat1" },
+        { id: "h5", key: "5", modifiers: [], action: "toggle_category_cat2" },
+        { id: "h6", key: "6", modifiers: [], action: "toggle_category_cat3" },
+        { id: "h7", key: "7", modifiers: [], action: "toggle_category_cat4" },
+        { id: "h8", key: "8", modifiers: [], action: "toggle_category_cat5" },
+        { id: "h9", key: "9", modifiers: [], action: "toggle_category_cat6" },
+        { id: "h0", key: "0", modifiers: [], action: "toggle_category_cat7" },
+      ]);
+      
+      const { findUnassignedNumberKey } = await import("./hotkeys");
+      const result = findUnassignedNumberKey();
+      
+      expect(result).toBeNull();
+    });
+
+    it("should ignore hotkeys with modifiers when checking", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "1", modifiers: ["Ctrl"], action: "next_image" },
+        { id: "h2", key: "2", modifiers: ["Shift"], action: "previous_image" },
+      ]);
+      
+      const { findUnassignedNumberKey } = await import("./hotkeys");
+      const result = findUnassignedNumberKey();
+      
+      // Should return "1" because keys with modifiers don't count
+      expect(result).toBe("1");
+    });
+
+    it("should ignore non-number keys", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "J", modifiers: [], action: "next_image" },
+        { id: "h2", key: "K", modifiers: [], action: "previous_image" },
+        { id: "h3", key: "A", modifiers: [], action: "delete_image_and_next" },
+      ]);
+      
+      const { findUnassignedNumberKey } = await import("./hotkeys");
+      const result = findUnassignedNumberKey();
+      
+      expect(result).toBe("1");
+    });
+
+    it("should find first unassigned key when some are assigned", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "1", modifiers: [], action: "next_image" },
+        { id: "h2", key: "2", modifiers: [], action: "previous_image" },
+        { id: "h4", key: "4", modifiers: [], action: "toggle_category_cat1" },
+        // 3 is missing, so should return "3"
+      ]);
+      
+      const { findUnassignedNumberKey } = await import("./hotkeys");
+      const result = findUnassignedNumberKey();
+      
+      expect(result).toBe("3");
+    });
+  });
+
+  describe("autoAssignHotkeyToCategory", () => {
+    it("should assign first available number key to category", async () => {
+      store.set(hotkeysAtom, []);
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e" },
+      ]);
+      
+      const { saveAppData } = await import("./categories");
+      const { autoAssignHotkeyToCategory } = await import("./hotkeys");
+      
+      const result = await autoAssignHotkeyToCategory("cat1");
+      
+      expect(result).toBe(true);
+      const hotkeys = store.get(hotkeysAtom);
+      expect(hotkeys).toHaveLength(1);
+      expect(hotkeys[0]).toMatchObject({
+        key: "1",
+        modifiers: [],
+        action: "toggle_category_cat1",
+      });
+      expect(saveAppData).toHaveBeenCalled();
+    });
+
+    it("should assign next available key when some are taken", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "1", modifiers: [], action: "next_image" },
+        { id: "h2", key: "2", modifiers: [], action: "previous_image" },
+      ]);
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e" },
+      ]);
+      
+      const { saveAppData } = await import("./categories");
+      const { autoAssignHotkeyToCategory } = await import("./hotkeys");
+      
+      const result = await autoAssignHotkeyToCategory("cat1");
+      
+      expect(result).toBe(true);
+      const hotkeys = store.get(hotkeysAtom);
+      expect(hotkeys).toHaveLength(3);
+      const newHotkey = hotkeys.find(h => h.action === "toggle_category_cat1");
+      expect(newHotkey).toMatchObject({
+        key: "3",
+        modifiers: [],
+        action: "toggle_category_cat1",
+      });
+      expect(saveAppData).toHaveBeenCalled();
+    });
+
+    it("should assign '0' when 1-9 are all taken", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "1", modifiers: [], action: "next_image" },
+        { id: "h2", key: "2", modifiers: [], action: "previous_image" },
+        { id: "h3", key: "3", modifiers: [], action: "delete_image_and_next" },
+        { id: "h4", key: "4", modifiers: [], action: "toggle_category_cat1" },
+        { id: "h5", key: "5", modifiers: [], action: "toggle_category_cat2" },
+        { id: "h6", key: "6", modifiers: [], action: "toggle_category_cat3" },
+        { id: "h7", key: "7", modifiers: [], action: "toggle_category_cat4" },
+        { id: "h8", key: "8", modifiers: [], action: "toggle_category_cat5" },
+        { id: "h9", key: "9", modifiers: [], action: "toggle_category_cat6" },
+      ]);
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e" },
+        { id: "cat7", name: "Archive", color: "#3b82f6" },
+      ]);
+      
+      const { saveAppData } = await import("./categories");
+      const { autoAssignHotkeyToCategory } = await import("./hotkeys");
+      
+      const result = await autoAssignHotkeyToCategory("cat7");
+      
+      expect(result).toBe(true);
+      const hotkeys = store.get(hotkeysAtom);
+      const newHotkey = hotkeys.find(h => h.action === "toggle_category_cat7");
+      expect(newHotkey).toMatchObject({
+        key: "0",
+        modifiers: [],
+        action: "toggle_category_cat7",
+      });
+      expect(saveAppData).toHaveBeenCalled();
+    });
+
+    it("should return false when all number keys are assigned", async () => {
+      store.set(hotkeysAtom, [
+        { id: "h1", key: "1", modifiers: [], action: "next_image" },
+        { id: "h2", key: "2", modifiers: [], action: "previous_image" },
+        { id: "h3", key: "3", modifiers: [], action: "delete_image_and_next" },
+        { id: "h4", key: "4", modifiers: [], action: "toggle_category_cat1" },
+        { id: "h5", key: "5", modifiers: [], action: "toggle_category_cat2" },
+        { id: "h6", key: "6", modifiers: [], action: "toggle_category_cat3" },
+        { id: "h7", key: "7", modifiers: [], action: "toggle_category_cat4" },
+        { id: "h8", key: "8", modifiers: [], action: "toggle_category_cat5" },
+        { id: "h9", key: "9", modifiers: [], action: "toggle_category_cat6" },
+        { id: "h0", key: "0", modifiers: [], action: "toggle_category_cat7" },
+      ]);
+      store.set(categoriesAtom, [
+        { id: "cat8", name: "New Category", color: "#ef4444" },
+      ]);
+      
+      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const { autoAssignHotkeyToCategory } = await import("./hotkeys");
+      
+      const result = await autoAssignHotkeyToCategory("cat8");
+      
+      expect(result).toBe(false);
+      const hotkeys = store.get(hotkeysAtom);
+      expect(hotkeys).toHaveLength(10); // No new hotkey added
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[autoAssignHotkeyToCategory] No unassigned number keys available"
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("should rollback hotkey addition if save fails", async () => {
+      store.set(hotkeysAtom, []);
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e" },
+      ]);
+      
+      const { saveAppData } = await import("./categories");
+      vi.mocked(saveAppData).mockRejectedValueOnce(new Error("Save failed"));
+      
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { autoAssignHotkeyToCategory } = await import("./hotkeys");
+      
+      const result = await autoAssignHotkeyToCategory("cat1");
+      
+      expect(result).toBe(false);
+      const hotkeys = store.get(hotkeysAtom);
+      expect(hotkeys).toHaveLength(0); // Hotkey should be rolled back
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[autoAssignHotkeyToCategory] Failed to save hotkey:",
+        expect.any(Error)
+      );
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("formatActionLabel", () => {
+    it("should return 'No action' for empty action", async () => {
+      const { formatActionLabel } = await import("./hotkeys");
+      const result = formatActionLabel("", []);
+      
+      expect(result).toBe("No action");
+    });
+
+    it("should format navigation actions", async () => {
+      const { formatActionLabel } = await import("./hotkeys");
+      
+      expect(formatActionLabel("next_image", [])).toBe("Next Image");
+      expect(formatActionLabel("previous_image", [])).toBe("Previous Image");
+      expect(formatActionLabel("delete_image_and_next", [])).toBe("Delete Image and move to next");
+    });
+
+    it("should format toggle category action with category name", async () => {
+      const categories = [
+        { id: "cat1", name: "Keep" },
+        { id: "cat2", name: "Archive" },
+      ];
+      
+      const { formatActionLabel } = await import("./hotkeys");
+      
+      expect(formatActionLabel("toggle_category_cat1", categories)).toBe("Toggle Keep");
+      expect(formatActionLabel("toggle_category_cat2", categories)).toBe("Toggle Archive");
+    });
+
+    it("should format toggle category and move to next action", async () => {
+      const categories = [
+        { id: "cat1", name: "Keep" },
+        { id: "cat2", name: "Archive" },
+      ];
+      
+      const { formatActionLabel } = await import("./hotkeys");
+      
+      expect(formatActionLabel("toggle_category_next_cat1", categories)).toBe("Toggle Keep and move to next");
+      expect(formatActionLabel("toggle_category_next_cat2", categories)).toBe("Toggle Archive and move to next");
+    });
+
+    it("should show category ID when category not found", async () => {
+      const categories = [
+        { id: "cat1", name: "Keep" },
+      ];
+      
+      const { formatActionLabel } = await import("./hotkeys");
+      
+      expect(formatActionLabel("toggle_category_cat999", categories)).toBe("Toggle category (cat999)");
+      expect(formatActionLabel("toggle_category_next_cat999", categories)).toBe("Toggle category (cat999) and move to next");
+    });
+
+    it("should format legacy assign category action", async () => {
+      const categories = [
+        { id: "cat1", name: "Keep" },
+      ];
+      
+      const { formatActionLabel } = await import("./hotkeys");
+      
+      expect(formatActionLabel("assign_category_cat1", categories)).toBe("Assign Keep");
+    });
+
+    it("should show category ID for legacy assign when category not found", async () => {
+      const categories = [
+        { id: "cat1", name: "Keep" },
+      ];
+      
+      const { formatActionLabel } = await import("./hotkeys");
+      
+      expect(formatActionLabel("assign_category_cat999", categories)).toBe("Assign category (cat999)");
+    });
+
+    it("should return action as-is for unknown actions", async () => {
+      const { formatActionLabel } = await import("./hotkeys");
+      
+      expect(formatActionLabel("unknown_action", [])).toBe("unknown_action");
+      expect(formatActionLabel("custom_action_123", [])).toBe("custom_action_123");
+    });
+  });
 });
 
