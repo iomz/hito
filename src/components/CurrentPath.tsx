@@ -4,13 +4,17 @@ import { currentDirectoryAtom } from "../state";
 import { normalizePath } from "../utils/state";
 import { handleFolder } from "../handlers/dragDrop";
 
-export function CurrentPath() {
+interface CurrentPathProps {
+  id?: string;
+}
+
+export function CurrentPath({ id = "current-path" }: CurrentPathProps = {}) {
   const currentDirectory = useAtomValue(currentDirectoryAtom);
   const isVisible = useMemo(() => currentDirectory.length > 0, [currentDirectory]);
 
   if (!isVisible || !currentDirectory) {
     return (
-      <div id="current-path" className="current-path" style={{ display: "none" }}></div>
+      <div id={id} className="current-path" style={{ display: "none" }}></div>
     );
   }
 
@@ -46,7 +50,7 @@ export function CurrentPath() {
   });
 
   return (
-    <div id="current-path" className="current-path" style={{ display: "block" }}>
+    <div id={id} className="current-path" style={{ display: "block" }}>
       <nav className="breadcrumb">
         {breadcrumbItems.map((item, index) => (
           <React.Fragment key={index}>

@@ -64,9 +64,15 @@ export function Tooltip({ children, delayDuration = 300 }: TooltipProps) {
 
 export function TooltipTrigger({ asChild, children }: TooltipTriggerProps) {
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children);
+    return React.cloneElement(children, {
+      "data-tooltip-trigger": "true",
+    } as any);
   }
-  return <>{children}</>;
+  return (
+    <div data-tooltip-trigger="true" style={{ display: "inline-block" }}>
+      {children}
+    </div>
+  );
 }
 
 export function TooltipContent({ children, side = "top" }: TooltipContentProps) {
@@ -76,13 +82,10 @@ export function TooltipContent({ children, side = "top" }: TooltipContentProps) 
   const triggerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    // Find the trigger element (sibling of TooltipContent)
+    // Find the trigger element using the data attribute
     const parent = contentRef.current?.parentElement;
     if (parent) {
-      // Find the first child that's not the tooltip content
-      const trigger = Array.from(parent.children).find(
-        (child) => child !== contentRef.current
-      ) as HTMLElement | null;
+      const trigger = parent.querySelector('[data-tooltip-trigger]') as HTMLElement | null;
       triggerRef.current = trigger;
     }
   }, [context.open]);

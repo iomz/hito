@@ -88,11 +88,11 @@ function App() {
       <main className="container">
         <div className={`app-header ${hasContent ? "has-content" : ""}`}>
           <Logo />
-          {hasContent && <CurrentPath />}
+          {hasContent && <CurrentPath id="current-path-header" />}
         </div>
         <div className={`path-input-container ${hasContent && !isDragOver ? "collapsed" : ""}`}>
           <DropZone />
-          {!hasContent && <CurrentPath />}
+          {!hasContent && <CurrentPath id="current-path-dropzone" />}
           <ErrorMessage />
         </div>
         {/* Conditionally render ImageGrid when content is available */}

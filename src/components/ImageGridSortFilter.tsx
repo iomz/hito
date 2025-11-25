@@ -28,7 +28,7 @@ interface SortFilterModalProps {
   onClose: () => void;
   onSave: (type: "sort" | FilterType, config: any) => void;
   editingType?: "sort" | FilterType;
-  currentSort?: { option: SortOption; direction: "ascending" | "descending" };
+  currentSort: { option: SortOption; direction: "ascending" | "descending" };
   currentFilters?: FilterOptions;
   categories: Array<{ id: string; name: string; color: string }>;
 }
@@ -43,8 +43,8 @@ function SortFilterModal({
   categories,
 }: SortFilterModalProps) {
   const [filterType, setFilterType] = useState<"sort" | FilterType>(editingType || "sort");
-  const [sortOption, setSortOption] = useState<SortOption>(currentSort?.option || "name");
-  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">(currentSort?.direction || "ascending");
+  const [sortOption, setSortOption] = useState<SortOption>(currentSort.option);
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">(currentSort.direction);
   const [categoryId, setCategoryId] = useState<string>(currentFilters?.categoryId || "");
   const [nameOperator, setNameOperator] = useState<NameFilterOperator>(currentFilters?.nameOperator || "contains");
   const [namePattern, setNamePattern] = useState<string>(currentFilters?.namePattern || "");
@@ -57,6 +57,12 @@ function SortFilterModal({
       setFilterType(editingType);
     }
   }, [editingType]);
+
+  // Sync sort values when currentSort changes (e.g., when modal opens)
+  useEffect(() => {
+    setSortOption(currentSort.option);
+    setSortDirection(currentSort.direction);
+  }, [currentSort]);
 
   if (!isOpen) return null;
 
@@ -246,12 +252,6 @@ export function ImageGridSortFilter() {
     setFilters(globalFilters);
   }, [globalFilters]);
 
-  // Apply sort to state immediately
-  useEffect(() => {
-    setSortOptionAtom(globalSortOption);
-    setSortDirectionAtom(globalSortDirection);
-  }, [globalSortOption, globalSortDirection, setSortOptionAtom, setSortDirectionAtom]);
-
   // Debounced filter updater
   const updateFilters = useCallback((newFilters: FilterOptions) => {
     if (filterTimeoutRef.current) {
@@ -262,7 +262,7 @@ export function ImageGridSortFilter() {
       setFilterOptionsAtom(newFilters);
       filterTimeoutRef.current = null;
     }, 250);
-  }, [setFilterOptionsAtom]);
+  }, [setFilterOptionsAtom, filterTimeoutRef]);
 
   // Apply filters to state with debounce
   useEffect(() => {
@@ -431,7 +431,7 @@ export function ImageGridSortFilter() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleModalSave}
         editingType={editingType}
-        currentSort={hasActiveSort ? { option: globalSortOption, direction: globalSortDirection } : undefined}
+        currentSort={{ option: globalSortOption, direction: globalSortDirection }}
         currentFilters={filters}
         categories={categories}
       />

@@ -246,7 +246,7 @@ h1:hover::after {
   margin-top: 30px;
   display: flex;
   align-items: bottom;
-  margin-left: 100px;
+  margin-left: clamp(20px, 10vw, 100px);
   min-width: 0; /* Allow flex item to shrink */
   height: fit-content;
 }
