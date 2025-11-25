@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { sortOptionAtom, sortDirectionAtom, filterOptionsAtom, categoriesAtom } from "../state";
+import { sortOptionAtom, sortDirectionAtom, sortExplicitlySetAtom, filterOptionsAtom, categoriesAtom } from "../state";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type SortOption = "name" | "dateCreated" | "lastCategorized" | "size";
@@ -238,8 +238,10 @@ export function ImageGridSortFilter() {
   const globalSortDirection = useAtomValue(sortDirectionAtom);
   const globalFilters = useAtomValue(filterOptionsAtom);
   const categories = useAtomValue(categoriesAtom);
+  const sortExplicitlySet = useAtomValue(sortExplicitlySetAtom);
   const setSortOptionAtom = useSetAtom(sortOptionAtom);
   const setSortDirectionAtom = useSetAtom(sortDirectionAtom);
+  const setSortExplicitlySetAtom = useSetAtom(sortExplicitlySetAtom);
   const setFilterOptionsAtom = useSetAtom(filterOptionsAtom);
   
   const [filters, setFilters] = useState<FilterOptions>(globalFilters);
@@ -342,6 +344,7 @@ export function ImageGridSortFilter() {
   const handleRemoveSort = () => {
     setSortOptionAtom("name");
     setSortDirectionAtom("ascending");
+    setSortExplicitlySetAtom(false);
   };
 
   const handleAddClick = () => {
@@ -358,6 +361,7 @@ export function ImageGridSortFilter() {
     if (type === "sort") {
       setSortOptionAtom(config.option);
       setSortDirectionAtom(config.direction);
+      setSortExplicitlySetAtom(true);
     } else if (type === "category") {
       setFilters({ ...filters, categoryId: config.categoryId });
     } else if (type === "name") {
@@ -373,7 +377,7 @@ export function ImageGridSortFilter() {
   };
 
   const activeFilters = getActiveFilters();
-  const hasActiveSort = globalSortOption !== "name" || globalSortDirection !== "ascending";
+  const hasActiveSort = sortExplicitlySet; // Show sort badge only when user has explicitly set a sort option
 
   return (
     <div className="image-grid-sort-filter">
