@@ -8,13 +8,13 @@ import {
   isDeletingImageAtom,
   allImagePathsAtom,
   currentIndexAtom,
+  sortedImagesAtom,
 } from "../state";
 import { loadImageData } from "../utils/images";
 import { showError } from "./error";
 import { showNotification } from "./notification";
 import { ensureImagePathsArray } from "../utils/state";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
-import { getFilteredAndSortedImagesSync } from "../utils/filteredImages";
 
 /**
  * Opens the image viewer modal for the image at the given path, ensuring the image data is available and updating modal UI.
@@ -29,7 +29,7 @@ export async function openModal(imagePath: string): Promise<void> {
   }
   
   // Get the filtered and sorted images
-  const filteredImages = getFilteredAndSortedImagesSync();
+  const filteredImages = store.get(sortedImagesAtom);
   const imageIndex = filteredImages.findIndex((img) => img.path === imagePath);
   
   if (imageIndex < 0) {
@@ -74,7 +74,7 @@ export async function openModalByIndex(imageIndex: number): Promise<void> {
   if (!ensureImagePathsArray("openModalByIndex")) {
     return;
   }
-  const filteredImages = getFilteredAndSortedImagesSync();
+  const filteredImages = store.get(sortedImagesAtom);
   if (imageIndex < 0 || imageIndex >= filteredImages.length) {
     return;
   }
@@ -130,7 +130,7 @@ function navigateWithSuppressionAwareness(direction: 1 | -1): void {
   // Get current index in old filtered list BEFORE clearing suppress flag
   // This preserves the position when the current image is removed from the filter or re-sorted
   const hadSuppress = store.get(suppressCategoryRefilterAtom);
-  const oldFilteredImages = getFilteredAndSortedImagesSync();
+  const oldFilteredImages = store.get(sortedImagesAtom);
   const oldIndex = oldFilteredImages.findIndex((img) => img.path === currentModalImagePath);
   
   // Remember what image was next/previous in the old sort order before clearing suppress
@@ -146,7 +146,10 @@ function navigateWithSuppressionAwareness(direction: 1 | -1): void {
   store.set(suppressCategoryRefilterAtom, false);
   store.set(cachedImageCategoriesForRefilterAtom, null);
   
-  const filteredImages = getFilteredAndSortedImagesSync();
+  // Note: sortedImagesAtom will be updated by ImageGrid's useEffect after suppress is cleared
+  // For now, use the current value (which may still be the old sorted list until ImageGrid re-sorts)
+  // The navigation logic below handles this by using oldNeighborPath when suppress was active
+  const filteredImages = store.get(sortedImagesAtom);
   const currentIndex = filteredImages.findIndex((img) => img.path === currentModalImagePath);
   
   // If suppress was active, the sort order may have changed, so always use remembered next/previous
@@ -243,7 +246,7 @@ export async function deleteCurrentImage(): Promise<void> {
   }
   
   const imagePath = currentModalImagePath;
-  const filteredImages = getFilteredAndSortedImagesSync();
+  const filteredImages = store.get(sortedImagesAtom);
   const deletedIndex = filteredImages.findIndex((img) => img.path === imagePath);
   const isLastImage = deletedIndex === filteredImages.length - 1;
   const isOnlyImage = filteredImages.length === 1;
@@ -280,7 +283,10 @@ export async function deleteCurrentImage(): Promise<void> {
     }
     
     // Get updated filtered list (without the deleted image)
-    const updatedFilteredImages = getFilteredAndSortedImagesSync();
+    // Note: sortedImagesAtom will be updated by ImageGrid's useEffect after allImagePathsAtom changes
+    // For immediate navigation, we need to manually filter out the deleted image
+    const currentSortedImages = store.get(sortedImagesAtom);
+    const updatedFilteredImages = currentSortedImages.filter((img) => img.path !== imagePath);
     
     // Navigate to next or previous image
     if (isOnlyImage || updatedFilteredImages.length === 0) {

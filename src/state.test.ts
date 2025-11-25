@@ -30,6 +30,7 @@ import {
   toggleImageSelectionAtom,
   suppressCategoryRefilterAtom,
   cachedImageCategoriesForRefilterAtom,
+  sortedImagesAtom,
   resetStateAtom,
 } from './state';
 
@@ -76,6 +77,7 @@ describe('state', () => {
       expect(store.get(toggleImageSelectionAtom)).toBeUndefined();
       expect(store.get(suppressCategoryRefilterAtom)).toBe(false);
       expect(store.get(cachedImageCategoriesForRefilterAtom)).toBeNull();
+      expect(store.get(sortedImagesAtom)).toEqual([]);
     });
 
     it('should allow setting and getting values', () => {
@@ -174,6 +176,7 @@ describe('state', () => {
       expect(store.get(toggleImageSelectionAtom)).toBeUndefined();
       expect(store.get(suppressCategoryRefilterAtom)).toBe(false);
       expect(store.get(cachedImageCategoriesForRefilterAtom)).toBeNull();
+      expect(store.get(sortedImagesAtom)).toEqual([]);
     });
 
     it('should increment resetCounter on each reset', () => {
