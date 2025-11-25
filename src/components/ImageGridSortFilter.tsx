@@ -379,39 +379,76 @@ export function ImageGridSortFilter() {
     <div className="image-grid-sort-filter">
       <div className="filter-badges-container">
         {hasActiveSort && (
-          <div className="filter-badge filter-badge-sort" onClick={() => handleEditClick("sort")}>
+          <button
+            className="filter-badge filter-badge-sort"
+            onClick={() => handleEditClick("sort")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleEditClick("sort");
+              }
+            }}
+            aria-label={`Edit sort: ${getSortLabel()}`}
+          >
             <span className="filter-badge-label">Sort: {getSortLabel()}</span>
-            <button
+            <span
               className="filter-badge-remove"
+              role="button"
+              tabIndex={0}
               onClick={(e) => {
                 e.stopPropagation();
                 handleRemoveSort();
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleRemoveSort();
+                }
+              }}
               title="Remove sort"
+              aria-label="Remove sort"
             >
               ×
-            </button>
-          </div>
+            </span>
+          </button>
         )}
         
         {activeFilters.map((filter, index) => (
-          <div
+          <button
             key={`${filter.type}-${index}`}
             className="filter-badge filter-badge-filter"
             onClick={() => handleEditClick(filter.type)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleEditClick(filter.type);
+              }
+            }}
+            aria-label={`Edit filter: ${filter.label}`}
           >
             <span className="filter-badge-label">{filter.label}</span>
-            <button
+            <span
               className="filter-badge-remove"
+              role="button"
+              tabIndex={0}
               onClick={(e) => {
                 e.stopPropagation();
                 handleRemoveFilter(filter.type);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleRemoveFilter(filter.type);
+                }
+              }}
               title="Remove filter"
+              aria-label="Remove filter"
             >
               ×
-            </button>
-          </div>
+            </span>
+          </button>
         ))}
         
         <Tooltip>

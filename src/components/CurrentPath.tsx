@@ -13,9 +13,7 @@ export function CurrentPath({ id = "current-path" }: CurrentPathProps = {}) {
   const isVisible = useMemo(() => currentDirectory.length > 0, [currentDirectory]);
 
   if (!isVisible || !currentDirectory) {
-    return (
-      <div id={id} className="current-path" style={{ display: "none" }}></div>
-    );
+    return null;
   }
 
   const normalized = normalizePath(currentDirectory);
@@ -50,7 +48,7 @@ export function CurrentPath({ id = "current-path" }: CurrentPathProps = {}) {
   });
 
   return (
-    <div id={id} className="current-path" style={{ display: "block" }}>
+    <div id={id} className="current-path">
       <nav className="breadcrumb">
         {breadcrumbItems.map((item, index) => (
           <React.Fragment key={index}>
