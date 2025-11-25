@@ -96,7 +96,7 @@ export function ImageGrid() {
       setDirCount(0);
       setSortedImages([]);
       setSortedImagesAtom([]);
-      setSortedDirectories([]);
+      // Don't clear sortedDirectories - directories are independent of images and should persist
     }
   }, [allImagePaths, visibleCount]);
 

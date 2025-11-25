@@ -254,6 +254,105 @@ fn delete_image(image_path: String) -> Result<(), String> {
     }
 }
 
+/// Copies an image file to a destination directory.
+///
+/// Copies the file from `image_path` to `destination_dir`, preserving the filename.
+///
+/// # Parameters
+///
+/// * `image_path` - Path to the source image file
+/// * `destination_dir` - Path to the destination directory
+///
+/// # Returns
+///
+/// `Ok(())` on success, `Err(String)` with an error message if the file cannot be copied.
+#[tauri::command]
+fn copy_image(image_path: String, destination_dir: String) -> Result<(), String> {
+    let source_path = Path::new(&image_path);
+    let dest_dir = Path::new(&destination_dir);
+    
+    if !source_path.exists() {
+        return Err(format!("Image does not exist: {}", image_path));
+    }
+    
+    if !source_path.is_file() {
+        return Err(format!("Path is not a file: {}", image_path));
+    }
+    
+    if !dest_dir.exists() {
+        return Err(format!("Destination directory does not exist: {}", destination_dir));
+    }
+    
+    if !dest_dir.is_dir() {
+        return Err(format!("Destination is not a directory: {}", destination_dir));
+    }
+    
+    // Get the filename from the source path
+    let filename = match source_path.file_name() {
+        Some(name) => name,
+        None => return Err(format!("Failed to get filename from: {}", image_path)),
+    };
+    
+    // Construct the destination path
+    let dest_path = dest_dir.join(filename);
+    
+    // Copy the file
+    match fs::copy(source_path, &dest_path) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to copy image: {}", e)),
+    }
+}
+
+/// Moves an image file to a destination directory.
+///
+/// Moves the file from `image_path` to `destination_dir`, preserving the filename.
+/// The source file is removed after being moved.
+///
+/// # Parameters
+///
+/// * `image_path` - Path to the source image file
+/// * `destination_dir` - Path to the destination directory
+///
+/// # Returns
+///
+/// `Ok(())` on success, `Err(String)` with an error message if the file cannot be moved.
+#[tauri::command]
+fn move_image(image_path: String, destination_dir: String) -> Result<(), String> {
+    let source_path = Path::new(&image_path);
+    let dest_dir = Path::new(&destination_dir);
+    
+    if !source_path.exists() {
+        return Err(format!("Image does not exist: {}", image_path));
+    }
+    
+    if !source_path.is_file() {
+        return Err(format!("Path is not a file: {}", image_path));
+    }
+    
+    if !dest_dir.exists() {
+        return Err(format!("Destination directory does not exist: {}", destination_dir));
+    }
+    
+    if !dest_dir.is_dir() {
+        return Err(format!("Destination is not a directory: {}", destination_dir));
+    }
+    
+    // Get the filename from the source path
+    let filename = match source_path.file_name() {
+        Some(name) => name,
+        None => return Err(format!("Failed to get filename from: {}", image_path)),
+    };
+    
+    // Construct the destination path
+    let dest_path = dest_dir.join(filename);
+    
+    // Move the file (rename is used for moving files on the same filesystem)
+    match fs::rename(source_path, &dest_path) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to move image: {}", e)),
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 struct CategoryData {
     id: String,
@@ -741,7 +840,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image, load_app_data, save_app_data, save_data_file_path, get_data_file_path, load_hito_config, save_hito_config, sort_images])
+        .invoke_handler(tauri::generate_handler![list_images, load_image, get_parent_directory, delete_image, copy_image, move_image, load_app_data, save_app_data, save_data_file_path, get_data_file_path, load_hito_config, save_hito_config, sort_images])
         .setup(|_app| {
             // File drops in Tauri 2.0 are handled through the event system
             // JavaScript will listen for tauri://drag-drop events
@@ -1977,6 +2076,281 @@ mod tests {
         let result = get_parent_directory(PathBuf::from("/valid/path/file.txt"));
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/valid/path");
+    }
+
+    #[test]
+    fn test_copy_image() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("source.jpg");
+        let dest_dir = temp_dir.path().join("dest");
+        let dest_file = dest_dir.join("source.jpg");
+        
+        // Create source file with content
+        fs::create_dir_all(&dest_dir).unwrap();
+        fs::write(&source_file, b"fake image data").unwrap();
+        assert!(source_file.exists());
+        
+        // Copy the image
+        let result = copy_image(
+            source_file.to_str().unwrap().to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_ok());
+        
+        // Verify the destination file exists and has the same content
+        assert!(dest_file.exists());
+        let source_content = fs::read(&source_file).unwrap();
+        let dest_content = fs::read(&dest_file).unwrap();
+        assert_eq!(source_content, dest_content);
+        
+        // Verify the source file still exists (copy doesn't remove source)
+        assert!(source_file.exists());
+    }
+
+    #[test]
+    fn test_copy_image_nonexistent_source() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest_dir = temp_dir.path().join("dest");
+        fs::create_dir_all(&dest_dir).unwrap();
+        
+        let result = copy_image(
+            "/nonexistent/image.jpg".to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_copy_image_not_a_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_dir = temp_dir.path().join("source_dir");
+        let dest_dir = temp_dir.path().join("dest");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&dest_dir).unwrap();
+        
+        let result = copy_image(
+            source_dir.to_str().unwrap().to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a file"));
+    }
+
+    #[test]
+    fn test_copy_image_nonexistent_destination() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("source.jpg");
+        fs::write(&source_file, b"fake image data").unwrap();
+        
+        let result = copy_image(
+            source_file.to_str().unwrap().to_string(),
+            "/nonexistent/destination".to_string(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_copy_image_destination_not_a_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("source.jpg");
+        let dest_file = temp_dir.path().join("dest.txt");
+        fs::write(&source_file, b"fake image data").unwrap();
+        fs::write(&dest_file, b"not a directory").unwrap();
+        
+        let result = copy_image(
+            source_file.to_str().unwrap().to_string(),
+            dest_file.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a directory"));
+    }
+
+    #[test]
+    fn test_copy_image_overwrites_existing() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("source.jpg");
+        let dest_dir = temp_dir.path().join("dest");
+        let dest_file = dest_dir.join("source.jpg");
+        
+        // Create source file
+        fs::create_dir_all(&dest_dir).unwrap();
+        fs::write(&source_file, b"new image data").unwrap();
+        
+        // Create existing destination file with different content
+        fs::write(&dest_file, b"old image data").unwrap();
+        
+        // Copy should overwrite the existing file
+        let result = copy_image(
+            source_file.to_str().unwrap().to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_ok());
+        
+        // Verify the destination file has the new content
+        let dest_content = fs::read(&dest_file).unwrap();
+        assert_eq!(dest_content, b"new image data");
+    }
+
+    #[test]
+    fn test_move_image() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("source.jpg");
+        let dest_dir = temp_dir.path().join("dest");
+        let dest_file = dest_dir.join("source.jpg");
+        
+        // Create source file with content
+        fs::create_dir_all(&dest_dir).unwrap();
+        fs::write(&source_file, b"fake image data").unwrap();
+        assert!(source_file.exists());
+        
+        // Move the image
+        let result = move_image(
+            source_file.to_str().unwrap().to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_ok());
+        
+        // Verify the destination file exists and has the same content
+        assert!(dest_file.exists());
+        let dest_content = fs::read(&dest_file).unwrap();
+        assert_eq!(dest_content, b"fake image data");
+        
+        // Verify the source file no longer exists (move removes source)
+        assert!(!source_file.exists());
+    }
+
+    #[test]
+    fn test_move_image_nonexistent_source() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest_dir = temp_dir.path().join("dest");
+        fs::create_dir_all(&dest_dir).unwrap();
+        
+        let result = move_image(
+            "/nonexistent/image.jpg".to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_move_image_not_a_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_dir = temp_dir.path().join("source_dir");
+        let dest_dir = temp_dir.path().join("dest");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&dest_dir).unwrap();
+        
+        let result = move_image(
+            source_dir.to_str().unwrap().to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a file"));
+    }
+
+    #[test]
+    fn test_move_image_nonexistent_destination() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("source.jpg");
+        fs::write(&source_file, b"fake image data").unwrap();
+        
+        let result = move_image(
+            source_file.to_str().unwrap().to_string(),
+            "/nonexistent/destination".to_string(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_move_image_destination_not_a_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("source.jpg");
+        let dest_file = temp_dir.path().join("dest.txt");
+        fs::write(&source_file, b"fake image data").unwrap();
+        fs::write(&dest_file, b"not a directory").unwrap();
+        
+        let result = move_image(
+            source_file.to_str().unwrap().to_string(),
+            dest_file.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a directory"));
+    }
+
+    #[test]
+    fn test_move_image_overwrites_existing() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("source.jpg");
+        let dest_dir = temp_dir.path().join("dest");
+        let dest_file = dest_dir.join("source.jpg");
+        
+        // Create source file
+        fs::create_dir_all(&dest_dir).unwrap();
+        fs::write(&source_file, b"new image data").unwrap();
+        
+        // Create existing destination file with different content
+        fs::write(&dest_file, b"old image data").unwrap();
+        
+        // Move should overwrite the existing file
+        let result = move_image(
+            source_file.to_str().unwrap().to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_ok());
+        
+        // Verify the destination file has the new content
+        let dest_content = fs::read(&dest_file).unwrap();
+        assert_eq!(dest_content, b"new image data");
+        
+        // Verify the source file no longer exists
+        assert!(!source_file.exists());
+    }
+
+    #[test]
+    fn test_move_image_preserves_filename() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("original_name.jpg");
+        let dest_dir = temp_dir.path().join("dest");
+        let dest_file = dest_dir.join("original_name.jpg");
+        
+        fs::create_dir_all(&dest_dir).unwrap();
+        fs::write(&source_file, b"fake image data").unwrap();
+        
+        let result = move_image(
+            source_file.to_str().unwrap().to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_ok());
+        
+        // Verify the filename is preserved
+        assert!(dest_file.exists());
+        assert!(!source_file.exists());
+    }
+
+    #[test]
+    fn test_copy_image_preserves_filename() {
+        let temp_dir = TempDir::new().unwrap();
+        let source_file = temp_dir.path().join("original_name.jpg");
+        let dest_dir = temp_dir.path().join("dest");
+        let dest_file = dest_dir.join("original_name.jpg");
+        
+        fs::create_dir_all(&dest_dir).unwrap();
+        fs::write(&source_file, b"fake image data").unwrap();
+        
+        let result = copy_image(
+            source_file.to_str().unwrap().to_string(),
+            dest_dir.to_str().unwrap().to_string(),
+        );
+        assert!(result.is_ok());
+        
+        // Verify the filename is preserved
+        assert!(dest_file.exists());
+        // Source should still exist (copy doesn't remove source)
+        assert!(source_file.exists());
     }
 
 }

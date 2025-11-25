@@ -10,7 +10,6 @@ function formatHotkeyDisplay(config: HotkeyConfig): string {
   return parts.join(" + ");
 }
 
-
 export function HotkeyList() {
   const hotkeys = useAtomValue(hotkeysAtom);
   const categories = useAtomValue(categoriesAtom);
@@ -41,7 +40,9 @@ export function HotkeyList() {
         <div key={hotkey.id} className="hotkey-item">
           <div className="hotkey-info">
             <div className="hotkey-key">{formatHotkeyDisplay(hotkey)}</div>
-            <div className="hotkey-description">{formatActionLabel(hotkey.action, categories)}</div>
+            <div className="hotkey-description">
+              {formatActionLabel(hotkey.action, categories)}
+            </div>
           </div>
           <div className="hotkey-actions">
             <button
@@ -70,4 +71,3 @@ export function HotkeyList() {
     </div>
   );
 }
-
