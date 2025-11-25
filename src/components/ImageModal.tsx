@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useAtomValue } from "jotai";
-import { currentModalImagePathAtom, suppressCategoryRefilterAtom, loadedImagesAtom } from "../state";
+import { currentModalImagePathAtom, suppressCategoryRefilterAtom, loadedImagesAtom, sortedImagesAtom } from "../state";
 import { loadImageData } from "../utils/images";
 import { showError } from "../ui/error";
 import { ensureImagePathsArray, getFilename } from "../utils/state";
 import { closeModal, showPreviousImage, showNextImage } from "../ui/modal";
 import { ModalCategories } from "./ModalCategories";
 import { ShortcutsOverlay } from "./ShortcutsOverlay";
-import { getFilteredAndSortedImagesSync } from "../utils/filteredImages";
 
 export function ImageModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,6 +25,7 @@ export function ImageModal() {
   const modalImagePath = useAtomValue(currentModalImagePathAtom);
   const suppressCategoryRefilter = useAtomValue(suppressCategoryRefilterAtom);
   const loadedImages = useAtomValue(loadedImagesAtom);
+  const sortedImages = useAtomValue(sortedImagesAtom);
 
   // Subscribe to modal state changes
   useEffect(() => {
@@ -62,8 +62,7 @@ export function ImageModal() {
           // Get filtered images to check if image is in the filtered list
           // Skip this check if suppressCategoryRefilter is true (defer refiltering during category assignment)
           if (!suppressCategoryRefilter) {
-            const filteredImagesCheck = getFilteredAndSortedImagesSync();
-            const imageIndex = filteredImagesCheck.findIndex((img) => img.path === modalImagePath);
+            const imageIndex = sortedImages.findIndex((img) => img.path === modalImagePath);
             
             if (imageIndex < 0) {
               // Image not in filtered list, close modal (only if not suppressing refilter)
@@ -103,20 +102,19 @@ export function ImageModal() {
           setImageSrc(dataUrl);
           
           // Update caption with filtered list position
-          // Use cached snapshot if suppressCategoryRefilter is active (defer refiltering)
-          const filteredImages = getFilteredAndSortedImagesSync();
-          const currentIndex = filteredImages.findIndex((img) => img.path === imagePath);
+          // Use sortedImages from atom (same source as ImageGrid)
+          const currentIndex = sortedImages.findIndex((img) => img.path === imagePath);
           const filename = getFilename(imagePath);
           // If image not found in filtered list but suppressCategoryRefilter is true, show fallback caption
           const captionText = currentIndex >= 0 
-            ? `${currentIndex + 1} / ${filteredImages.length} - ${filename}`
-            : `? / ${filteredImages.length} - ${filename}`;
+            ? `${currentIndex + 1} / ${sortedImages.length} - ${filename}`
+            : `? / ${sortedImages.length} - ${filename}`;
           setCaption(captionText);
           
           // Update button visibility based on filtered list (only if image is in list or suppress is active)
           if (currentIndex >= 0) {
             setShowPrevBtn(currentIndex > 0);
-            setShowNextBtn(currentIndex < filteredImages.length - 1);
+            setShowNextBtn(currentIndex < sortedImages.length - 1);
           } else if (suppressCategoryRefilter) {
             // If suppress is active and image not in filtered list (due to category change),
             // keep buttons as they were (don't change visibility)
@@ -139,7 +137,7 @@ export function ImageModal() {
     
     // Initialize with current state
     handleStateChange();
-  }, [isOpen, currentImagePath, modalImagePath, suppressCategoryRefilter, loadedImages]);
+  }, [isOpen, currentImagePath, modalImagePath, suppressCategoryRefilter, loadedImages, sortedImages]);
 
   // Keyboard handling and focus management
   useEffect(() => {
