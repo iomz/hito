@@ -86,11 +86,13 @@ function App() {
       <NotificationBar />
       <HotkeySidebar />
       <main className="container">
-        <Logo />
+        <div className={`app-header ${hasContent ? "has-content" : ""}`}>
+          <Logo />
+          {hasContent && <CurrentPath />}
+        </div>
         <div className={`path-input-container ${hasContent && !isDragOver ? "collapsed" : ""}`}>
           <DropZone />
-          <CurrentPath />
-          <ImageGridStats />
+          {!hasContent && <CurrentPath />}
           <ErrorMessage />
         </div>
         {/* Conditionally render ImageGrid when content is available */}

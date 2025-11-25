@@ -15,7 +15,7 @@ export const SIDEBAR_WIDTH = "350px";
  * Toggle the hotkey sidebar visibility.
  */
 export async function toggleHotkeySidebar(): Promise<void> {
-  const hotkeySidebar = document.querySelector("#hotkeys-panel") as HTMLElement | null;
+  const hotkeySidebar = document.querySelector("#hotkey-sidebar") as HTMLElement | null;
   if (!hotkeySidebar) return;
   
   const current = store.get(isHotkeySidebarOpenAtom);
@@ -32,7 +32,7 @@ export async function toggleHotkeySidebar(): Promise<void> {
  * Close the hotkey sidebar.
  */
 export function closeHotkeySidebar(): void {
-  const hotkeySidebar = document.querySelector("#hotkeys-panel") as HTMLElement | null;
+  const hotkeySidebar = document.querySelector("#hotkey-sidebar") as HTMLElement | null;
   if (!hotkeySidebar) return;
   
   store.set(isHotkeySidebarOpenAtom, false);
@@ -313,7 +313,7 @@ export function setupHotkeySidebar(): void {
   addHotkeyBtn.onclick = () => showHotkeyDialog();
   
   // Close sidebar when clicking outside
-  const hotkeySidebar = document.querySelector("#hotkeys-panel") as HTMLElement | null;
+  const hotkeySidebar = document.querySelector("#hotkey-sidebar") as HTMLElement | null;
   if (hotkeySidebar) {
     hotkeySidebar.onclick = (e: MouseEvent) => {
       if (e.target === hotkeySidebar) {
