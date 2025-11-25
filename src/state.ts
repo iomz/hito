@@ -56,6 +56,7 @@ export const selectedImagesAtom = atom<Set<string>>(new Set<string>());
 export const toggleImageSelectionAtom = atom<((path: string) => void) | undefined>(undefined); // Optional function to toggle image selection (set by ImageGridSelection component)
 export const suppressCategoryRefilterAtom = atom<boolean>(false); // When true, don't trigger re-filtering on category changes (used during modal assignment)
 export const cachedImageCategoriesForRefilterAtom = atom<Map<string, CategoryAssignment[]> | null>(null); // Cached snapshot of imageCategories when suppressCategoryRefilter is set
+export const sortedImagesAtom = atom<ImagePath[]>([]); // Sorted and filtered images (updated by ImageGrid, used by ImageModal for consistent indexing)
 
 // Create a write-only atom that resets all state to initial values
 export const resetStateAtom = atom(null, (get, set) => {
@@ -88,6 +89,7 @@ export const resetStateAtom = atom(null, (get, set) => {
   set(toggleImageSelectionAtom, undefined);
   set(suppressCategoryRefilterAtom, false);
   set(cachedImageCategoriesForRefilterAtom, null);
+  set(sortedImagesAtom, []);
 });
 
 // DOM Elements

@@ -12,6 +12,7 @@ import {
   suppressCategoryRefilterAtom,
   cachedImageCategoriesForRefilterAtom,
   isLoadingAtom,
+  sortedImagesAtom,
 } from "../state";
 import { store } from "../utils/jotaiStore";
 import { BATCH_SIZE } from "../constants";
@@ -44,6 +45,7 @@ export function ImageGrid() {
   const isLoadingBatch = useAtomValue(isLoadingBatchAtom);
   const setCurrentIndex = useSetAtom(currentIndexAtom);
   const setIsLoading = useSetAtom(isLoadingAtom);
+  const setSortedImagesAtom = useSetAtom(sortedImagesAtom);
   
   // Initialize from atoms to avoid missing initial images
   const [visibleCount, setVisibleCount] = useState(() => {
@@ -93,6 +95,7 @@ export function ImageGrid() {
       setVisibleCount(0);
       setDirCount(0);
       setSortedImages([]);
+      setSortedImagesAtom([]);
       setSortedDirectories([]);
     }
   }, [allImagePaths, visibleCount]);
@@ -157,6 +160,7 @@ export function ImageGrid() {
         const sorted = await getFilteredAndSortedImages();
         if (!cancelled) {
           setSortedImages(sorted);
+          setSortedImagesAtom(sorted);
           setIsLoading(false);
         }
         return;
@@ -165,6 +169,7 @@ export function ImageGrid() {
       if (images.length === 0) {
         if (!cancelled) {
           setSortedImages([]);
+          setSortedImagesAtom([]);
           setIsLoading(false);
         }
         return;
@@ -204,6 +209,7 @@ export function ImageGrid() {
 
         if (!cancelled) {
           setSortedImages(sorted);
+          setSortedImagesAtom(sorted);
         }
       } catch (error) {
         console.error("Failed to sort images in Rust:", error);
@@ -211,6 +217,7 @@ export function ImageGrid() {
         const sorted = await getFilteredAndSortedImages();
         if (!cancelled) {
           setSortedImages(sorted);
+          setSortedImagesAtom(sorted);
         }
       } finally {
         // Hide loading spinner after sorting completes, but only if this is still the current operation
@@ -230,7 +237,7 @@ export function ImageGrid() {
         setIsLoading(false);
       }
     };
-  }, [allImagePaths, sortOption, sortDirection, sortFilterKey, imageCategories, suppressCategoryRefilter, cachedImageCategoriesForRefilter, setIsLoading]);
+  }, [allImagePaths, sortOption, sortDirection, sortFilterKey, imageCategories, suppressCategoryRefilter, cachedImageCategoriesForRefilter, setIsLoading, setSortedImagesAtom]);
 
   // Filtering is now done in Rust, so sortedImages are already filtered
   const processedImages = React.useMemo(() => {

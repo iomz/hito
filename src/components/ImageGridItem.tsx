@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { loadImageData } from "../utils/images";
 import { openModal } from "../ui/modal";
-import { selectionModeAtom, selectedImagesAtom, toggleImageSelectionAtom } from "../state";
+import { selectionModeAtom, selectedImagesAtom, toggleImageSelectionAtom, categoriesAtom, imageCategoriesAtom } from "../state";
+import { getContrastColor } from "../utils/colors";
+import type { Category } from "../types";
 
 interface ImageGridItemProps {
   imagePath: string;
@@ -15,8 +17,19 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
   const selectionMode = useAtomValue(selectionModeAtom);
   const selectedImages = useAtomValue(selectedImagesAtom);
   const toggleImageSelection = useAtomValue(toggleImageSelectionAtom);
+  const categories = useAtomValue(categoriesAtom);
+  const imageCategories = useAtomValue(imageCategoriesAtom);
   
   const isSelected = useMemo(() => selectedImages.has(imagePath), [selectedImages, imagePath]);
+  
+  // Get categories assigned to this image
+  const assignedCategories = useMemo(() => {
+    const assignments = imageCategories.get(imagePath) || [];
+    const categoryMap = new Map(categories.map(cat => [cat.id, cat]));
+    return assignments
+      .map(assignment => categoryMap.get(assignment.category_id))
+      .filter((cat): cat is Category => cat !== undefined);
+  }, [imagePath, imageCategories, categories]);
 
   useEffect(() => {
     if (!imagePath || typeof imagePath !== "string") {
@@ -116,12 +129,31 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
       )}
 
       {!isLoading && !hasError && imageData && (
-        <img 
-          src={imageData} 
-          alt={imagePath.split('/').pop()?.split('.')[0] || 'Image'} 
-          loading="lazy"
-          draggable={false}
-        />
+        <>
+          <img 
+            src={imageData} 
+            alt={imagePath.split('/').pop()?.split('.')[0] || 'Image'} 
+            loading="lazy"
+            draggable={false}
+          />
+          {assignedCategories.length > 0 && (
+            <div className="image-item-category-badges">
+              {assignedCategories.map((category) => (
+                <span
+                  key={category.id}
+                  className="image-item-category-badge"
+                  style={{
+                    backgroundColor: category.color,
+                    color: getContrastColor(category.color),
+                  }}
+                  title={category.name}
+                >
+                  {category.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {hasError && (
@@ -147,4 +179,3 @@ export function ImageGridItem({ imagePath }: ImageGridItemProps) {
     </div>
   );
 }
-
