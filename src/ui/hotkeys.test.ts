@@ -34,7 +34,7 @@ describe("hotkeys", () => {
   beforeEach(() => {
     // Reset DOM - create minimal elements needed for querySelector
     document.body.innerHTML = `
-      <div id="hotkeys-panel"></div>
+      <div id="hotkey-sidebar"></div>
       <img id="modal-image" />
     `;
 
@@ -111,8 +111,8 @@ describe("hotkeys", () => {
 
     it("should handle missing sidebar element gracefully", async () => {
       // Remove the sidebar element to test the missing-element path
-      const hotkeysPanel = document.getElementById("hotkeys-panel");
-      hotkeysPanel?.remove();
+      const hotkeySidebar = document.getElementById("hotkey-sidebar");
+      hotkeySidebar?.remove();
       
       const { toggleHotkeySidebar } = await import("./hotkeys");
       await expect(toggleHotkeySidebar()).resolves.not.toThrow();
@@ -142,8 +142,8 @@ describe("hotkeys", () => {
 
     it("should handle missing sidebar element gracefully", async () => {
       // Remove the sidebar element to test the missing-element path
-      const hotkeysPanel = document.getElementById("hotkeys-panel");
-      hotkeysPanel?.remove();
+      const hotkeySidebar = document.getElementById("hotkey-sidebar");
+      hotkeySidebar?.remove();
       
       const { closeHotkeySidebar } = await import("./hotkeys");
       expect(() => closeHotkeySidebar()).not.toThrow();
@@ -458,7 +458,7 @@ describe("hotkeys", () => {
       const addHotkeyBtn = document.createElement("button");
       addHotkeyBtn.id = "add-hotkey-btn";
       const sidebar = document.createElement("div");
-      sidebar.id = "hotkeys-panel";
+      sidebar.id = "hotkey-sidebar";
 
       document.body.appendChild(sidebarToggle);
       document.body.appendChild(sidebarClose);
@@ -559,7 +559,7 @@ describe("hotkeys", () => {
 
     it("should handle clicking inside sidebar without closing", async () => {
       const sidebar = document.createElement("div");
-      sidebar.id = "hotkeys-panel";
+      sidebar.id = "hotkey-sidebar";
       const innerButton = document.createElement("button");
       sidebar.appendChild(innerButton);
       document.body.appendChild(sidebar);

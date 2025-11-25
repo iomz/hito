@@ -1,6 +1,7 @@
 import React from "react";
 import { ImageGridSelection } from "./ImageGridSelection";
 import { ImageGridSortFilter } from "./ImageGridSortFilter";
+import { ImageGridStats } from "./ImageGridStats";
 
 export function ImageGridHeader() {
   return (
@@ -8,6 +9,7 @@ export function ImageGridHeader() {
       <ImageGridSelection />
       <div className="image-grid-header-row">
         <ImageGridSortFilter />
+        <ImageGridStats />
       </div>
     </div>
   );

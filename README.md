@@ -1,6 +1,6 @@
-![hito-app-icon](https://i.imgur.com/BAqSxE0.png)
-
 # Hito
+
+![hito-app-icon](https://i.imgur.com/BAqSxE0.png)
 
 [![release](https://github.com/iomz/hito/actions/workflows/release.yml/badge.svg?branch=release)](https://github.com/iomz/hito/actions/workflows/release.yml)
 [![codecov](https://codecov.io/gh/iomz/hito/graph/badge.svg?token=JUh7WEGnQe)](https://codecov.io/gh/iomz/hito)
@@ -14,22 +14,27 @@ Simply drag and drop a folder to start browsing your images.
 
 ## Features
 
+![demo](https://github.com/user-attachments/assets/6be51dd4-19e8-42f1-b5e8-a574458f3894)
+
 ### Image Browsing
 
 - **Drag & Drop**: Drag folders directly into the app to browse images
 - **Lazy Loading**: Images load on-demand with infinite scroll for smooth performance
 - **Image Carousel**: Click any image to open a full-screen modal with navigation
-- **Breadcrumb Navigation**: Click on path segments to navigate to parent directories
-- **Image Statistics**: View total image count and current directory information
+- **Breadcrumb Navigation**: Click on path segments to navigate to parent directories. The breadcrumb appears next to the logo in the header when browsing a folder
+- **Image Statistics**: View total image count and categorized image count in the header, displayed alongside sort/filter controls
 
 ### Image Organization
 
 - **Category Management**: Create, edit, and delete custom categories with color coding
 - **Category Assignment**: Assign multiple categories to images for flexible organization
-- **Category Filtering**: Filter images by category or view uncategorized images
-- **Name Filtering**: Filter images by filename with operators (contains, starts with, ends with, exact match)
-- **Size Filtering**: Filter images by file size with operators (larger than, less than, or between two values). Size values are specified in KB.
-- **Sorting**: Sort images by name, creation date, last categorized date, or file size
+- **Badge-Based Filtering & Sorting**: Clean, minimal UI showing only active filters and sorts as badges
+  - **Category Filtering**: Filter images by category or view uncategorized images
+  - **Name Filtering**: Filter images by filename with operators (contains, starts with, ends with, exact match)
+  - **Size Filtering**: Filter images by file size with operators (larger than, less than, or between two values). Size values are specified in KB.
+  - **Sorting**: Sort images by name, creation date, last categorized date, or file size
+  - Click the "+" button to add new sort/filter options
+  - Click any badge to edit, or use the × button to remove
 - **Data File Management**: Customize the data file path (`.hito.json`) per directory for flexible storage
 
 ### Keyboard Shortcuts
@@ -116,24 +121,28 @@ Download the installer from [the latest release](https://github.com/iomz/hito/re
 
 ### Organizing Images
 
-1. **Open sidebar**: Click the hamburger menu (☰) button when viewing a directory
+1. **Open sidebar**: Click the hamburger menu (☰) button in the top-right corner when viewing a directory. The sidebar slides in from the right.
 2. **Create categories**: Go to the "Categories" tab and click "+ Add" to create a new category
 3. **Assign categories**:
    - In the modal view, click category buttons to assign/unassign categories to the current image
    - Categories are saved automatically to the data file (`.hito.json`)
-4. **Filter images**: Use the filter controls in the header to filter by category, name, or size. For size filtering, select an operator (larger than, less than, or between) and enter the size value(s) in KB. When using "between", enter both the minimum and maximum values.
-5. **Sort images**: Use the sort dropdown to sort images by various criteria
+4. **Filter and sort images**: Use the badge-based filter/sort system in the header:
+   - Click the "+" button to add a new sort or filter (category, name, or size)
+   - Active filters and sorts appear as badges in the header
+   - Click any badge to edit it, or click the × button to remove it
+   - For size filtering, select an operator (larger than, less than, or between) and enter the size value(s) in KB. When using "between", enter both the minimum and maximum values.
+   - Image statistics (total count and categorized count) are displayed on the right side of the header
 
 ### Customizing Hotkeys
 
-1. **Open sidebar**: Click the hamburger menu (☰) button
+1. **Open sidebar**: Click the hamburger menu (☰) button in the top-right corner
 2. **Go to Hotkeys tab**: Click the "Hotkeys" tab in the sidebar
 3. **Add hotkey**: Click "+ Add Hotkey" to create a new keyboard shortcut
 4. **Configure**: Set the key combination and action for your hotkey
 
 ### Data File Management
 
-1. **Open sidebar**: Click the hamburger menu (☰) button
+1. **Open sidebar**: Click the hamburger menu (☰) button in the top-right corner
 2. **Go to File tab**: Click the "File" tab in the sidebar
 3. **Set custom path**: Enter a custom path for the data file (`.hito.json`) for the current directory
 4. **Save**: Click "Save" to persist the custom data file path for this directory
