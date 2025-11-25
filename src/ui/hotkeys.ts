@@ -297,6 +297,120 @@ export function checkAndExecuteHotkey(event: KeyboardEvent): boolean {
 }
 
 /**
+ * Find the first unassigned number key (1-9, then 0).
+ * Only checks keys with no modifiers.
+ * @returns The first available number key ("1" through "9", then "0"), or null if all are taken
+ */
+export function findUnassignedNumberKey(): string | null {
+  const hotkeys = store.get(hotkeysAtom);
+  const numberKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]; // 0 is checked last
+  
+  for (const key of numberKeys) {
+    const isAssigned = hotkeys.some((hotkey) => {
+      // Check if key matches and has no modifiers
+      return hotkey.key === key && hotkey.modifiers.length === 0;
+    });
+    
+    if (!isAssigned) {
+      return key;
+    }
+  }
+  
+  return null; // All number keys are assigned
+}
+
+/**
+ * Automatically assign a hotkey to a category using an unassigned number key.
+ * @param categoryId - The ID of the category to assign a hotkey to
+ * @returns true if a hotkey was successfully assigned, false otherwise
+ */
+export async function autoAssignHotkeyToCategory(categoryId: string): Promise<boolean> {
+  const unassignedKey = findUnassignedNumberKey();
+  
+  if (!unassignedKey) {
+    // All number keys are already assigned
+    console.log("[autoAssignHotkeyToCategory] No unassigned number keys available");
+    return false;
+  }
+  
+  const hotkeys = store.get(hotkeysAtom);
+  const newHotkey: HotkeyConfig = {
+    id: `hotkey_${Date.now()}`,
+    key: unassignedKey,
+    modifiers: [],
+    action: `toggle_category_${categoryId}`,
+  };
+  
+  store.set(hotkeysAtom, [...hotkeys, newHotkey]);
+  
+  try {
+    await saveAppData();
+    console.log(`[autoAssignHotkeyToCategory] Successfully assigned key "${unassignedKey}" to category ${categoryId}`);
+    return true;
+  } catch (error) {
+    console.error("[autoAssignHotkeyToCategory] Failed to save hotkey:", error);
+    // Rollback the hotkey addition
+    store.set(hotkeysAtom, hotkeys);
+    return false;
+  }
+}
+
+/**
+ * Format an action string into a human-readable label.
+ * @param action - The action string (e.g., "toggle_category_123", "next_image")
+ * @param categories - Array of categories to resolve category IDs to names
+ * @returns Human-readable action label
+ */
+export function formatActionLabel(action: string, categories: Array<{ id: string; name: string }>): string {
+  if (!action) {
+    return "No action";
+  }
+  
+  // Navigation actions
+  if (action === "next_image") {
+    return "Next Image";
+  }
+  if (action === "previous_image") {
+    return "Previous Image";
+  }
+  if (action === "delete_image_and_next") {
+    return "Delete Image and move to next";
+  }
+  
+  // Category toggle actions
+  if (action.startsWith("toggle_category_next_")) {
+    const categoryId = action.replace("toggle_category_next_", "");
+    const category = categories.find(c => c.id === categoryId);
+    if (category) {
+      return `Toggle ${category.name} and move to next`;
+    }
+    return `Toggle category (${categoryId}) and move to next`;
+  }
+  
+  if (action.startsWith("toggle_category_")) {
+    const categoryId = action.replace("toggle_category_", "");
+    const category = categories.find(c => c.id === categoryId);
+    if (category) {
+      return `Toggle ${category.name}`;
+    }
+    return `Toggle category (${categoryId})`;
+  }
+  
+  // Legacy assign actions (for backwards compatibility)
+  if (action.startsWith("assign_category_")) {
+    const categoryId = action.replace("assign_category_", "");
+    const category = categories.find(c => c.id === categoryId);
+    if (category) {
+      return `Assign ${category.name}`;
+    }
+    return `Assign category (${categoryId})`;
+  }
+  
+  // Unknown action
+  return action;
+}
+
+/**
  * Initialize hotkey sidebar event handlers.
  */
 export function setupHotkeySidebar(): void {

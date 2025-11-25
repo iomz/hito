@@ -14,7 +14,7 @@ Simply drag and drop a folder to start browsing your images.
 
 ## Features
 
-![demo](https://github.com/user-attachments/assets/6be51dd4-19e8-42f1-b5e8-a574458f3894)
+![demo](https://github.com/user-attachments/assets/f5e81886-276b-4fe5-a77f-74a367a342af)
 
 ### Image Browsing
 
@@ -27,6 +27,7 @@ Simply drag and drop a folder to start browsing your images.
 ### Image Organization
 
 - **Category Management**: Create, edit, and delete custom categories with color coding
+  - **Automatic Hotkey Assignment**: When you create a new category, a number key (1-9, then 0) is automatically assigned to toggle that category. The first available number key is used, checking in order: 1, 2, 3, 4, 5, 6, 7, 8, 9, then 0
 - **Category Assignment**: Assign multiple categories to images for flexible organization
 - **Badge-Based Filtering & Sorting**: Clean, minimal UI showing only active filters and sorts as badges
   - **Category Filtering**: Filter images by category or view uncategorized images
@@ -40,6 +41,7 @@ Simply drag and drop a folder to start browsing your images.
 ### Keyboard Shortcuts
 
 - **Customizable Hotkeys**: Create and manage custom keyboard shortcuts for various actions
+- **Automatic Category Hotkeys**: New categories automatically get number keys (1-9, then 0) assigned for quick toggling
 - **Modal-Only Navigation**: Arrow keys (← →) and Esc are built-in, modal-only navigation keys that cannot be customized
 - **Default Hotkeys**: J and K are pre-configured default hotkeys for navigation (customizable or removable via the Hotkeys sidebar)
 - **Global Shortcuts**: `?` key shows/hides the keyboard shortcuts overlay globally
@@ -123,6 +125,7 @@ Download the installer from [the latest release](https://github.com/iomz/hito/re
 
 1. **Open sidebar**: Click the hamburger menu (☰) button in the top-right corner when viewing a directory. The sidebar slides in from the right.
 2. **Create categories**: Go to the "Categories" tab and click "+ Add" to create a new category
+   - **Automatic hotkey**: When you create a new category, a number key (1-9, then 0) is automatically assigned to toggle that category. You can see and edit this hotkey in the "Hotkeys" tab
 3. **Assign categories**:
    - In the modal view, click category buttons to assign/unassign categories to the current image
    - Categories are saved automatically to the data file (`.hito.json`)
@@ -139,6 +142,8 @@ Download the installer from [the latest release](https://github.com/iomz/hito/re
 2. **Go to Hotkeys tab**: Click the "Hotkeys" tab in the sidebar
 3. **Add hotkey**: Click "+ Add Hotkey" to create a new keyboard shortcut
 4. **Configure**: Set the key combination and action for your hotkey
+5. **View assigned actions**: Each hotkey in the list shows both the key combination and the action it performs (e.g., "Toggle Keep", "Next Image")
+6. **Auto-assigned category hotkeys**: When you create a new category, a number key is automatically assigned. You can edit or remove these auto-assigned hotkeys just like any other hotkey
 
 ### Data File Management
 
@@ -164,6 +169,15 @@ Download the installer from [the latest release](https://github.com/iomz/hito/re
 - `K` - Previous image (default hotkey, can be edited or removed)
 
 **Note**: Default hotkeys (J/K) are automatically created on first launch. You can customize or disable them by opening the sidebar (☰), going to the "Hotkeys" tab, and editing or deleting them. Modal-only shortcuts (arrow keys and Esc) are always active when the modal is open and cannot be changed.
+
+### Automatic Category Hotkeys
+
+When you create a new category, a number key is automatically assigned to toggle that category:
+- Number keys are assigned in order: `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, then `0`
+- Only unassigned number keys (without modifiers) are used
+- If all number keys (0-9) are already assigned, no hotkey is automatically created
+- Auto-assigned hotkeys can be edited or removed like any other hotkey
+- The hotkey list in the sidebar shows both the key combination and the action (e.g., "1 - Toggle Keep")
 
 ## Testing
 
