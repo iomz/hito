@@ -5,6 +5,7 @@ import { categoryDialogVisibleAtom, categoryDialogCategoryAtom, categoriesAtom }
 import type { Category } from "../types";
 import { saveAppData, isCategoryNameDuplicate, generateCategoryColor } from "../ui/categories";
 import { autoAssignHotkeyToCategory } from "../ui/hotkeys";
+import { showError as showErrorNotification } from "../ui/notification";
 
 /**
  * Generates a UUID v4 string.
@@ -100,12 +101,32 @@ export function CategoryDialog() {
         (c) => c.id === editingCategory.id,
       );
       if (index >= 0) {
+        // Store original state for rollback
+        const originalCategories = [...categories];
         updatedCategories[index] = {
           ...editingCategory,
           name: trimmedName,
           color,
         };
+        
+        // Update state optimistically (saveAppData reads from state)
         setCategories(updatedCategories);
+        
+        try {
+          await saveAppData();
+          
+          // Close dialog only if save succeeds
+          setCategoryDialogVisible(false);
+          setCategoryDialogCategory(undefined);
+        } catch (error) {
+          // Rollback state on save failure
+          setCategories(originalCategories);
+          
+          // Show error to user and keep dialog open so they can retry or cancel
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          setErrorMessage(`Failed to save category: ${errorMessage}`);
+          setShowError(true);
+        }
       }
     } else {
       // Add new category
@@ -114,37 +135,38 @@ export function CategoryDialog() {
         name: trimmedName,
         color,
       };
+      
+      // Store original state for rollback
+      const originalCategories = [...categories];
+      
+      // Update state optimistically (saveAppData reads from state)
       setCategories([...categories, newCategory]);
       
       try {
         await saveAppData();
         
-        // Auto-assign hotkey to the new category
-        await autoAssignHotkeyToCategory(newCategory.id);
+        // Try to auto-assign hotkey, but don't fail the save if this errors
+        try {
+          await autoAssignHotkeyToCategory(newCategory.id);
+        } catch (hotkeyError) {
+          // Hotkey assignment failed, but save succeeded
+          // Show error notification and still close dialog since category was saved
+          const hotkeyErrorMessage = hotkeyError instanceof Error ? hotkeyError.message : String(hotkeyError);
+          showErrorNotification(`Failed to assign hotkey: ${hotkeyErrorMessage}`);
+        }
         
-        // Close dialog only if save succeeds
+        // Close dialog after save succeeds (even if hotkey assignment failed)
         setCategoryDialogVisible(false);
         setCategoryDialogCategory(undefined);
       } catch (error) {
+        // Rollback state on save failure
+        setCategories(originalCategories);
+        
         // Show error to user and keep dialog open so they can retry or cancel
         const errorMessage = error instanceof Error ? error.message : String(error);
         setErrorMessage(`Failed to save category: ${errorMessage}`);
         setShowError(true);
       }
-      return;
-    }
-    
-    try {
-      await saveAppData();
-      
-      // Close dialog only if save succeeds
-      setCategoryDialogVisible(false);
-      setCategoryDialogCategory(undefined);
-    } catch (error) {
-      // Show error to user and keep dialog open so they can retry or cancel
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setErrorMessage(`Failed to save category: ${errorMessage}`);
-      setShowError(true);
     }
   }, [name, color, editingCategory, categories, setCategories, setCategoryDialogVisible, setCategoryDialogCategory]);
 
