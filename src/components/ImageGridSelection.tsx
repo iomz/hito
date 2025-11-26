@@ -6,7 +6,6 @@ import { store, deleteFromAtomMap } from "../utils/jotaiStore";
 import { showNotification, showError } from "../ui/notification";
 import { open } from "../utils/dialog";
 import { toggleImageCategory } from "../ui/categories";
-import { getContrastColor } from "../utils/colors";
 
 export function ImageGridSelection() {
   const selectionMode = useAtomValue(selectionModeAtom);

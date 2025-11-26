@@ -349,7 +349,42 @@ fn move_image(image_path: String, destination_dir: String) -> Result<(), String>
     // Move the file (rename is used for moving files on the same filesystem)
     match fs::rename(source_path, &dest_path) {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("Failed to move image: {}", e)),
+        Err(e) => {
+            // Check if this is a cross-device error (rename fails across filesystems)
+            let is_cross_device = if let Some(raw_err) = e.raw_os_error() {
+                #[cfg(unix)]
+                {
+                    // EXDEV = 18 (cross-device link not permitted)
+                    raw_err == 18
+                }
+                #[cfg(windows)]
+                {
+                    // ERROR_NOT_SAME_DEVICE = 17 (0x11)
+                    raw_err == 17
+                }
+                #[cfg(not(any(unix, windows)))]
+                {
+                    false
+                }
+            } else {
+                false
+            };
+            
+            if is_cross_device {
+                // Fallback: copy then delete (works across filesystems)
+                match fs::copy(source_path, &dest_path) {
+                    Ok(_) => {
+                        // Copy succeeded, now delete the source
+                        fs::remove_file(source_path)
+                            .map_err(|del_err| format!("Copied file but failed to remove source: {}", del_err))
+                    }
+                    Err(copy_err) => Err(format!("Failed to move image across filesystems: {}", copy_err)),
+                }
+            } else {
+                // Not a cross-device error, return the original error
+                Err(format!("Failed to move image: {}", e))
+            }
+        }
     }
 }
 

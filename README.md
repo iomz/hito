@@ -14,7 +14,7 @@ Simply drag and drop a folder to start browsing your images.
 
 ## Features
 
-![demo](https://github.com/user-attachments/assets/f5e81886-276b-4fe5-a77f-74a367a342af)
+![demo](https://github.com/user-attachments/assets/cdb95d18-ee8b-410b-bb68-647a241700bc)
 
 ### Image Browsing
 
