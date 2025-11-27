@@ -248,6 +248,27 @@ describe("browse", () => {
       expect(store.get(allImagePathsAtom)).toEqual(contents.images);
     });
 
+    it("should load config for empty directories to prevent config leakage", async () => {
+      const contents: DirectoryContents = {
+        directories: [],
+        images: [],
+      };
+      setupBrowseMocks(contents);
+
+      // Set some state from a previous directory
+      store.set(allDirectoryPathsAtom, [{ path: "/old/dir" }]);
+      store.set(allImagePathsAtom, [{ path: "/old/image.jpg" }]);
+
+      await browseImages("/test/path");
+
+      // loadHitoConfig should be called even for empty directories
+      expect(loadHitoConfig).toHaveBeenCalled();
+      // Arrays should be cleared for empty directories
+      expect(store.get(allDirectoryPathsAtom)).toEqual([]);
+      expect(store.get(allImagePathsAtom)).toEqual([]);
+      expect(store.get(isLoadingAtom)).toBe(false);
+    });
+
     it("should handle Tauri API unavailable", async () => {
       // Mock get_data_file_path to be called before the check
       vi.mocked(invokeTauri).mockResolvedValueOnce(null); // get_data_file_path

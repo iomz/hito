@@ -96,8 +96,16 @@ export async function browseImages(path: string): Promise<void> {
     const directories = Array.isArray(contents.directories) ? contents.directories : [];
     const images = Array.isArray(contents.images) ? contents.images : [];
     
+    // Load image category assignments, categories, and hotkeys for this directory,
+    // even if there are no images yet. This ensures per-directory configuration
+    // is loaded and prevents config from previous directory from leaking.
+    await loadHitoConfig();
+    
     if (images.length === 0 && directories.length === 0) {
       showNotification("No images or directories found in this directory.");
+      store.set(allDirectoryPathsAtom, []);
+      store.set(allImagePathsAtom, []);
+      store.set(currentIndexAtom, 0);
       store.set(isLoadingAtom, false);
       return;
     }
@@ -113,9 +121,6 @@ export async function browseImages(path: string): Promise<void> {
     // Now update the arrays - this will trigger ImageGrid to mount
     store.set(allDirectoryPathsAtom, directories);
     store.set(allImagePathsAtom, images);
-    
-    // Load image category assignments, categories, and hotkeys for this directory
-    await loadHitoConfig();
     
     // Hide spinner after everything is loaded
     store.set(isLoadingAtom, false);
