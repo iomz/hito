@@ -1243,13 +1243,39 @@ describe("categories UI and management", () => {
       const { saveHitoConfig } = await import("./categories");
       await saveHitoConfig();
 
-      expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
+      // Payload should only include categories and hotkeys if non-empty
+      const categories = store.get(categoriesAtom);
+      const hotkeys = store.get(hotkeysAtom);
+      const expectedPayload: any = {
         directory: "/test/dir",
-        filename: undefined,
         imageCategories: Array.from(store.get(imageCategoriesAtom).entries()),
-        categories: store.get(categoriesAtom),
-        hotkeys: store.get(hotkeysAtom),
-      });
+      };
+      
+      if (categories.length > 0) {
+        expectedPayload.categories = categories;
+      }
+      
+      if (hotkeys.length > 0) {
+        expectedPayload.hotkeys = hotkeys;
+      }
+
+      expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", expectedPayload);
+    });
+
+    it("should omit categories and hotkeys from payload when empty", async () => {
+      store.set(categoriesAtom, []);
+      store.set(hotkeysAtom, []);
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { saveHitoConfig } = await import("./categories");
+      await saveHitoConfig();
+
+      // Payload should not include categories or hotkeys when empty
+      const callArgs = mockInvoke.mock.calls[0][1] as any;
+      expect(callArgs).toHaveProperty("directory");
+      expect(callArgs).toHaveProperty("imageCategories");
+      expect(callArgs).not.toHaveProperty("categories");
+      expect(callArgs).not.toHaveProperty("hotkeys");
     });
 
     it("should handle empty categories and imageCategories", async () => {
@@ -2783,9 +2809,9 @@ describe("categories UI and management", () => {
       await deleteCategory("cat1");
 
       // Verify saveHitoConfig was called with updated categories and hotkeys
+      // Both categories and hotkeys should be included since they're non-empty
       expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
         directory: "/test/dir",
-        filename: undefined,
         imageCategories: expect.any(Array),
         categories: [{ id: "cat2", name: "Category 2", color: "#00ff00" }],
         hotkeys: [

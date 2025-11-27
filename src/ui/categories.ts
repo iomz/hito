@@ -311,13 +311,31 @@ export async function saveHitoConfig(): Promise<void> {
       hotkeysCount: hotkeys.length,
     });
 
-    await invokeTauri("save_hito_config", {
+    // Build payload conditionally - only include categories and hotkeys if non-empty
+    const payload: {
+      directory: string;
+      imageCategories: Array<[string, CategoryAssignment[]]>;
+      filename?: string;
+      categories?: Category[];
+      hotkeys?: HotkeyConfig[];
+    } = {
       directory: dataDir,
       imageCategories: imageCategoriesArray,
-      filename: dataFileName,
-      categories: categories.length > 0 ? categories : undefined,
-      hotkeys: hotkeys.length > 0 ? hotkeys : undefined,
-    });
+    };
+
+    if (dataFileName) {
+      payload.filename = dataFileName;
+    }
+
+    if (categories.length > 0) {
+      payload.categories = categories;
+    }
+
+    if (hotkeys.length > 0) {
+      payload.hotkeys = hotkeys;
+    }
+
+    await invokeTauri("save_hito_config", payload);
 
     console.log("[saveHitoConfig] Data file saved successfully");
   } catch (error) {
