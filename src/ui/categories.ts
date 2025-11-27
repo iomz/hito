@@ -758,9 +758,6 @@ export async function deleteCategory(categoryId: string): Promise<void> {
     }
   });
   store.set(imageCategoriesAtom, updatedImageCategories);
-  
-  // Save the updated image category assignments to .hito.json
-  await saveHitoConfig();
 
   // Clean up hotkeys that reference this category
   const hotkeys = store.get(hotkeysAtom);
@@ -784,7 +781,8 @@ export async function deleteCategory(categoryId: string): Promise<void> {
   const categories = store.get(categoriesAtom);
   store.set(categoriesAtom, categories.filter((c) => c.id !== categoryId));
 
-  // Categories are now saved via saveHitoConfig (already called above)
+  // Persist updated image assignments, categories, and hotkeys to .hito.json
+  await saveHitoConfig();
 }
 
 /**

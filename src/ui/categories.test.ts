@@ -2762,6 +2762,152 @@ describe("categories UI and management", () => {
 
       consoleErrorSpy.mockRestore();
     });
+
+    it("should save updated categories and hotkeys after deletion", async () => {
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Category 1", color: "#ff0000" },
+        { id: "cat2", name: "Category 2", color: "#00ff00" },
+      ]);
+      store.set(hotkeysAtom, [
+        { id: "hotkey1", key: "1", modifiers: [], action: "toggle_category_cat1" },
+        { id: "hotkey2", key: "2", modifiers: [], action: "toggle_category_cat2" },
+      ]);
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(dataFilePathAtom, "");
+      mockInvoke.mockResolvedValue(undefined);
+
+      const { confirm } = await import("../utils/dialog");
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      const { deleteCategory } = await import("./categories");
+      await deleteCategory("cat1");
+
+      // Verify saveHitoConfig was called with updated categories and hotkeys
+      expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", {
+        directory: "/test/dir",
+        filename: undefined,
+        imageCategories: expect.any(Array),
+        categories: [{ id: "cat2", name: "Category 2", color: "#00ff00" }],
+        hotkeys: [
+          { id: "hotkey1", key: "1", modifiers: [], action: "" },
+          { id: "hotkey2", key: "2", modifiers: [], action: "toggle_category_cat2" },
+        ],
+      });
+    });
+  });
+
+  describe("mutually exclusive categories", () => {
+    beforeEach(() => {
+      store.set(currentDirectoryAtom, "/test/dir");
+      store.set(dataFilePathAtom, "");
+      mockInvoke.mockResolvedValue(undefined);
+    });
+
+    it("should remove mutually exclusive category when assigning in toggleImageCategory", async () => {
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e", mutuallyExclusiveWith: ["cat2"] },
+        { id: "cat2", name: "Archive", color: "#3b82f6", mutuallyExclusiveWith: ["cat1"] },
+      ]);
+      const imageCategories = new Map<string, any[]>();
+      imageCategories.set("/image1.jpg", [
+        { category_id: "cat2", assigned_at: new Date().toISOString() },
+      ]);
+      store.set(imageCategoriesAtom, imageCategories);
+
+      const { toggleImageCategory } = await import("./categories");
+      await toggleImageCategory("/image1.jpg", "cat1");
+
+      const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];
+      const categoryIds = assignments.map((a: any) => a.category_id);
+      expect(categoryIds).toEqual(["cat1"]);
+      expect(categoryIds).not.toContain("cat2");
+    });
+
+    it("should remove mutually exclusive category when assigning in assignImageCategory", async () => {
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e", mutuallyExclusiveWith: ["cat2"] },
+        { id: "cat2", name: "Archive", color: "#3b82f6", mutuallyExclusiveWith: ["cat1"] },
+      ]);
+      const imageCategories = new Map<string, any[]>();
+      imageCategories.set("/image1.jpg", [
+        { category_id: "cat2", assigned_at: new Date().toISOString() },
+      ]);
+      store.set(imageCategoriesAtom, imageCategories);
+
+      const { assignImageCategory } = await import("./categories");
+      await assignImageCategory("/image1.jpg", "cat1");
+
+      const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];
+      const categoryIds = assignments.map((a: any) => a.category_id);
+      expect(categoryIds).toEqual(["cat1"]);
+      expect(categoryIds).not.toContain("cat2");
+    });
+
+    it("should handle bidirectional mutual exclusivity", async () => {
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e", mutuallyExclusiveWith: ["cat2"] },
+        { id: "cat2", name: "Archive", color: "#3b82f6", mutuallyExclusiveWith: ["cat1"] },
+      ]);
+      const imageCategories = new Map<string, any[]>();
+      imageCategories.set("/image1.jpg", [
+        { category_id: "cat1", assigned_at: new Date().toISOString() },
+      ]);
+      store.set(imageCategoriesAtom, imageCategories);
+
+      const { assignImageCategory } = await import("./categories");
+      await assignImageCategory("/image1.jpg", "cat2");
+
+      const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];
+      const categoryIds = assignments.map((a: any) => a.category_id);
+      expect(categoryIds).toEqual(["cat2"]);
+      expect(categoryIds).not.toContain("cat1");
+    });
+
+    it("should handle multiple mutually exclusive categories", async () => {
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e", mutuallyExclusiveWith: ["cat2", "cat3"] },
+        { id: "cat2", name: "Archive", color: "#3b82f6", mutuallyExclusiveWith: ["cat1"] },
+        { id: "cat3", name: "Delete", color: "#ef4444", mutuallyExclusiveWith: ["cat1"] },
+      ]);
+      const imageCategories = new Map<string, any[]>();
+      imageCategories.set("/image1.jpg", [
+        { category_id: "cat2", assigned_at: new Date().toISOString() },
+        { category_id: "cat3", assigned_at: new Date().toISOString() },
+      ]);
+      store.set(imageCategoriesAtom, imageCategories);
+
+      const { assignImageCategory } = await import("./categories");
+      await assignImageCategory("/image1.jpg", "cat1");
+
+      const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];
+      const categoryIds = assignments.map((a: any) => a.category_id);
+      expect(categoryIds).toEqual(["cat1"]);
+      expect(categoryIds).not.toContain("cat2");
+      expect(categoryIds).not.toContain("cat3");
+    });
+
+    it("should not remove non-mutually-exclusive categories", async () => {
+      store.set(categoriesAtom, [
+        { id: "cat1", name: "Keep", color: "#22c55e", mutuallyExclusiveWith: ["cat2"] },
+        { id: "cat2", name: "Archive", color: "#3b82f6", mutuallyExclusiveWith: ["cat1"] },
+        { id: "cat3", name: "Tagged", color: "#a855f7" },
+      ]);
+      const imageCategories = new Map<string, any[]>();
+      imageCategories.set("/image1.jpg", [
+        { category_id: "cat2", assigned_at: new Date().toISOString() },
+        { category_id: "cat3", assigned_at: new Date().toISOString() },
+      ]);
+      store.set(imageCategoriesAtom, imageCategories);
+
+      const { assignImageCategory } = await import("./categories");
+      await assignImageCategory("/image1.jpg", "cat1");
+
+      const assignments = store.get(imageCategoriesAtom).get("/image1.jpg") || [];
+      const categoryIds = assignments.map((a: any) => a.category_id);
+      expect(categoryIds).toContain("cat1");
+      expect(categoryIds).not.toContain("cat2");
+      expect(categoryIds).toContain("cat3");
+    });
   });
 
   describe("loadAppData", () => {
