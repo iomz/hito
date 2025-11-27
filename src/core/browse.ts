@@ -17,7 +17,7 @@ import { BATCH_SIZE } from "../constants";
 import type { DirectoryContents } from "../types";
 import { showNotification } from "../ui/notification";
 import { showError, clearError } from "../ui/error";
-import { loadHitoConfig, loadAppData } from "../ui/categories";
+import { loadHitoConfig } from "../ui/categories";
 import { ensureImagePathsArray } from "../utils/state";
 import { invokeTauri, isTauriInvokeAvailable } from "../utils/tauri";
 
@@ -114,10 +114,7 @@ export async function browseImages(path: string): Promise<void> {
     store.set(allDirectoryPathsAtom, directories);
     store.set(allImagePathsAtom, images);
     
-    // Load categories and hotkeys from app data directory
-    await loadAppData();
-    
-    // Load image category assignments for this directory
+    // Load image category assignments, categories, and hotkeys for this directory
     await loadHitoConfig();
     
     // Hide spinner after everything is loaded

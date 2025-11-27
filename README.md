@@ -28,6 +28,7 @@ Simply drag and drop a folder to start browsing your images.
 
 - **Category Management**: Create, edit, and delete custom categories with color coding
   - **Automatic Hotkey Assignment**: When you create a new category, a number key (1-9, then 0) is automatically assigned to toggle that category. The first available number key is used, checking in order: 1, 2, 3, 4, 5, 6, 7, 8, 9, then 0
+  - **Mutually Exclusive Categories**: Configure categories to be mutually exclusive with other categories. When assigning a category, any mutually exclusive categories are automatically removed from the image
 - **Category Assignment**: Assign multiple categories to images for flexible organization
 - **Badge-Based Filtering & Sorting**: Clean, minimal UI showing only active filters and sorts as badges
   - **Category Filtering**: Filter images by category or view uncategorized images
@@ -49,10 +50,11 @@ Simply drag and drop a folder to start browsing your images.
 
 ### Data Storage
 
-- **Hybrid Storage Architecture**:
-  - Categories and hotkeys stored in app data directory (persistent across directories)
-  - Image category assignments stored in `.hito.json` files (directory-specific)
-- **Custom Data File Paths**: Configure different data file paths for different directories
+- **Directory-Specific Configuration**:
+  - All data stored in `.hito.json` files within each directory
+  - Categories, hotkeys, and image category assignments are all stored per-directory
+  - Each directory can have its own set of categories and hotkeys
+- **Custom Data File Paths**: Configure different data file paths for different directories (stored in app data directory)
 - **Automatic Data Migration**: Seamlessly handles data file path changes and reloads
 
 ## Install
@@ -126,6 +128,7 @@ Download the installer from [the latest release](https://github.com/iomz/hito/re
 1. **Open sidebar**: Click the hamburger menu (☰) button in the top-right corner when viewing a directory. The sidebar slides in from the right.
 2. **Create categories**: Go to the "Categories" tab and click "+ Add" to create a new category
    - **Automatic hotkey**: When you create a new category, a number key (1-9, then 0) is automatically assigned to toggle that category. You can see and edit this hotkey in the "Hotkeys" tab
+   - **Mutually exclusive categories**: When creating or editing a category, you can select which other categories are mutually exclusive with it. If category A is mutually exclusive with category B, assigning A to an image will automatically remove B (and vice versa)
 3. **Assign categories**:
    - In the modal view, click category buttons to assign/unassign categories to the current image
    - Categories are saved automatically to the data file (`.hito.json`)
@@ -152,6 +155,8 @@ Download the installer from [the latest release](https://github.com/iomz/hito/re
 3. **Set custom path**: Enter a custom path for the data file (`.hito.json`) for the current directory
 4. **Save**: Click "Save" to persist the custom data file path for this directory
 
+**Note**: Categories and hotkeys are stored in the `.hito.json` file for each directory, making them directory-specific. Each directory can have its own set of categories and hotkeys.
+
 ## Default Keyboard Shortcuts
 
 ### Modal-Only Shortcuts (Built-in, Cannot be Customized)
@@ -173,6 +178,7 @@ Download the installer from [the latest release](https://github.com/iomz/hito/re
 ### Automatic Category Hotkeys
 
 When you create a new category, a number key is automatically assigned to toggle that category:
+
 - Number keys are assigned in order: `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, then `0`
 - Only unassigned number keys (without modifiers) are used
 - If all number keys (0-9) are already assigned, no hotkey is automatically created

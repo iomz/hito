@@ -12,7 +12,7 @@ import type { HotkeyConfig } from "../types";
 
 // Mock dependencies
 vi.mock("./categories", () => ({
-  saveAppData: vi.fn().mockResolvedValue(undefined),
+  saveHitoConfig: vi.fn().mockResolvedValue(undefined),
   toggleCategoryForCurrentImage: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -1076,10 +1076,10 @@ describe("hotkeys", () => {
       ]);
 
       const { confirm } = await import("../utils/dialog");
-      const { saveAppData } = await import("./categories");
+      const { saveHitoConfig } = await import("./categories");
       const { showError } = await import("./error");
       vi.mocked(confirm).mockResolvedValue(true);
-      vi.mocked(saveAppData).mockRejectedValueOnce(new Error("Save failed"));
+      vi.mocked(saveHitoConfig).mockRejectedValueOnce(new Error("Save failed"));
 
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -1204,7 +1204,7 @@ describe("hotkeys", () => {
         { id: "cat1", name: "Keep", color: "#22c55e" },
       ]);
       
-      const { saveAppData } = await import("./categories");
+      const { saveHitoConfig } = await import("./categories");
       const { autoAssignHotkeyToCategory } = await import("./hotkeys");
       
       const result = await autoAssignHotkeyToCategory("cat1");
@@ -1217,7 +1217,7 @@ describe("hotkeys", () => {
         modifiers: [],
         action: "toggle_category_cat1",
       });
-      expect(saveAppData).toHaveBeenCalled();
+      expect(saveHitoConfig).toHaveBeenCalled();
     });
 
     it("should assign next available key when some are taken", async () => {
@@ -1229,7 +1229,7 @@ describe("hotkeys", () => {
         { id: "cat1", name: "Keep", color: "#22c55e" },
       ]);
       
-      const { saveAppData } = await import("./categories");
+      const { saveHitoConfig } = await import("./categories");
       const { autoAssignHotkeyToCategory } = await import("./hotkeys");
       
       const result = await autoAssignHotkeyToCategory("cat1");
@@ -1243,7 +1243,7 @@ describe("hotkeys", () => {
         modifiers: [],
         action: "toggle_category_cat1",
       });
-      expect(saveAppData).toHaveBeenCalled();
+      expect(saveHitoConfig).toHaveBeenCalled();
     });
 
     it("should assign '0' when 1-9 are all taken", async () => {
@@ -1263,7 +1263,7 @@ describe("hotkeys", () => {
         { id: "cat7", name: "Archive", color: "#3b82f6" },
       ]);
       
-      const { saveAppData } = await import("./categories");
+      const { saveHitoConfig } = await import("./categories");
       const { autoAssignHotkeyToCategory } = await import("./hotkeys");
       
       const result = await autoAssignHotkeyToCategory("cat7");
@@ -1276,7 +1276,7 @@ describe("hotkeys", () => {
         modifiers: [],
         action: "toggle_category_cat7",
       });
-      expect(saveAppData).toHaveBeenCalled();
+      expect(saveHitoConfig).toHaveBeenCalled();
     });
 
     it("should return false when all number keys are assigned", async () => {
@@ -1316,8 +1316,8 @@ describe("hotkeys", () => {
         { id: "cat1", name: "Keep", color: "#22c55e" },
       ]);
       
-      const { saveAppData } = await import("./categories");
-      vi.mocked(saveAppData).mockRejectedValueOnce(new Error("Save failed"));
+      const { saveHitoConfig } = await import("./categories");
+      vi.mocked(saveHitoConfig).mockRejectedValueOnce(new Error("Save failed"));
       
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       const { autoAssignHotkeyToCategory } = await import("./hotkeys");

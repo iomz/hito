@@ -3,7 +3,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { hotkeyDialogVisibleAtom, hotkeyDialogHotkeyAtom, hotkeysAtom, categoriesAtom } from "../state";
 import type { HotkeyConfig, Category } from "../types";
 import { formatHotkeyDisplay, isHotkeyDuplicate, populateActionDropdown } from "../ui/hotkeys";
-import { saveAppData } from "../ui/categories";
+import { saveHitoConfig } from "../ui/categories";
 
 export function HotkeyDialog() {
   const isVisible = useAtomValue(hotkeyDialogVisibleAtom);
@@ -214,7 +214,7 @@ export function HotkeyDialog() {
     }
     
     try {
-      await saveAppData();
+      await saveHitoConfig();
     } catch (error: unknown) {
       console.error("Failed to save hotkeys:", error);
       setErrorMessage("Failed to save hotkey. Please try again.");

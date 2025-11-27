@@ -20,6 +20,8 @@ import { normalizePath } from "../utils/state";
 
 interface HitoFile {
   image_categories?: Array<[string, CategoryAssignment[]]>;
+  categories?: Category[];
+  hotkeys?: HotkeyConfig[];
 }
 
 interface AppData {
@@ -138,7 +140,7 @@ export async function loadAppData(abortSignal?: AbortSignal): Promise<void> {
       if (initializeDefaultHotkeysIfEmpty(abortSignal)) {
         // Save the default hotkeys to app data
         try {
-          await saveAppData();
+          await saveHitoConfig();
           if (abortSignal?.aborted) {
             return;
           }
@@ -219,10 +221,42 @@ export async function loadHitoConfig(): Promise<void> {
     
     console.log("[loadHitoConfig] Loaded data file:", {
       imageCategoriesCount: data.image_categories?.length || 0,
+      categoriesCount: data.categories?.length || 0,
+      hotkeysCount: data.hotkeys?.length || 0,
     });
 
     if (data.image_categories) {
       store.set(imageCategoriesAtom, new Map(data.image_categories));
+    }
+    
+    // Load categories if present
+    if (data.categories) {
+      store.set(categoriesAtom, data.categories);
+    }
+    
+    // Load hotkeys if present
+    if (data.hotkeys && data.hotkeys.length > 0) {
+      // Ensure hotkeys have all required fields
+      store.set(hotkeysAtom, data.hotkeys.map((h) => ({
+        id: h.id || `hotkey_${Date.now()}_${Math.random()}`,
+        key: h.key || "",
+        modifiers: Array.isArray(h.modifiers) ? h.modifiers : [],
+        action: h.action || "",
+      })));
+    } else {
+      // Initialize default hotkeys if missing
+      const hotkeys = store.get(hotkeysAtom);
+      if (!hotkeys || hotkeys.length === 0) {
+        if (initializeDefaultHotkeysIfEmpty()) {
+          // Save the default hotkeys to .hito.json
+          try {
+            await saveHitoConfig();
+            console.log("[loadHitoConfig] Default hotkeys saved successfully");
+          } catch (saveError) {
+            console.error("[loadHitoConfig] Failed to save default hotkeys:", saveError);
+          }
+        }
+      }
     }
   } catch (error) {
     // Check if this is a file-not-found error
@@ -265,18 +299,24 @@ export async function saveHitoConfig(): Promise<void> {
 
     const imageCategories = store.get(imageCategoriesAtom);
     const imageCategoriesArray = Array.from(imageCategories.entries());
+    const categories = store.get(categoriesAtom);
+    const hotkeys = store.get(hotkeysAtom);
     const dataFileName = getDataFileName();
 
     console.log("[saveHitoConfig] Saving data file:", {
       directory: dataDir,
       filename: dataFileName,
       imageCategoriesCount: imageCategoriesArray.length,
+      categoriesCount: categories.length,
+      hotkeysCount: hotkeys.length,
     });
 
     await invokeTauri("save_hito_config", {
       directory: dataDir,
       imageCategories: imageCategoriesArray,
       filename: dataFileName,
+      categories: categories.length > 0 ? categories : undefined,
+      hotkeys: hotkeys.length > 0 ? hotkeys : undefined,
     });
 
     console.log("[saveHitoConfig] Data file saved successfully");
@@ -458,6 +498,7 @@ export async function toggleImageCategory(
   categoryId: string,
 ): Promise<void> {
   const imageCategories = store.get(imageCategoriesAtom);
+  const categories = store.get(categoriesAtom);
   const currentAssignments = imageCategories.get(imagePath) || [];
   const existingIndex = currentAssignments.findIndex(
     (assignment) => assignment.category_id === categoryId
@@ -475,13 +516,44 @@ export async function toggleImageCategory(
     }
   } else {
     // Add category with current datetime
-    updatedImageCategories.set(imagePath, [
-      ...currentAssignments,
+    // First, find the category being assigned to check for mutually exclusive categories
+    const categoryBeingAssigned = categories.find((cat) => cat.id === categoryId);
+    
+    // Collect all category IDs that need to be removed due to mutual exclusivity
+    const categoriesToRemove = new Set<string>();
+    
+    // 1. Check if the category being assigned has mutually exclusive categories
+    if (categoryBeingAssigned?.mutuallyExclusiveWith) {
+      for (const exclusiveId of categoryBeingAssigned.mutuallyExclusiveWith) {
+        if (currentAssignments.some((a) => a.category_id === exclusiveId)) {
+          categoriesToRemove.add(exclusiveId);
+        }
+      }
+    }
+    
+    // 2. Check all other assigned categories to see if any of them have this category in their mutuallyExclusiveWith list
+    for (const assignment of currentAssignments) {
+      const assignedCategory = categories.find((cat) => cat.id === assignment.category_id);
+      if (assignedCategory?.mutuallyExclusiveWith?.includes(categoryId)) {
+        categoriesToRemove.add(assignment.category_id);
+      }
+    }
+    
+    // Remove mutually exclusive categories
+    let updatedAssignments = currentAssignments.filter(
+      (assignment) => !categoriesToRemove.has(assignment.category_id)
+    );
+    
+    // Add the new category
+    updatedAssignments = [
+      ...updatedAssignments,
       {
         category_id: categoryId,
         assigned_at: new Date().toISOString(),
       },
-    ]);
+    ];
+    
+    updatedImageCategories.set(imagePath, updatedAssignments);
   }
   store.set(imageCategoriesAtom, updatedImageCategories);
   
@@ -513,20 +585,52 @@ export async function assignImageCategory(
   categoryId: string,
 ): Promise<void> {
   const imageCategories = store.get(imageCategoriesAtom);
+  const categories = store.get(categoriesAtom);
   const currentAssignments = imageCategories.get(imagePath) || [];
   const exists = currentAssignments.some(
     (assignment) => assignment.category_id === categoryId
   );
 
   if (!exists) {
-    const updatedImageCategories = new Map(imageCategories);
-    updatedImageCategories.set(imagePath, [
-      ...currentAssignments,
+    // Find the category being assigned to check for mutually exclusive categories
+    const categoryBeingAssigned = categories.find((cat) => cat.id === categoryId);
+    
+    // Collect all category IDs that need to be removed due to mutual exclusivity
+    const categoriesToRemove = new Set<string>();
+    
+    // 1. Check if the category being assigned has mutually exclusive categories
+    if (categoryBeingAssigned?.mutuallyExclusiveWith) {
+      for (const exclusiveId of categoryBeingAssigned.mutuallyExclusiveWith) {
+        if (currentAssignments.some((a) => a.category_id === exclusiveId)) {
+          categoriesToRemove.add(exclusiveId);
+        }
+      }
+    }
+    
+    // 2. Check all other assigned categories to see if any of them have this category in their mutuallyExclusiveWith list
+    for (const assignment of currentAssignments) {
+      const assignedCategory = categories.find((cat) => cat.id === assignment.category_id);
+      if (assignedCategory?.mutuallyExclusiveWith?.includes(categoryId)) {
+        categoriesToRemove.add(assignment.category_id);
+      }
+    }
+    
+    // Remove mutually exclusive categories
+    let updatedAssignments = currentAssignments.filter(
+      (assignment) => !categoriesToRemove.has(assignment.category_id)
+    );
+    
+    // Add the new category
+    updatedAssignments = [
+      ...updatedAssignments,
       {
         category_id: categoryId,
         assigned_at: new Date().toISOString(),
       },
-    ]);
+    ];
+    
+    const updatedImageCategories = new Map(imageCategories);
+    updatedImageCategories.set(imagePath, updatedAssignments);
     store.set(imageCategoriesAtom, updatedImageCategories);
     await saveHitoConfig();
     
@@ -654,6 +758,9 @@ export async function deleteCategory(categoryId: string): Promise<void> {
     }
   });
   store.set(imageCategoriesAtom, updatedImageCategories);
+  
+  // Save the updated image category assignments to .hito.json
+  await saveHitoConfig();
 
   // Clean up hotkeys that reference this category
   const hotkeys = store.get(hotkeysAtom);
@@ -677,7 +784,7 @@ export async function deleteCategory(categoryId: string): Promise<void> {
   const categories = store.get(categoriesAtom);
   store.set(categoriesAtom, categories.filter((c) => c.id !== categoryId));
 
-  await saveAppData();
+  // Categories are now saved via saveHitoConfig (already called above)
 }
 
 /**

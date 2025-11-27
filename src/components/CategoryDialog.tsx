@@ -8,7 +8,7 @@ import {
 } from "../state";
 import type { Category } from "../types";
 import {
-  saveAppData,
+  saveHitoConfig,
   isCategoryNameDuplicate,
   generateCategoryColor,
 } from "../ui/categories";
@@ -36,6 +36,7 @@ export function CategoryDialog() {
 
   const [name, setName] = useState("");
   const [color, setColor] = useState("");
+  const [mutuallyExclusiveWith, setMutuallyExclusiveWith] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [showError, setShowError] = useState(false);
 
@@ -47,6 +48,24 @@ export function CategoryDialog() {
       // Dialog opening
       setName(editingCategory?.name || "");
       setColor(editingCategory?.color || generateCategoryColor());
+      
+      // Build mutually exclusive list: include both direct and reverse relationships
+      const directExclusive = editingCategory?.mutuallyExclusiveWith || [];
+      const reverseExclusive: string[] = [];
+      
+      // Find categories that have this category in their mutuallyExclusiveWith list
+      if (editingCategory) {
+        categories.forEach((cat) => {
+          if (cat.id !== editingCategory.id && cat.mutuallyExclusiveWith?.includes(editingCategory.id)) {
+            reverseExclusive.push(cat.id);
+          }
+        });
+      }
+      
+      // Combine both lists, removing duplicates
+      const allExclusive = Array.from(new Set([...directExclusive, ...reverseExclusive]));
+      setMutuallyExclusiveWith(allExclusive);
+      
       setErrorMessage("");
       setShowError(false);
 
@@ -58,10 +77,11 @@ export function CategoryDialog() {
       // Dialog closing
       setName("");
       setColor("");
+      setMutuallyExclusiveWith([]);
       setErrorMessage("");
       setShowError(false);
     }
-  }, [isVisible, editingCategory]);
+  }, [isVisible, editingCategory, categories]);
 
   // Check for duplicate name as user types
   useEffect(() => {
@@ -113,17 +133,63 @@ export function CategoryDialog() {
       if (index >= 0) {
         // Store original state for rollback
         const originalCategories = [...categories];
+        
+        // Get the previous mutually exclusive list to detect changes
+        const previousExclusive = editingCategory.mutuallyExclusiveWith || [];
+        const previousExclusiveSet = new Set(previousExclusive);
+        const newExclusiveSet = new Set(mutuallyExclusiveWith);
+        
+        // Update the current category
         updatedCategories[index] = {
           ...editingCategory,
           name: trimmedName,
           color,
+          mutuallyExclusiveWith: mutuallyExclusiveWith.length > 0 ? mutuallyExclusiveWith : undefined,
         };
+        
+        // Update bidirectional relationships
+        // 1. Add reverse relationships for newly added categories
+        mutuallyExclusiveWith.forEach((exclusiveId) => {
+          if (!previousExclusiveSet.has(exclusiveId)) {
+            const exclusiveCategoryIndex = updatedCategories.findIndex(
+              (c) => c.id === exclusiveId
+            );
+            if (exclusiveCategoryIndex >= 0) {
+              const exclusiveCategory = updatedCategories[exclusiveCategoryIndex];
+              const exclusiveList = exclusiveCategory.mutuallyExclusiveWith || [];
+              if (!exclusiveList.includes(editingCategory.id)) {
+                updatedCategories[exclusiveCategoryIndex] = {
+                  ...exclusiveCategory,
+                  mutuallyExclusiveWith: [...exclusiveList, editingCategory.id],
+                };
+              }
+            }
+          }
+        });
+        
+        // 2. Remove reverse relationships for removed categories
+        previousExclusive.forEach((exclusiveId) => {
+          if (!newExclusiveSet.has(exclusiveId)) {
+            const exclusiveCategoryIndex = updatedCategories.findIndex(
+              (c) => c.id === exclusiveId
+            );
+            if (exclusiveCategoryIndex >= 0) {
+              const exclusiveCategory = updatedCategories[exclusiveCategoryIndex];
+              const exclusiveList = exclusiveCategory.mutuallyExclusiveWith || [];
+              const filteredList = exclusiveList.filter((id) => id !== editingCategory.id);
+              updatedCategories[exclusiveCategoryIndex] = {
+                ...exclusiveCategory,
+                mutuallyExclusiveWith: filteredList.length > 0 ? filteredList : undefined,
+              };
+            }
+          }
+        });
 
-        // Update state optimistically (saveAppData reads from state)
+        // Update state optimistically (saveHitoConfig reads from state)
         setCategories(updatedCategories);
 
         try {
-          await saveAppData();
+          await saveHitoConfig();
 
           // Close dialog only if save succeeds
           setCategoryDialogVisible(false);
@@ -141,20 +207,40 @@ export function CategoryDialog() {
       }
     } else {
       // Add new category
+      const newCategoryId = generateUUID();
       const newCategory: Category = {
-        id: generateUUID(),
+        id: newCategoryId,
         name: trimmedName,
         color,
+        mutuallyExclusiveWith: mutuallyExclusiveWith.length > 0 ? mutuallyExclusiveWith : undefined,
       };
 
       // Store original state for rollback
       const originalCategories = [...categories];
+      
+      // Update bidirectional relationships for new category
+      const updatedCategories = [...categories];
+      mutuallyExclusiveWith.forEach((exclusiveId) => {
+        const exclusiveCategoryIndex = updatedCategories.findIndex(
+          (c) => c.id === exclusiveId
+        );
+        if (exclusiveCategoryIndex >= 0) {
+          const exclusiveCategory = updatedCategories[exclusiveCategoryIndex];
+          const exclusiveList = exclusiveCategory.mutuallyExclusiveWith || [];
+          if (!exclusiveList.includes(newCategoryId)) {
+            updatedCategories[exclusiveCategoryIndex] = {
+              ...exclusiveCategory,
+              mutuallyExclusiveWith: [...exclusiveList, newCategoryId],
+            };
+          }
+        }
+      });
 
-      // Update state optimistically (saveAppData reads from state)
-      setCategories([...categories, newCategory]);
+      // Update state optimistically (saveHitoConfig reads from state)
+      setCategories([...updatedCategories, newCategory]);
 
       try {
-        await saveAppData();
+        await saveHitoConfig();
 
         // Try to auto-assign hotkey, but don't fail the save if this errors
         try {
@@ -188,6 +274,7 @@ export function CategoryDialog() {
   }, [
     name,
     color,
+    mutuallyExclusiveWith,
     editingCategory,
     categories,
     setCategories,
@@ -271,6 +358,49 @@ export function CategoryDialog() {
               className="color-preview"
               style={{ backgroundColor: color }}
             ></div>
+          </div>
+          <label htmlFor="category-mutually-exclusive-input">
+            Mutually Exclusive With:
+            <span style={{ fontSize: "0.85em", color: "#999", marginLeft: "8px" }}>
+              (Select categories that cannot be assigned together with this category)
+            </span>
+          </label>
+          <div
+            id="category-mutually-exclusive-input"
+            className="category-mutually-exclusive-list"
+          >
+            {categories
+              .filter((cat) => cat.id !== editingCategory?.id)
+              .map((cat) => (
+                <label
+                  key={cat.id}
+                  className="category-mutually-exclusive-item"
+                >
+                  <input
+                    type="checkbox"
+                    checked={mutuallyExclusiveWith.includes(cat.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setMutuallyExclusiveWith([...mutuallyExclusiveWith, cat.id]);
+                      } else {
+                        setMutuallyExclusiveWith(
+                          mutuallyExclusiveWith.filter((id) => id !== cat.id)
+                        );
+                      }
+                    }}
+                  />
+                  <span
+                    className="category-mutually-exclusive-color"
+                    style={{ backgroundColor: cat.color }}
+                  ></span>
+                  <span>{cat.name}</span>
+                </label>
+              ))}
+            {categories.filter((cat) => cat.id !== editingCategory?.id).length === 0 && (
+              <div className="category-mutually-exclusive-empty">
+                No other categories available
+              </div>
+            )}
           </div>
         </div>
         <div className="category-dialog-footer">

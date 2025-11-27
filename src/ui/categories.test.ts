@@ -1247,6 +1247,8 @@ describe("categories UI and management", () => {
         directory: "/test/dir",
         filename: undefined,
         imageCategories: Array.from(store.get(imageCategoriesAtom).entries()),
+        categories: store.get(categoriesAtom),
+        hotkeys: store.get(hotkeysAtom),
       });
     });
 
@@ -1663,19 +1665,6 @@ describe("categories UI and management", () => {
       store.set(dataFilePathAtom, "");
     });
 
-    // Categories are now loaded via loadAppData, not loadHitoConfig
-    it.skip("should handle null categories", async () => {
-      mockInvoke.mockResolvedValue({
-        categories: null,
-        image_categories: [],
-        hotkeys: [],
-      });
-
-      const { loadHitoConfig } = await import("./categories");
-      await loadHitoConfig();
-
-      expect(store.get(categoriesAtom)).toEqual([]);
-    });
 
     it("should handle null image_categories", async () => {
       mockInvoke.mockResolvedValue({
@@ -2796,8 +2785,8 @@ describe("categories UI and management", () => {
       expect(hotkeys.length).toBe(2);
       expect(hotkeys[0].key).toBe("J");
       expect(hotkeys[1].key).toBe("K");
-      // Should save default hotkeys
-      expect(mockInvoke).toHaveBeenCalledWith("save_app_data", expect.any(Object));
+      // Should save default hotkeys to .hito.json
+      expect(mockInvoke).toHaveBeenCalledWith("save_hito_config", expect.any(Object));
     });
 
     it("should handle error when saving default hotkeys fails", async () => {

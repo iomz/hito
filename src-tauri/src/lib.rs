@@ -393,6 +393,8 @@ struct CategoryData {
     id: String,
     name: String,
     color: String,
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "mutuallyExclusiveWith")]
+    mutually_exclusive_with: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -419,10 +421,14 @@ struct FilterOptions {
     size_value2: Option<String>,
 }
 
-// File structure for .hito.json (only contains image assignments)
+// File structure for .hito.json (contains image assignments, categories, and hotkeys)
 #[derive(Serialize, Deserialize)]
 struct HitoFile {
     image_categories: Vec<(String, Vec<CategoryAssignment>)>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    categories: Option<Vec<CategoryData>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    hotkeys: Option<Vec<HotkeyData>>,
 }
 
 // App data structure for categories and hotkeys (stored in app data directory)
@@ -606,6 +612,8 @@ fn load_hito_config(directory: String, filename: Option<String>) -> Result<HitoF
     if !hito_path.exists() {
         return Ok(HitoFile {
             image_categories: Vec::new(),
+            categories: None,
+            hotkeys: None,
         });
     }
     
@@ -620,17 +628,21 @@ fn load_hito_config(directory: String, filename: Option<String>) -> Result<HitoF
     }
 }
 
-/// Save image category assignments to .hito.json in the specified directory.
+/// Save image category assignments, categories, and hotkeys to .hito.json in the specified directory.
 #[tauri::command]
 fn save_hito_config(
     directory: String,
     image_categories: Vec<(String, Vec<CategoryAssignment>)>,
     filename: Option<String>,
+    categories: Option<Vec<CategoryData>>,
+    hotkeys: Option<Vec<HotkeyData>>,
 ) -> Result<(), String> {
     let hito_path = get_hito_file_path(&directory, filename.as_deref());
     
     let data = HitoFile {
         image_categories,
+        categories,
+        hotkeys,
     };
     
     let json_content = serde_json::to_string_pretty(&data)
@@ -1593,6 +1605,8 @@ mod tests {
                     assigned_at: "2024-01-01T00:00:00Z".to_string(),
                 }],
             )],
+            categories: None,
+            hotkeys: None,
         };
 
         let json = serde_json::to_string_pretty(&hito_file).unwrap();
@@ -1616,6 +1630,7 @@ mod tests {
                 id: "cat1".to_string(),
                 name: "Test Category".to_string(),
                 color: "#FF0000".to_string(),
+                mutually_exclusive_with: None,
             }],
             hotkeys: vec![HotkeyData {
                 id: "hotkey1".to_string(),
@@ -1703,6 +1718,8 @@ mod tests {
                     assigned_at: "2024-01-01T00:00:00Z".to_string(),
                 }],
             )],
+            categories: None,
+            hotkeys: None,
         };
         
         let json = serde_json::to_string_pretty(&test_data).unwrap();
@@ -1726,6 +1743,8 @@ mod tests {
                     assigned_at: "2024-01-01T00:00:00Z".to_string(),
                 }],
             )],
+            categories: None,
+            hotkeys: None,
         };
         
         let json = serde_json::to_string_pretty(&test_data).unwrap();
@@ -1768,6 +1787,8 @@ mod tests {
             temp_dir.path().to_str().unwrap().to_string(),
             image_categories,
             None,
+            None,
+            None,
         );
         assert!(result.is_ok());
         assert!(hito_file.exists());
@@ -1795,6 +1816,8 @@ mod tests {
             temp_dir.path().to_str().unwrap().to_string(),
             image_categories,
             Some("custom.json".to_string()),
+            None,
+            None,
         );
         assert!(result.is_ok());
         assert!(custom_file.exists());

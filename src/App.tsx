@@ -31,17 +31,8 @@ function App() {
   ), [allImagePaths, allDirectoryPaths]);
 
   useEffect(() => {
-    // Create AbortController for cancelling loadAppData on unmount
-    const abortController = new AbortController();
-    const { signal } = abortController;
-    
-    // Load app data (categories and hotkeys) on startup
-    loadAppData(signal).catch((error) => {
-      // Only log error if component is still mounted
-      if (!signal.aborted) {
-        console.error('[App] Failed to load app data:', error);
-      }
-    });
+    // Categories and hotkeys are now loaded per-directory via loadHitoConfig
+    // No need to load app data on startup
     
     // Setup all event handlers after DOM is ready
     setupDocumentDragHandlers();
@@ -68,9 +59,6 @@ function App() {
     
     // Return cleanup function that will be called on unmount
     return () => {
-      // Abort loadAppData to prevent state updates after unmount
-      abortController.abort();
-      
       window.removeEventListener(CUSTOM_DRAG_EVENTS.ENTER, handleTauriDragEnter);
       window.removeEventListener(CUSTOM_DRAG_EVENTS.OVER, handleTauriDragEnter);
       window.removeEventListener(CUSTOM_DRAG_EVENTS.LEAVE, handleTauriDragLeave);

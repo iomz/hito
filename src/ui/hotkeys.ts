@@ -2,7 +2,7 @@ import { store } from "../utils/jotaiStore";
 import { isHotkeySidebarOpenAtom, hotkeysAtom, categoriesAtom, hotkeyDialogVisibleAtom, hotkeyDialogHotkeyAtom } from "../state";
 import { createElement } from "../utils/dom";
 import type { HotkeyConfig } from "../types";
-import { saveAppData } from "./categories";
+import { saveHitoConfig } from "./categories";
 import { confirm } from "../utils/dialog";
 import { showError } from "./error";
 
@@ -191,7 +191,7 @@ export async function deleteHotkey(hotkeyId: string): Promise<void> {
   const hotkeys = store.get(hotkeysAtom);
   store.set(hotkeysAtom, hotkeys.filter(h => h.id !== hotkeyId));
   try {
-    await saveAppData();
+    await saveHitoConfig();
   } catch (error) {
     console.error("Failed to save hotkeys:", error);
     showError("Failed to save hotkeys");
@@ -344,7 +344,7 @@ export async function autoAssignHotkeyToCategory(categoryId: string): Promise<bo
   store.set(hotkeysAtom, [...hotkeys, newHotkey]);
   
   try {
-    await saveAppData();
+    await saveHitoConfig();
     console.log(`[autoAssignHotkeyToCategory] Successfully assigned key "${unassignedKey}" to category ${categoryId}`);
     return true;
   } catch (error) {
