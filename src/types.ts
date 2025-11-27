@@ -38,6 +38,7 @@ export interface Category {
   id: string;
   name: string;
   color: string; // Hex color for visual distinction
+  mutuallyExclusiveWith?: string[]; // Array of category IDs that are mutually exclusive with this category
 }
 
 export interface CategoryAssignment {

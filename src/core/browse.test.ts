@@ -242,7 +242,7 @@ describe("browse", () => {
 
       expect(invokeTauri).toHaveBeenCalledWith("get_data_file_path", { directory: "/test/path" });
       expect(invokeTauri).toHaveBeenCalledWith("list_images", { path: "/test/path" });
-      expect(loadAppData).toHaveBeenCalled();
+      // loadAppData is no longer called - categories/hotkeys are loaded via loadHitoConfig
       expect(loadHitoConfig).toHaveBeenCalled();
       expect(store.get(allDirectoryPathsAtom)).toEqual(contents.directories);
       expect(store.get(allImagePathsAtom)).toEqual(contents.images);
